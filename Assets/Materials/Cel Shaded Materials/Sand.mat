@@ -1,0 +1,332 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Sand
+  m_Shader: {fileID: 4800000, guid: 8fa84e1c8f3a97b4bb416e8eb087630e, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords:
+  - _ALPHABLEND_ON
+  - _USECROSSHATCH_ON
+  - _USEFLATSHADING_ON
+  - _USENORMALDETAILS_ON
+  - _USERIMBANDS_ON
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: _BandSmoothness _DistanceFadeEnd _LowColor _NormalMapShadowIntensity
+    _OutlineSize _RimPower _ShadowBands
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BumpMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 100, y: 100}
+        m_Offset: {x: 0, y: 0}
+    - _DetailAlbedoMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailMask:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailNormalMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _EmissionMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _EmmisTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _HeightMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: 9b1b157e87b52e741a0a433909a6c34c, type: 3}
+        m_Scale: {x: 200, y: 200}
+        m_Offset: {x: 0, y: 0}
+    - _MetallicGlossMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 2800000, guid: 161e0cc1b79c2d7439e325e5754873f2, type: 3}
+        m_Scale: {x: 100, y: 100}
+        m_Offset: {x: 0, y: 0}
+    - _NormalTex:
+        m_Texture: {fileID: 2800000, guid: 161e0cc1b79c2d7439e325e5754873f2, type: 3}
+        m_Scale: {x: 100, y: 100}
+        m_Offset: {x: 0, y: 0}
+    - _OcclusionMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ParallaxMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _BandHardEdge: 1
+    - _BandOutlineIntensity: 1
+    - _BandOutlineStrength: 0
+    - _BandOutlineThickness: 0.08
+    - _BandOutlineWidth: 0.001
+    - _BandOutlineWidth_Base: 0.008
+    - _BandOutlineWidth_Normal: 0.004
+    - _BandSharpness: 2.6
+    - _BandSmoothness: 0
+    - _BandSoftEdge: 1
+    - _Bands: 5
+    - _Brightness: -0
+    - _BumpIntensity: 2
+    - _BumpScale: 1
+    - _CelSmoothness: 0.05
+    - _CelSteps: 3
+    - _Contrast: 1
+    - _CrossHatchAngle: 90
+    - _CrossHatchThreshold: 0.3
+    - _Cutoff: 0.5
+    - _DetailNormalMapScale: 1
+    - _DistanceFadeEnd: 1500
+    - _DistanceFadePower: 0.5
+    - _DistanceFadeStart: 500
+    - _DstBlend: 10
+    - _DynamicOutline: 0
+    - _EdgeBands: 4
+    - _FresnelBands: 3
+    - _FresnelBrightness: 0.017
+    - _FresnelDotBrightness: 1
+    - _FresnelDotDistanceScale: 0.5
+    - _FresnelDotIntensity: 0.6
+    - _FresnelDotPower: 0.3
+    - _FresnelDotScale: 10
+    - _FresnelDotShadowDropoff: 0.5
+    - _FresnelDotSize: 0.5
+    - _FresnelPower: 0
+    - _FresnelShadowDropoff: 0
+    - _GlossMapScale: 1
+    - _Glossiness: 0
+    - _GlossyReflections: 1
+    - _HatchAngle: 45
+    - _HatchScale: 6
+    - _HatchWidth: 0.25
+    - _HeightEnd: 50
+    - _HeightStart: 0
+    - _HeightStrength: 0.6
+    - _HighIntensity: 2.5
+    - _HighLightBrightness: 1.2
+    - _HighlightDotDistanceScale: 0.5
+    - _HighlightDotIntensity: 0.4
+    - _HighlightDotScale: 155
+    - _HighlightDotSize: 0.4
+    - _HighlightDotThreshold: 0.7
+    - _Hue: 0
+    - _HueShift: 0
+    - _IndirectLightIntensity: 0.3
+    - _InkStrength: 0.7
+    - _InnerBandRadius: 0.15
+    - _InvertColors: 0
+    - _LightBands: 3
+    - _LightScalar: 2
+    - _LitDetailBrightness: 0.5
+    - _LowIntensity: 2
+    - _LowLightBrightness: 0.55
+    - _Metallic: 0
+    - _MinLight: 0.4
+    - _MinOutlineScale: 0
+    - _Mode: 2
+    - _NormalBands: 6
+    - _NormalCompression: 0.001
+    - _NormalDetailBands: 6
+    - _NormalDetailBias: 1
+    - _NormalDetailBrightness: 1
+    - _NormalDetailContrast: 3
+    - _NormalDetailFadeEnd: 50
+    - _NormalDetailFadeStart: 10
+    - _NormalDetailIntensity: 0.1
+    - _NormalDetailLightBlend: 0
+    - _NormalDetailMipBias: -4
+    - _NormalDetailRampLevels: 10
+    - _NormalDetailShadowEnd: 0.1
+    - _NormalDetailShadowInfluence: 0.3
+    - _NormalDetailShadowStart: 0.4
+    - _NormalDetailStrength: 0
+    - _NormalDistanceBoost: 0
+    - _NormalFadeEnd: 200
+    - _NormalFadeStart: 0
+    - _NormalFresnelBands: 2
+    - _NormalFresnelBrightness: 0
+    - _NormalFresnelPower: 0
+    - _NormalInkStrength: 1
+    - _NormalInkThickness: 0
+    - _NormalIntensity: 2
+    - _NormalMapCompression: 0.5
+    - _NormalMapInfluence: 0.3
+    - _NormalMapOutlineThickness: 0
+    - _NormalMapShadowIntensity: 0.1
+    - _NormalMapShadowLevels: 5
+    - _NormalOutlineStrength: 1
+    - _NormalOutlineThickness: 1
+    - _NormalOverlayStrength: 0
+    - _NormalRampIntensity: 0
+    - _NormalRampLevels: 2
+    - _NormalRampShadowIntensity: 0
+    - _NormalRimAlpha: 0
+    - _NormalRimBands: 2
+    - _NormalRimPower: 0
+    - _NormalShadowBrightness: 1
+    - _NormalShadowStrength: 1
+    - _NormalStrength: 0.31
+    - _OcclusionStrength: 1
+    - _OutlineDistanceFade: 0.1
+    - _OutlineDistanceScale: 0.1
+    - _OutlineLightModulation: 0
+    - _OutlineRamp: 0
+    - _OutlineScaleStartDistance: 0
+    - _OutlineSize: 0
+    - _OutlineThickness: 5
+    - _OutlineWidth: 0
+    - _Parallax: 0.02
+    - _ParallaxStrength: 0.02
+    - _RampLevels: 4
+    - _RampSmooth: 0.05
+    - _RampThreshold: 0.5
+    - _RimAlpha: 0.5
+    - _RimBandSmoothness: 0.05
+    - _RimBands: 8
+    - _RimDropOff: 1
+    - _RimHatchAngle: 135
+    - _RimHatchDistanceScale: 0.5
+    - _RimHatchScale: 10
+    - _RimHatchThreshold: 0.3
+    - _RimHatchWidth: 0.3
+    - _RimPower: 0.55
+    - _Saturation: 1
+    - _ShadowBandSmoothness: 0.5
+    - _ShadowBands: 6
+    - _ShadowBias: 0.3
+    - _ShadowBrightness: 1
+    - _ShadowContrast: 1.22
+    - _ShadowDetailBrightness: 0.5
+    - _ShadowFadeEnd: 50
+    - _ShadowFadeStart: 20
+    - _ShadowHatchAngle: 45
+    - _ShadowHatchDistanceScale: 0.5
+    - _ShadowHatchIntensity: 0.8
+    - _ShadowHatchScale: 80
+    - _ShadowHatchWidth: 0.4
+    - _ShadowInkBreakup: 0.67
+    - _ShadowInkFade: 1
+    - _ShadowInkStrength: 1
+    - _ShadowInkThickness: 4
+    - _ShadowOutlineFadeEnd: 423.21
+    - _ShadowOutlineFadeStart: 0
+    - _ShadowOutlineIntensity: 0.01
+    - _ShadowOutlineStrength: 1
+    - _ShadowOutlineThickness: 0
+    - _ShadowOutlineWidth: 0
+    - _ShadowSmoothness: 0.266
+    - _ShadowSoftness: 0.3
+    - _ShadowStrength: 1
+    - _ShadowThreshold: 0
+    - _Smoothness: 0.05
+    - _SmoothnessTextureChannel: 0
+    - _SpecularBands: 2
+    - _SpecularHighlights: 1
+    - _SpecularIntensity: 0
+    - _SpecularShadowDropoff: 0.5
+    - _SpecularSize: 0
+    - _SpecularSmoothness: 30
+    - _SrcBlend: 5
+    - _SunsetBands: 12
+    - _SunsetDistanceFalloff: 0.68
+    - _SunsetFalloff: 1
+    - _SunsetHeightFalloff: 1
+    - _SunsetInnerRadius: 129
+    - _SunsetMaxDistance: 1000
+    - _SunsetMaxHeight: 0
+    - _SunsetMinHeight: 1000
+    - _SunsetStrength: 0.8
+    - _TerrainNormalInfluence: 0.35
+    - _Threshold: 0.37
+    - _UVSec: 0
+    - _UseCrossHatch: 1
+    - _UseFlatShading: 1
+    - _UseFresnelDots: 0
+    - _UseHighlightDots: 0
+    - _UseNormalDetails: 1
+    - _UseRimBands: 1
+    - _UseRimHatch: 0
+    - _UseShadowBands: 0
+    - _UseShadowHatch: 0
+    - _ZWrite: 0
+    m_Colors:
+    - _BandOutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _DarkTint: {r: 0, g: 0, b: 0, a: 1}
+    - _DetailColor: {r: 1, g: 0.904088, b: 0.904088, a: 1}
+    - _DistanceFadeColor: {r: 1, g: 0.50595444, b: 0.4666667, a: 1}
+    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _FarColor: {r: 0.2, g: 0.4, b: 0.8, a: 1}
+    - _FlatShadowTint: {r: 0.8789308, g: 0.8789308, b: 1, a: 1}
+    - _FresnelColor: {r: 1, g: 1, b: 1, a: 1}
+    - _FresnelDotColor: {r: 1, g: 1, b: 1, a: 1}
+    - _GlobalTint: {r: 1, g: 0.9424921, b: 0.79088044, a: 1}
+    - _HighColor: {r: 1, g: 0.7137255, b: 0.64705884, a: 1}
+    - _HighLightColor: {r: 1, g: 0.7137255, b: 0.7137255, a: 1}
+    - _HighlightDotColor: {r: 1, g: 1, b: 1, a: 1}
+    - _InkColor: {r: 0.35, g: 0.35, b: 0.45, a: 1}
+    - _LightTint: {r: 1, g: 0, b: 0, a: 1}
+    - _LitColor: {r: 1, g: 1, b: 1, a: 1}
+    - _LitDetailColor: {r: 1, g: 1, b: 1, a: 1}
+    - _LowColor: {r: 0.6666667, g: 0.6666667, b: 1, a: 1}
+    - _LowLightColor: {r: 0.91764706, g: 0.7137255, b: 1, a: 1}
+    - _NearColor: {r: 1, g: 0.45, b: 0.15, a: 1}
+    - _NormalDarkColor: {r: 0, g: 0, b: 0, a: 1}
+    - _NormalDetailColor: {r: 1, g: 1, b: 1, a: 1}
+    - _NormalDetailLitColor: {r: 1, g: 0.7137255, b: 0.64705884, a: 1}
+    - _NormalDetailShadowColor: {r: 0.6666667, g: 0.6666667, b: 1, a: 1}
+    - _NormalDetailTint: {r: 1, g: 1, b: 1, a: 1}
+    - _NormalFresnelColor: {r: 1, g: 1, b: 1, a: 1}
+    - _NormalLightColor: {r: 1, g: 1, b: 1, a: 1}
+    - _NormalMapOutlineColor: {r: 0, g: 0, b: 0, a: 0.5}
+    - _NormalRampShadowTint: {r: 0, g: 0, b: 0, a: 1}
+    - _NormalRampTint: {r: 0, g: 0, b: 0, a: 1}
+    - _NormalRimColor: {r: 0, g: 0, b: 0, a: 1}
+    - _NormalShadowColor: {r: 1, g: 1, b: 1, a: 1}
+    - _NormalShadowColor_Light: {r: 1, g: 0.9009434, b: 0.9009434, a: 1}
+    - _NormalShadowColor_Shadow: {r: 0.15, g: 0.15, b: 0.25, a: 1}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _RimColor: {r: 0, g: 0, b: 0.19607843, a: 1}
+    - _RimHatchColor: {r: 1, g: 1, b: 1, a: 1}
+    - _ShadowColor: {r: 0.86426276, g: 0.83183515, b: 0.8773585, a: 1}
+    - _ShadowDetailColor: {r: 0.5, g: 0.5, b: 1, a: 1}
+    - _ShadowHatchColor: {r: 0, g: 0, b: 0, a: 1}
+    - _ShadowInkColor: {r: 0, g: 0, b: 0, a: 1}
+    - _ShadowOutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _ShadowTint: {r: 0.25, g: 0.25, b: 0.25, a: 1}
+    - _SpecHighlightColor: {r: 1, g: 0.6179246, b: 0.6179246, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
+    - _SunsetFarColor: {r: 1, g: 0.4901961, b: 0.23529413, a: 1}
+    - _SunsetMidColor: {r: 1, g: 0.33805025, b: 0.33805025, a: 1}
+    - _SunsetNearColor: {r: 0.7767295, g: 0.7767295, b: 0.7767295, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

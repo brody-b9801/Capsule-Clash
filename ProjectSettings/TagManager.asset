@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 2
+  tags:
+  - Lava
+  - Ground
+  - bullet
+  - NetworkManager
+  - firedBullet
+  - DamageCollider
+  - Build
+  - Portal
+  - Ramp
+  - Launchpad
+  - Wall
+  - Floor
+  - tester
+  - name
+  - lbobj
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - Player
+  - Water
+  - UI
+  - Bullet
+  - FiredBullet
+  - DamageCollide
+  - Plane
+  - DCSelf
+  - BuildNoColPlayer
+  - PlayerOnly
+  - Invisible
+  - Self
+  - Mask
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0
+  - name: HigherLayer
+    uniqueID: 1569070561
+    locked: 0

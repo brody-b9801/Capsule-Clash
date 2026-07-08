@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: a59f4db47f9fe476ebfed49311c9a09b
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 269480
+  packageName: 4K Tiled Ground Textures (part 1)
+  packageVersion: 1.1
+  assetPath: Assets/4K Tiled Ground Textures p1/Scripts/AutoSpriteChanger_gp1.cs
+  uploadId: 660586

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 6a8ee1c7d40a14c4b83df20a99ca5b5b
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 20098
+  packageName: Custom Teleporter Pad Script
+  packageVersion: 1.2
+  assetPath: Assets/Teleportation Pad/Materials/Teleporter Pad F.mat
+  uploadId: 37814

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 0
+    path: Assets/Scenes/ss.unity
+    guid: 6acc5e426310d7f4f8d03c83a6180022
+  - enabled: 0
+    path: Assets/Scenes/TitleScene.unity
+    guid: e2d9d8354ce3b6d4fb9cd7cad4f13a4e
+  - enabled: 0
+    path: Assets/Scenes/TestingScene.unity
+    guid: 43c9f406371573444a42b0e7d1b184a4
+  - enabled: 0
+    path: Assets/Scenes/desertScene.unity
+    guid: 56ff16bd3c1b70d47b2ffee4af0eee8c
+  - enabled: 1
+    path: Assets/BossScene.unity
+    guid: d86c84038e4b9254e98a6e56682303be
+  - enabled: 1
+    path: Assets/Scenes/CombatScene.unity
+    guid: 5ebc2a43957a879459ac4cb89a1a8fe6
+  m_configObjects: {}
+  m_UseUCBPForAssetBundles: 0

@@ -1,0 +1,95 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &8958189747643519832
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 140485670558208435}
+  m_Layer: 5
+  m_Name: PlayerBulletHole
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &140485670558208435
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8958189747643519832}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.5, z: -9.8}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children:
+  - {fileID: 756944952589373889}
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &9197359499631477855
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 140485670558208435}
+    m_Modifications:
+    - target: {fileID: 8440485469854337470, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_Name
+      value: CameraMFdoom
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 54
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 9.800009
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.000000057601163
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.000000057601163
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+--- !u!4 &756944952589373889 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8440485469854373278, guid: 85558d6cbb4ed9c4c86b725aeefd684a, type: 3}
+  m_PrefabInstance: {fileID: 9197359499631477855}
+  m_PrefabAsset: {fileID: 0}

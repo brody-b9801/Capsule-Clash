@@ -1,0 +1,165 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Cross_Plains Void
+  m_Shader: {fileID: 4800000, guid: 9e0b78a84584ffb4b9d963b4c6f26436, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords:
+  - _USECROSSHATCH_ON
+  - _USEFLATSHADING_ON
+  - _USERIMBANDS_ON
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BumpMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailAlbedoMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailMask:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailNormalMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _EmissionMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _EmmisTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: 1c161f4059197e6438552bbf13749990, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MetallicGlossMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _OcclusionMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ParallaxMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _BumpScale: 1
+    - _CrossHatchAngle: 90
+    - _CrossHatchThreshold: 0.3
+    - _Cutoff: 0.5
+    - _DetailNormalMapScale: 1
+    - _DstBlend: 0
+    - _DynamicOutline: 0
+    - _FresnelDotBrightness: 1
+    - _FresnelDotDistanceScale: 0.5
+    - _FresnelDotIntensity: 0.6
+    - _FresnelDotPower: 0.3
+    - _FresnelDotScale: 150
+    - _FresnelDotShadowDropoff: 0.5
+    - _FresnelDotSize: 0.5
+    - _GlossMapScale: 1
+    - _Glossiness: 0.5
+    - _GlossyReflections: 1
+    - _HighIntensity: 2.5
+    - _HighlightDotDistanceScale: 0.5
+    - _HighlightDotIntensity: 0.4
+    - _HighlightDotScale: 120
+    - _HighlightDotSize: 0.4
+    - _HighlightDotThreshold: 0.7
+    - _IndirectLightIntensity: 0.3
+    - _LightScalar: 1.3
+    - _LowIntensity: 2
+    - _Metallic: 0
+    - _Mode: 0
+    - _NormalRampIntensity: 0.3
+    - _NormalRampLevels: 3
+    - _NormalRampShadowIntensity: 0.2
+    - _NormalStrength: 1
+    - _OcclusionStrength: 1
+    - _OutlineDistanceScale: 1
+    - _OutlineLightModulation: 0
+    - _OutlineScaleStartDistance: 0
+    - _OutlineSize: 0.004
+    - _Parallax: 0.02
+    - _RampLevels: 4
+    - _RimAlpha: 0.5
+    - _RimBandSmoothness: 0.05
+    - _RimBands: 8
+    - _RimDropOff: 1
+    - _RimHatchAngle: 135
+    - _RimHatchDistanceScale: 0.5
+    - _RimHatchScale: 100
+    - _RimHatchThreshold: 0.3
+    - _RimHatchWidth: 0.3
+    - _RimPower: 0.7
+    - _ShadowBandSmoothness: 0
+    - _ShadowBands: 4
+    - _ShadowHatchAngle: 45
+    - _ShadowHatchDistanceScale: 0.5
+    - _ShadowHatchIntensity: 0.8
+    - _ShadowHatchScale: 177
+    - _ShadowHatchWidth: 0.4
+    - _SmoothnessTextureChannel: 0
+    - _SpecularBands: 2
+    - _SpecularHighlights: 1
+    - _SpecularIntensity: 0
+    - _SpecularShadowDropoff: 0.5
+    - _SpecularSize: 0.2
+    - _SpecularSmoothness: 30
+    - _SrcBlend: 1
+    - _UVSec: 0
+    - _UseCrossHatch: 1
+    - _UseFlatShading: 1
+    - _UseFresnelDots: 0
+    - _UseHighlightDots: 0
+    - _UseRimBands: 1
+    - _UseRimHatch: 0
+    - _UseShadowBands: 0
+    - _UseShadowHatch: 0
+    - _ZWrite: 1
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _FlatShadowTint: {r: 0.92156863, g: 0.92156863, b: 1, a: 1}
+    - _FresnelDotColor: {r: 1, g: 1, b: 1, a: 1}
+    - _HighColor: {r: 0.6431373, g: 1, b: 0.7137255, a: 1}
+    - _HighlightDotColor: {r: 1, g: 1, b: 1, a: 1}
+    - _LowColor: {r: 0.7137255, g: 0.7137255, b: 1, a: 1}
+    - _NormalRampShadowTint: {r: 0.6, g: 0.6, b: 0.7, a: 1}
+    - _NormalRampTint: {r: 0.8, g: 0.8, b: 0.9, a: 1}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _RimColor: {r: 0, g: 0, b: 0.19607843, a: 1}
+    - _RimHatchColor: {r: 1, g: 1, b: 1, a: 1}
+    - _ShadowHatchColor: {r: 0, g: 0, b: 0, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

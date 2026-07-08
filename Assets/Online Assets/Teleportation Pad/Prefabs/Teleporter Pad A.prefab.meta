@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 60ea8a8ee79fc564294d0a35f8b0ae4a
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 20098
+  packageName: Custom Teleporter Pad Script
+  packageVersion: 1.2
+  assetPath: Assets/Teleportation Pad/Prefabs/Teleporter Pad A.prefab
+  uploadId: 37814
