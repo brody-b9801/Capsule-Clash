@@ -128,7 +128,7 @@ public class upgradeManager : MonoBehaviour
         }
 
         if (inventoryWindow.activeSelf) {
-            keyCountText.text = PlayerMovement.keyCount.ToString();
+            keyCountText.text = MaskController.keyCount.ToString();
             capsuleCountText.text = killPoints.ToString();
         }
     }
