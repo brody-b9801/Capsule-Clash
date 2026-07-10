@@ -80,6 +80,7 @@ public class PlayerMovement : AttributesSync {
     public static bool setRespawn = false;
     public static Vector3 newVelocity;
     private bool groundedPrev;
+    private bool groundBeneath;
     private bool sprintingPrev;
     private CharacterController characterController;
     private bool resetPrev = false;
@@ -423,6 +424,10 @@ public class PlayerMovement : AttributesSync {
 
     public static bool isGround() { return isGrounded || onSlope; }
 
+    // The slope spherecast is wider than the ground raycast, so it still reports a hit for a
+    // frame or two after you clear a ramp's edge. Require real ground below before allowing a jump.
+    private bool CanJump() { return isGrounded || (onSlope && groundBeneath); }
+
     // -------------------------------------------------------------------------
     // Update
     // -------------------------------------------------------------------------
@@ -526,10 +531,15 @@ public class PlayerMovement : AttributesSync {
         // Ground detection
         if (isGround()) {
             characterController.stepOffset = (currDimension != "Maze") ? 0.55f : 0f;
-            if (Physics.Raycast(transform.position, transform.TransformDirection(Vector3.down), out hit, 1.5f, GroundMask))
-                newVelocity = movement - new Vector3(0, 100f, 0);
-            else
-                newVelocity.y = -(gravity * Time.deltaTime);
+            groundBeneath = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.down), out hit, 1.5f, GroundMask);
+            // Leave upward velocity (jump, launchpad, dash) alone -- sticking would cancel it
+            // before it ever moves us. Self-clears once gravity brings y back down.
+            if (newVelocity.y <= 0f) {
+                if (groundBeneath)
+                    newVelocity = movement - new Vector3(0, 100f, 0);
+                else
+                    newVelocity.y = -(gravity * Time.deltaTime);
+            }
 
             RaycastHit[] hits;
             Vector3 p1 = transform.position + Vector3.up * 0.5f;
@@ -556,7 +566,11 @@ public class PlayerMovement : AttributesSync {
             if (_hitNames.Contains("Sand") && noStep) characterController.stepOffset = 0;
         } else {
             characterController.stepOffset = 0f;
-            if (groundedPrev) lastGroundedHeight = transform.position.y;
+            groundBeneath = false;
+            if (groundedPrev) {
+                lastGroundedHeight = transform.position.y;
+                if (!jumpedLast) newVelocity.y = Mathf.Min(movement.y, 0f);
+            }
         }
 
         newVelocity = new Vector3(movement.x, newVelocity.y - (gravity * Time.deltaTime), movement.z);
