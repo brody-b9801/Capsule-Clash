@@ -22,6 +22,8 @@ Shader "Hidden/NewImageEffectShader"
         _SubpixelMaskSize ("Subpixel Mask Size", Range(1, 16)) = 3
         _SubpixelBorder ("Subpixel Border", Range(0, 1)) = 0.5
         _SubpixelBrightness ("Subpixel Brightness", Range(1, 4)) = 3
+        _MinHW ("Min Half-Width", Float) = 0.1
+        _MaxHW ("Max Half-Width", Float) = 0.5
     }
 
     CGINCLUDE
@@ -66,7 +68,9 @@ Shader "Hidden/NewImageEffectShader"
     float _SubpixelMaskSize;
     float _SubpixelBorder;
     float _SubpixelBrightness;
-
+    float _MinHW;
+    float _MaxHW;
+    
     v2f vert(appdata v)
     {
         v2f o;
@@ -130,16 +134,26 @@ Shader "Hidden/NewImageEffectShader"
             #pragma vertex vert
             #pragma fragment fragDither
 
+            float3 posterize3(float3 x, float3 w, float levels)
+            {
+                float3 v = saturate(x) * levels;
+                float3 f = frac(v);
+                float3 e = smoothstep(0.5 - w, 0.5 + w, f);
+                return (floor(v) + e) / levels;
+            }
+
             float3 quantize(float2 cellPx, float3 color)
             {
+                float levels = max(1.0, floor(_ColorAmount + 0.5) - 1.0);
+
+                float ditherAmp = abs(_Bias) * levels;
+
+                float3 w = clamp(fwidth(saturate(color) * levels), _MinHW, _MaxHW);
+
                 float threshold = bayerThreshold(cellPx);
                 color += threshold * _Bias;
 
-                float levels = max(1.0, floor(_ColorAmount + 0.5) - 1.0);
-                color.r = floor(saturate(color.r) * levels + 0.5) / levels;
-                color.g = floor(saturate(color.g) * levels + 0.5) / levels;
-                color.b = floor(saturate(color.b) * levels + 0.5) / levels;
-                return color;
+                return posterize3(color, w, levels);
             }
 
             fixed4 fragDither(v2f i) : SV_Target
