@@ -1244,7 +1244,7 @@ public class PlayerMovement : AttributesSync {
         }
 
         if (!dead) {
-            playerCamera.gameObject.transform.position = transform.position + new Vector3(0.0f, 0.75f, 0.0f) + landingCameraOffset;
+            playerCamera.gameObject.transform.position = transform.position + new Vector3(Mathf.Sin(Camera.main.transform.rotation.y), 0.75f, Mathf.Cos(Camera.main.transform.rotation.y)) + landingCameraOffset;
             if (!Shooting.reloading) {
                 Vector3 shootOffset = new Vector3((-Shaker.yRot - Shaker.zRot) / 500, Shaker.easedRotationChange / 125, -Shaker.easedRotationChange / 250) * shootAnimTune;
                 if (IsValidVector3(shootOffset))
