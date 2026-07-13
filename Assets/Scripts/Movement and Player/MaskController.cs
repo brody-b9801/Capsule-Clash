@@ -202,7 +202,12 @@ public class MaskController : MonoBehaviour {
             case "Space": mask = spaceMaskTransform; break;
             case "Ice": mask = iceMaskTransform; break;
         }
-        if (mask != null) mask.LookAt(playerCamera.transform);
+        if (mask != null) {
+            Vector3 away = mask.position - Camera.main.transform.position;
+            away.y = 0f;
+            if (away.sqrMagnitude > 0.0001f)
+                mask.rotation = Quaternion.LookRotation(away) * Quaternion.Euler(0f, 90f, 0f);
+        }
     }
 
     // -------------------------------------------------------------------------
