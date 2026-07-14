@@ -176,7 +176,6 @@ public class PlayerMovement : AttributesSync {
     [SerializeField] private float sidewaysAnimTune = 1f;
     [SerializeField] private float breatheAnimTune = 1f;
     [SerializeField] private Material selfMaterial;
-    [SerializeField] private Material playerMaterial;
     public static float elapsedHealTime;
 
     // Controllers
