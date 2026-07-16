@@ -203,7 +203,7 @@ public class MaskController : MonoBehaviour {
             case "Ice": mask = iceMaskTransform; break;
         }
         if (mask != null) {
-            mask.rotation = Quaternion.LookRotation(mask.position - Camera.main.transform.position) * Quaternion.Euler(0, 90, 0);
+            mask.rotation = Quaternion.LookRotation(mask.position - playerCamera.transform.position);
         }
     }
 

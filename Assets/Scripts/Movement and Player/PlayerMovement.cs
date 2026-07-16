@@ -575,7 +575,10 @@ public class PlayerMovement : AttributesSync {
             groundBeneath = false;
             if (groundedPrev) {
                 lastGroundedHeight = transform.position.y;
-                if (!jumpedLast) newVelocity.y = Mathf.Min(movement.y, 0f);
+                if (!jumpedLast) {
+                    newVelocity.y = Mathf.Min(movement.y, 0f);
+                    Debug.Log("Grounded, but not jumped last. Setting newVelocity.y to: " + newVelocity.y);
+                }
             }
         }
 
@@ -861,6 +864,7 @@ public class PlayerMovement : AttributesSync {
         string hitTag = hit.transform.gameObject.tag;
 
         if (IsTopFaceCollision(hit) || onSlope) {
+            Debug.Log("IsTopFaceCollision : " + IsTopFaceCollision(hit) + ", onSlope: " + onSlope);
             if (!groundedPrev && hitTag != "Launchpad" && hitTag != "Portal") {
                 float heightChange = (lastGroundedHeight - transform.position.y) - 8;
                 if (heightChange > 0) {
@@ -957,7 +961,7 @@ public class PlayerMovement : AttributesSync {
     private bool IsOnSlope() {
         RaycastHit hit;
         LayerMask layerMask = SlopeMask;
-        if (!Physics.SphereCast(transform.position, 0.55f, Vector3.down, out hit, 0.5f, layerMask)) {
+        if (!Physics.SphereCast(transform.position, 0.545f, Vector3.down, out hit, 0.5f, layerMask)) {
             onSlope = false;
             return false;
         }
