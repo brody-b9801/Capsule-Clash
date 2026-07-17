@@ -536,7 +536,7 @@ public class PlayerMovement : AttributesSync {
 
         // Ground detection
         if (isGround()) {
-            characterController.stepOffset = (currDimension != "Maze") ? 0.55f : 0f;
+            characterController.stepOffset = (currDimension != "Maze" && currDimension != "Ice") ? 0.55f : 0f;
             groundBeneath = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.down), out hit, 1.5f, GroundMask);
             // Leave upward velocity (jump, launchpad, dash) alone -- sticking would cancel it
             // before it ever moves us. Self-clears once gravity brings y back down.
@@ -546,30 +546,45 @@ public class PlayerMovement : AttributesSync {
                 else
                     newVelocity.y = -(gravity * Time.deltaTime);
             }
+            if (currDimension == "Desert") {
+                RaycastHit[] hits;
+                Vector3 p1 = transform.position + Vector3.up * 0.5f;
+                Vector3 p2 = transform.position + Vector3.down * 0.5f;
+                int capsuleHitCount = Physics.CapsuleCastNonAlloc(p1, p2, 0.55f, wishDir, _capsuleHits, 0.5f, DefaultMask);
 
-            RaycastHit[] hits;
-            Vector3 p1 = transform.position + Vector3.up * 0.5f;
-            Vector3 p2 = transform.position + Vector3.down * 0.5f;
-            int capsuleHitCount = Physics.CapsuleCastNonAlloc(p1, p2, 0.55f, wishDir, _capsuleHits, 0.5f, DefaultMask);
-
-            _hitNames.Clear();
-            bool noStep = false;
-            for (int chi = 0; chi < capsuleHitCount; chi++) {
-                RaycastHit collision = _capsuleHits[chi];
-                string hitName = collision.transform.gameObject.name;
-                _hitNames.Add(hitName);
-                if (hitName.Contains("Tree")) {
-                    noStep = true;
-                } else if (hitName.Contains("Building")) {
-                    string input = hitName.Substring(9, 1);
-                    int outVal;
-                    int.TryParse(input, out outVal);
-                    if ((outVal < 5 && outVal > 0) || outVal == 8) noStep = true;
-                } else if (hitName.Contains("MarketplaceTop")) {
-                    noStep = true;
+                _hitNames.Clear();
+                bool noStep = false;
+                for (int chi = 0; chi < capsuleHitCount; chi++) {
+                    RaycastHit collision = _capsuleHits[chi];
+                    string hitName = collision.transform.gameObject.name;
+                    _hitNames.Add(hitName);
+                    if (hitName.Contains("Tree")) {
+                        noStep = true;
+                    } else if (hitName.Contains("Building")) {
+                        string input = hitName.Substring(9, 1);
+                        int outVal;
+                        int.TryParse(input, out outVal);
+                        if ((outVal < 5 && outVal > 0) || outVal == 8) noStep = true;
+                    } else if (hitName.Contains("MarketplaceTop")) {
+                        noStep = true;
+                    }
+                }
+                if (_hitNames.Contains("Sand") && noStep) characterController.stepOffset = 0;
+            } else if (currDimension == "Ice") {
+                if (Physics.SphereCast(transform.position, 0.545f, Vector3.down, out hit, 0.5f, SlopeMask)) {
+                    if (hit.transform.gameObject.tag == "Ramp" || hit.transform.gameObject.tag == "Floor" || hit.transform.gameObject.tag == "Wall")
+                    {
+                        Debug.Log("onBuild");
+                        setFrictionIce(false);
+                    } else
+                    {
+                        setFrictionIce(true);
+                    }
+                } else
+                {
+                    setFrictionIce(true);
                 }
             }
-            if (_hitNames.Contains("Sand") && noStep) characterController.stepOffset = 0;
         } else {
             characterController.stepOffset = 0f;
             groundBeneath = false;
@@ -929,6 +944,11 @@ public class PlayerMovement : AttributesSync {
         GetComponent<ChangeMat>().dimensionMaterialChange(target.materialName);
         Camera.main.GetComponent<SnowParticles>().toggleParticles(target.snow);
         Camera.main.GetComponent<FogShader>().ChangeDimension(target.name);
+    }
+    private void setFrictionIce(bool onIce) {
+        groundAcceleration = onIce ? iceInfo.accel : desertInfo.accel;
+        groundDeceleration = onIce ? iceInfo.decel : desertInfo.decel;
+        friction = onIce ? iceInfo.fric : desertInfo.fric;
     }
 
     IEnumerator ApplyLandingShake(float magnitude) {
