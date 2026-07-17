@@ -536,7 +536,7 @@ public class PlayerMovement : AttributesSync {
 
         // Ground detection
         if (isGround()) {
-            characterController.stepOffset = (currDimension != "Maze" && currDimension != "Ice") ? 0.55f : 0f;
+            characterController.stepOffset = (currDimension != "Maze") ? 0.55f : 0f;
             groundBeneath = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.down), out hit, 1.5f, GroundMask);
             // Leave upward velocity (jump, launchpad, dash) alone -- sticking would cancel it
             // before it ever moves us. Self-clears once gravity brings y back down.
@@ -949,6 +949,7 @@ public class PlayerMovement : AttributesSync {
         groundAcceleration = onIce ? iceInfo.accel : desertInfo.accel;
         groundDeceleration = onIce ? iceInfo.decel : desertInfo.decel;
         friction = onIce ? iceInfo.fric : desertInfo.fric;
+        characterController.stepOffset = onIce ? 0f : 0.55f;
     }
 
     IEnumerator ApplyLandingShake(float magnitude) {
