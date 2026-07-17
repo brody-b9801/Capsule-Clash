@@ -126,7 +126,7 @@ public class ChangeMat : AttributesSync
         } 
         if (PlayerMovement.healthWidth <= 0 && !healed) {
             healed = true;
-            PlayerMovement.Die();
+            GetComponent<PlayerMovement>().Die();
             PlayerMovement playerMovementInstance = GetComponent<PlayerMovement>();
             playerMovementInstance.killHeal(shooter); // Use instance reference here
         }

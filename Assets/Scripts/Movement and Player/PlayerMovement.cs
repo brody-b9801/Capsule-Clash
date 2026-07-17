@@ -421,7 +421,7 @@ public class PlayerMovement : AttributesSync {
         lastPosition = currentPosition;
     }
 
-    public static bool isGround() { return isGrounded || onSlope; }
+    public static bool isGround() { return isGrounded; }
 
     // The slope spherecast is wider than the ground raycast, so it still reports a hit for a
     // frame or two after you clear a ramp's edge. Require real ground below before allowing a jump.
@@ -443,14 +443,17 @@ public class PlayerMovement : AttributesSync {
         isGrounded = characterController.isGrounded;
         lastFrameMovement = movement;
 
-        RaycastHit hit;
+        // Camera rotation
+        float mouseX = Input.GetAxis("Mouse X");
+        float mouseY = Input.GetAxis("Mouse Y");
+        rotationX = -(mouseY * rotationSpeed);
+        rotationY = mouseX * rotationSpeed;
 
-        // --- Movement ---
-        Vector3 forwardDirection = Vector3.ProjectOnPlane(playerTransform.forward, Vector3.up).normalized;
-        Vector3 rightDirection = Vector3.ProjectOnPlane(playerTransform.right, Vector3.up).normalized;
+        currentCameraRotationX += rotationX;
+        currentCameraRotationX = Mathf.Clamp(currentCameraRotationX, -maxLookDownAngle, maxLookUpAngle);
+        currentCameraRotationY += rotationY;
 
-        Vector3 inputDirection = forwardDirection * _vertical + rightDirection * _horizontal;
-        if (inputDirection.magnitude > 1f) inputDirection.Normalize();
+        transform.localEulerAngles = new Vector3(0.0f, currentCameraRotationY, 0.0f);
 
         //Set target speed
         float baseSpeed;
@@ -466,79 +469,48 @@ public class PlayerMovement : AttributesSync {
             baseSpeed = 8.5f;
 
         float targetSpeed = baseSpeed * upgradeManager.speedMultiplier;
-
-        if (inputDirection.sqrMagnitude > 0.001f) {
-            wishDir = inputDirection;
-            if (onSlope) wishDir = Vector3.ProjectOnPlane(inputDirection, planeToProject).normalized;
-        } else {
-            wishDir = Vector3.zero;
+        
+        //Handle Jump
+        if (_jump && isGrounded && !isAiming && !maskController.LookingAtMask) {
+            if (currDimension == "Maze")
+                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
+            else if (currDimension == "Space")
+                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + 1.5f * jumpForce * upgradeManager.jumpMultiplier, 0, Mathf.Infinity);
+            else
+                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce * upgradeManager.jumpMultiplier, 0, Mathf.Infinity);
+            jumpedLast = true;
+            resetPrev = false;
+            if (isSprinting) fastAir = true;
         }
 
-        if (wishDir.sqrMagnitude > 0.001f) {
-            Vector3 projectedVel = Vector3.Project(movement, wishDir);
-            Vector3 perpendicularVel = movement - projectedVel;
+        RaycastHit hit;
 
-            float perpSpeed = perpendicularVel.magnitude;
-            if (perpSpeed > 0.01f) {
-                float drop = perpSpeed * friction * 3f * Time.deltaTime;
-                perpendicularVel *= Mathf.Max(perpSpeed - drop, 0) / perpSpeed;
-            }
-            movement = projectedVel + perpendicularVel;
+        // --- Movement ---
+        // Vector3 forwardDirection = Vector3.ProjectOnPlane(playerTransform.forward, Vector3.up).normalized;
+        // Vector3 rightDirection = Vector3.ProjectOnPlane(playerTransform.right, Vector3.up).normalized;
+        Vector3 forwardDirection = playerTransform.forward.normalized;
+        Vector3 rightDirection = playerTransform.right.normalized;
+        Vector3 inputDirection = forwardDirection * _vertical + rightDirection * _horizontal;
+        if (inputDirection.magnitude > 1f) inputDirection.Normalize();
+        newVelocity = new Vector3(inputDirection.x * targetSpeed, newVelocity.y, inputDirection.z * targetSpeed);
+        newVelocity.y -= gravity * Time.deltaTime;
+        characterController.Move((newVelocity + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
+        Debug.Log(characterController.isGrounded);
 
-            projectedVel = Vector3.Project(movement, wishDir);
-            float currentSpeed = projectedVel.magnitude * Mathf.Sign(Vector3.Dot(projectedVel, wishDir));
 
-            float alignment = Vector3.Dot(wishDir.normalized, movement.normalized);
-            float accelRate = (alignment < 0.5f) ? groundDeceleration : groundAcceleration;
-            if (isSprinting) accelRate *= sprintAccelerationMultiplier;
 
-            float addSpeed = baseSpeed - currentSpeed;
-            if (addSpeed > 0) {
-                float accelSpeed = Mathf.Min(accelRate * Time.deltaTime, addSpeed);
-                movement += wishDir * accelSpeed;
-            }
-
-            float currentMag = movement.magnitude;
-            if (currentMag > baseSpeed && currentMag < targetSpeed)
-                movement = movement.normalized * Mathf.Lerp(currentMag, targetSpeed, Time.deltaTime * 5f);
-        } else {
-            float speed = movement.magnitude;
-            if (speed > 0.01f) {
-                float drop = speed * friction * Time.deltaTime;
-                movement *= Mathf.Max(speed - drop, 0) / speed;
-            } else {
-                movement = Vector3.zero;
-            }
-        }
-
-        float maxAllowedSpeed = targetSpeed * 1.1f;
-        if (movement.magnitude > maxAllowedSpeed) movement = movement.normalized * maxAllowedSpeed;
-
-        percentAccelerated = Mathf.Clamp01(movement.magnitude / (targetSpeed * 0.8f));
-
-        // Camera rotation
-        float mouseX = Input.GetAxis("Mouse X");
-        float mouseY = Input.GetAxis("Mouse Y");
-        rotationX = -(mouseY * rotationSpeed);
-        rotationY = mouseX * rotationSpeed;
-
-        currentCameraRotationX += rotationX;
-        currentCameraRotationX = Mathf.Clamp(currentCameraRotationX, -maxLookDownAngle, maxLookUpAngle);
-        currentCameraRotationY += rotationY;
-
-        transform.localEulerAngles = new Vector3(0.0f, currentCameraRotationY, 0.0f);
 
         // Ground detection
         if (isGround()) {
             characterController.stepOffset = (currDimension != "Maze") ? 0.55f : 0f;
             groundBeneath = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.down), out hit, 1.5f, GroundMask);
 
-            if (newVelocity.y <= 0f) {
-                if (groundBeneath)
-                    newVelocity = movement - new Vector3(0, 100f, 0);
-                else
-                    newVelocity.y = -(gravity * Time.deltaTime);
-            }
+            // if (newVelocity.y <= 0f) {
+            //     if (groundBeneath)
+            //         newVelocity = movement - new Vector3(0, 100f, 0);
+            //     else
+            //         newVelocity.y = -(gravity * Time.deltaTime);
+            // }
             if (currDimension == "Desert") {
                 RaycastHit[] hits;
                 Vector3 p1 = transform.position + Vector3.up * 0.5f;
@@ -583,25 +555,12 @@ public class PlayerMovement : AttributesSync {
             if (groundedPrev) {
                 lastGroundedHeight = transform.position.y;
                 if (!jumpedLast) {
-                    newVelocity.y = Mathf.Min(movement.y, 0f);
+                    //newVelocity.y = Mathf.Min(movement.y, 0f);
                 }
             }
         }
-
-        newVelocity = new Vector3(movement.x, newVelocity.y - (gravity * Time.deltaTime), movement.z);
-
         // Jumping
-        if (_jump && isGround() && !isAiming && !maskController.LookingAtMask) {
-            if (currDimension == "Maze")
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
-            else if (currDimension == "Space")
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + 1.5f * jumpForce * upgradeManager.jumpMultiplier, 0, Mathf.Infinity);
-            else
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce * upgradeManager.jumpMultiplier, 0, Mathf.Infinity);
-            jumpedLast = true;
-            resetPrev = false;
-            if (isSprinting) fastAir = true;
-        }
+
 
         if (_jump) maskController.TryFeed();
 
@@ -643,12 +602,6 @@ public class PlayerMovement : AttributesSync {
         {
             shotBoost = Vector3.zero;
         }
-        // Move
-        if (!isStuck) {
-            characterController.Move((newVelocity + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
-            Debug.DrawRay(transform.position, new Vector3(newVelocity.x, 0, newVelocity.z) * 5f, Color.cyan);
-        }
-        
         shotBoost = Vector3.Lerp(shotBoost, Vector3.zero, Time.deltaTime);
 
         // Sprint
@@ -756,7 +709,6 @@ public class PlayerMovement : AttributesSync {
         string hitTag = hit.transform.gameObject.tag;
 
         if (IsTopFaceCollision(hit) || onSlope) {
-            Debug.Log("IsTopFaceCollision : " + IsTopFaceCollision(hit) + ", onSlope: " + onSlope);
             if (!groundedPrev && hitTag != "Launchpad" && hitTag != "Portal") {
                 float heightChange = (lastGroundedHeight - transform.position.y) - 8;
                 if (heightChange > 0) {
@@ -774,10 +726,10 @@ public class PlayerMovement : AttributesSync {
 
         if (isGround()) resetPrev = false;
 
-        if (hit.normal.y < -0.85f && !resetPrev && newVelocity.y > 0) {
-            newVelocity.y = 0;
-            resetPrev = true;
-        }
+        // if (hit.normal.y < -0.85f && !resetPrev && newVelocity.y > 0) {
+        //     newVelocity.y = 0;
+        //     resetPrev = true;
+        // }
 
 
         if (IsTopFaceCollision(hit) && isGround()) fastAir = false;
@@ -816,7 +768,6 @@ public class PlayerMovement : AttributesSync {
             return false;
         }
         angleSlope = Vector3.Angle(hit.normal, Vector3.up);
-        Debug.Log("Slope angle: " + angleSlope);
         if (angleSlope > 0 && angleSlope <= 47) {
             onSlope = true;
             return true;
