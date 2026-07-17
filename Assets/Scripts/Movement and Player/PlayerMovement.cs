@@ -76,8 +76,6 @@ public class PlayerMovement : AttributesSync {
     public static bool jumpedLast = false;
     public static bool isTeleporting = false;
     public static bool isDashing = false;
-    public static bool setSpawn = false;
-    public static bool setRespawn = false;
     public static Vector3 newVelocity;
     private bool groundedPrev;
     private bool groundBeneath;
@@ -223,7 +221,6 @@ public class PlayerMovement : AttributesSync {
     public Material spaceSky;
     public Material iceSky;
     public static Vector3 shotBoost;
-    private Vector3 normalPush = Vector3.zero;
     // -------------------------------------------------------------------------
     // Input
     // -------------------------------------------------------------------------
@@ -383,8 +380,6 @@ public class PlayerMovement : AttributesSync {
             HealthController.updateHealth();
             Shooting.reloadNum = 30;
             GunThingAnim.movingState = false;
-            setSpawn = true;
-            setRespawn = false;
             dashes = 0;
             characterController.enableOverlapRecovery = false;
             ObjectSpawner.buildNum = 25;
@@ -457,6 +452,7 @@ public class PlayerMovement : AttributesSync {
         Vector3 inputDirection = forwardDirection * _vertical + rightDirection * _horizontal;
         if (inputDirection.magnitude > 1f) inputDirection.Normalize();
 
+        //Set target speed
         float baseSpeed;
         if (isAiming)
             baseSpeed = 2.5f;
@@ -675,102 +671,13 @@ public class PlayerMovement : AttributesSync {
             isSprinting = true;
         }
 
-        // Aiming
-        if ((Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && isGround()) {
-            isAiming = true;
-            rotationSpeed = SettingsController.rs * (1.5f / 4.0f);
-        } else {
-            rotationSpeed = SettingsController.rs;
-            isAiming = false;
-        }
+        SetAimRotSpeed();
 
-        // Invulnerability
         if (!canTakeDamage) StartCoroutine(Invulnerable());
 
-        // Moving state
         CameraZoom.moving = (_horizontal || _vertical);
-
-        // Spawn / Respawn logic
-        if (setSpawn) {
-            characterController.enabled = false;
-            setSpawn = false;
-            dead = false;
-            lastGroundedHeight = -13;
-            ChangeMat.healed = false;
-            movement = Vector3.zero;
-            
-            // Select appropriate spawn list based on current dimension
-            List<Vector3> currentSpawns = desertSpawnVectors; // default to desert spawns
-            if (currDimension == "Maze" && mazeSpawnVectors.Count > 0)
-                currentSpawns = mazeSpawnVectors;
-            else if (currDimension == "Space" && spaceSpawnVectors.Count > 0)
-                currentSpawns = spaceSpawnVectors;
-            else if (currDimension == "Ice" && iceSpawnVectors.Count > 0)
-                currentSpawns = iceSpawnVectors;
-            
-            int num = Random.Range(0, currentSpawns.Count);
-            transform.position = currentSpawns[num];
-
-            Vector3 targetDirection = new Vector3(17f - 13.94f, -9f, -27f + 3.89f) - transform.position;
-            Quaternion targetRotation = Quaternion.LookRotation(targetDirection);
-            transform.rotation = Quaternion.Euler(0f, targetRotation.eulerAngles.y, 0f);
-            currentCameraRotationY = targetRotation.eulerAngles.y;
-
-            characterController.enabled = true;
-            Shooting.canShoot = true;
-
-            lastPosition = playerTransform.position;
-            velocityTransform = Vector3.zero;
-            velocityFOVBoost = 0f;
-
-            foreach (var obj in GameObject.FindGameObjectsWithTag("Respawn"))
-                Destroy(obj);
-            Cursor.lockState = CursorLockMode.Locked;
-        }
-
-        if (setRespawn) {
-            setRespawn = false;
-            characterController.enabled = false;
-            dead = true;
-            if (_avatar.IsOwner) respawnInit = Instantiate(respawnScreen);
-            Cursor.lockState = CursorLockMode.None;
-            Shooting.lockCursor = false;
-            transform.position = new Vector3(0, -30, 0);
-            RenderSettings.skybox = desertSky;
-        }
-
-        // Border warning
-
-        float horizontalDistanceFromOrigin;
-        float absX = Mathf.Abs(transform.position.x) - 60; //60 = x size of bounds
-        float absZ = Mathf.Abs(transform.position.z) - 90; //90 = z size of bounds
-
-        float yDistanceFromOrigin = transform.position.y;
-        if (currDimension == "Space") {
-            absX = Mathf.Abs(transform.position.x) - 55;
-            absZ = Mathf.Abs(transform.position.z - 2000) - 55;//2000 = z pos of void container
-        } else if (currDimension == "Ice") {
-            absX = Mathf.Abs(transform.position.x + 2500) - 55;
-            absZ = Mathf.Abs(transform.position.z) - 55;
-        }
         
-        horizontalDistanceFromOrigin = Mathf.Max(absX, absZ);
-
-        if (currDimension == "Desert") {
-            newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
-            newAlpha1 = yDistanceFromOrigin > 55f ? ((yDistanceFromOrigin - 55f) / 20f) * 255f : 0f;
-        } else if (currDimension == "Space") {
-            newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
-            newAlpha1 = Mathf.Abs(yDistanceFromOrigin) > 50f ? ((Mathf.Abs(yDistanceFromOrigin - 50f)) / 20f) * 255f : 0f;
-        } else if (currDimension == "Ice") {
-            newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
-            newAlpha1 = yDistanceFromOrigin > 55f ? ((yDistanceFromOrigin - 55f) / 20f) * 255f : 0f;
-        }
-
-        float alphaToUse = Mathf.Clamp(Mathf.Max(newAlpha, newAlpha1), 0, 30f);
-        Color borderColor = new Color(1f, 0f, 0f, alphaToUse / 255f);
-        for (int i = 0; i < _borderRenderers.Length; i++)
-            _borderRenderers[i].sharedMaterial.color = borderColor;
+        BorderWarning();
 
         if (Input.GetKeyUp(KeyCode.Escape)) {
             Cursor.lockState = CursorLockMode.None;
@@ -797,6 +704,16 @@ public class PlayerMovement : AttributesSync {
         if (playerCamera != null) playerCamera.fieldOfView = currentFOV + Shaker.FOVModRef;
     }
 
+    private void SetAimRotSpeed()
+    {
+        if ((Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && isGround()) {
+            isAiming = true;
+            rotationSpeed = SettingsController.rs * (1.5f / 4.0f);
+        } else {
+            rotationSpeed = SettingsController.rs;
+            isAiming = false;
+        }
+    }
     IEnumerator addDash() {
         float elapsedTime = 0;
         if (dashes < 3) {
@@ -829,45 +746,7 @@ public class PlayerMovement : AttributesSync {
         launch = false;
     }
 
-    public static void Die() { setRespawn = true; }
 
-    public void Respawn() {
-        healthWidth = 180.0f;
-        canTakeDamage = false;
-        HealthController.updateHealth();
-        Shooting.reloadNum = 30;
-        GunThingAnim.movingState = false;
-        setSpawn = true;
-        dashes = 0;
-        ObjectSpawner.buildNum = 25;
-        transform.localEulerAngles = Vector3.zero;
-        movement = Vector3.zero;
-        newVelocity = Vector3.zero;
-    }
-
-    public void killHeal(string shooter) { BroadcastRemoteMethod(0, shooter); }
-
-    [SynchronizableMethod]
-    public void killHealSync(string shooter) {
-        if (SettingsController.lifetimeKills == 0)
-        {
-            StartCoroutine(maskController.StartFirstKillScene());
-        }
-        if (avatarRef == shooter) {
-            upgradeManager.killPoints++;
-            killCount++;
-            healthWidth = 180.0f;
-            HealthController.updateHealth();
-            HealthController.healAnim = true;
-        }
-        settingsControl.updateValues();
-    }
-
-    IEnumerator Invulnerable() {
-        yield return new WaitForSeconds(0.1f);
-        while (!isGround()) yield return null;
-        canTakeDamage = true;
-    }
 
     void OnControllerColliderHit(ControllerColliderHit hit) {
         if (!_avatar.IsOwner) return;
@@ -900,10 +779,6 @@ public class PlayerMovement : AttributesSync {
             resetPrev = true;
         }
 
-        if (!IsTopFaceCollision(hit) && !onSlope) {
-            normalPush = new Vector3(hit.normal.x, 0, hit.normal.z);
-            Debug.Log(normalPush);
-        } 
 
         if (IsTopFaceCollision(hit) && isGround()) fastAir = false;
 
@@ -920,6 +795,151 @@ public class PlayerMovement : AttributesSync {
             //Start boss fight scene, to be implemented
         }
     }
+        private void setFrictionIce(bool onIce) {
+        groundAcceleration = onIce ? iceInfo.accel : desertInfo.accel;
+        groundDeceleration = onIce ? iceInfo.decel : desertInfo.decel;
+        friction = onIce ? iceInfo.fric : desertInfo.fric;
+        characterController.stepOffset = onIce ? 0f : 0.55f;
+    }
+
+
+
+    private bool IsTopFaceCollision(ControllerColliderHit collision) {
+        return Vector3.Angle(collision.normal, Vector3.up) <= characterController.slopeLimit;
+    }
+
+    private bool IsOnSlope() {
+        RaycastHit hit;
+        LayerMask layerMask = SlopeMask;
+        if (!Physics.SphereCast(transform.position, 0.545f, Vector3.down, out hit, 0.5f, layerMask)) {
+            onSlope = false;
+            return false;
+        }
+        angleSlope = Vector3.Angle(hit.normal, Vector3.up);
+        Debug.Log("Slope angle: " + angleSlope);
+        if (angleSlope > 0 && angleSlope <= 47) {
+            onSlope = true;
+            return true;
+        }
+        onSlope = false;
+        return false;
+    }
+
+    private void BorderWarning() {
+        float horizontalDistanceFromOrigin;
+        float absX = Mathf.Abs(transform.position.x) - 60; //60 = x size of bounds
+        float absZ = Mathf.Abs(transform.position.z) - 90; //90 = z size of bounds
+
+        float yDistanceFromOrigin = transform.position.y;
+        if (currDimension == "Space") {
+            absX = Mathf.Abs(transform.position.x) - 55;
+            absZ = Mathf.Abs(transform.position.z - 2000) - 55;//2000 = z pos of void container
+        } else if (currDimension == "Ice") {
+            absX = Mathf.Abs(transform.position.x + 2500) - 55;
+            absZ = Mathf.Abs(transform.position.z) - 55;
+        }
+        
+        horizontalDistanceFromOrigin = Mathf.Max(absX, absZ);
+
+        if (currDimension == "Desert") {
+            newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
+            newAlpha1 = yDistanceFromOrigin > 55f ? ((yDistanceFromOrigin - 55f) / 20f) * 255f : 0f;
+        } else if (currDimension == "Space") {
+            newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
+            newAlpha1 = Mathf.Abs(yDistanceFromOrigin) > 50f ? ((Mathf.Abs(yDistanceFromOrigin - 50f)) / 20f) * 255f : 0f;
+        } else if (currDimension == "Ice") {
+            newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
+            newAlpha1 = yDistanceFromOrigin > 55f ? ((yDistanceFromOrigin - 55f) / 20f) * 255f : 0f;
+        }
+
+        float alphaToUse = Mathf.Clamp(Mathf.Max(newAlpha, newAlpha1), 0, 30f);
+        Color borderColor = new Color(1f, 0f, 0f, alphaToUse / 255f);
+        for (int i = 0; i < _borderRenderers.Length; i++)
+            _borderRenderers[i].sharedMaterial.color = borderColor;
+    }
+
+
+    //-----Death/Damage-----//     
+    public void Die() {             
+        characterController.enabled = false;
+        dead = true;
+        if (_avatar.IsOwner) respawnInit = Instantiate(respawnScreen);
+        Cursor.lockState = CursorLockMode.None;
+        Shooting.lockCursor = false;
+        transform.position = new Vector3(0, -30, 0);
+        RenderSettings.skybox = desertSky;
+    }
+    public void Respawn() {
+        healthWidth = 180.0f;
+        canTakeDamage = false;
+        HealthController.updateHealth();
+        Shooting.reloadNum = 30;
+        GunThingAnim.movingState = false;
+        dashes = 0;
+        ObjectSpawner.buildNum = 25;
+        transform.localEulerAngles = Vector3.zero;
+        movement = Vector3.zero;
+        newVelocity = Vector3.zero;
+        characterController.enabled = false;
+        dead = false;
+        lastGroundedHeight = -13;
+        ChangeMat.healed = false;
+        movement = Vector3.zero;
+            
+        // Select appropriate spawn list based on current dimension
+        List<Vector3> currentSpawns = desertSpawnVectors; // default to desert spawns
+        if (currDimension == "Maze" && mazeSpawnVectors.Count > 0)
+            currentSpawns = mazeSpawnVectors;
+        else if (currDimension == "Space" && spaceSpawnVectors.Count > 0)
+            currentSpawns = spaceSpawnVectors;
+        else if (currDimension == "Ice" && iceSpawnVectors.Count > 0)
+            currentSpawns = iceSpawnVectors;
+            
+        int num = Random.Range(0, currentSpawns.Count);
+        transform.position = currentSpawns[num];
+
+        Vector3 targetDirection = new Vector3(17f - 13.94f, -9f, -27f + 3.89f) - transform.position;
+        Quaternion targetRotation = Quaternion.LookRotation(targetDirection);
+        transform.rotation = Quaternion.Euler(0f, targetRotation.eulerAngles.y, 0f);
+        currentCameraRotationY = targetRotation.eulerAngles.y;
+
+        characterController.enabled = true;
+        Shooting.canShoot = true;
+
+        lastPosition = playerTransform.position;
+        velocityTransform = Vector3.zero;
+        velocityFOVBoost = 0f;
+
+        foreach (var obj in GameObject.FindGameObjectsWithTag("Respawn"))
+            Destroy(obj);
+        Cursor.lockState = CursorLockMode.Locked;
+    }
+
+    public void killHeal(string shooter) { BroadcastRemoteMethod(0, shooter); }
+
+    [SynchronizableMethod]
+    public void killHealSync(string shooter) {
+        if (SettingsController.lifetimeKills == 0)
+        {
+            StartCoroutine(maskController.StartFirstKillScene());
+        }
+        if (avatarRef == shooter) {
+            upgradeManager.killPoints++;
+            killCount++;
+            healthWidth = 180.0f;
+            HealthController.updateHealth();
+            HealthController.healAnim = true;
+        }
+        settingsControl.updateValues();
+    }
+
+    IEnumerator Invulnerable() {
+        yield return new WaitForSeconds(0.1f);
+        while (!isGround()) yield return null;
+        canTakeDamage = true;
+    }
+
+    //-----Teleportation handling-----//
     private void HandleTeleportation(GameObject endPortal, DimensionInfo target) {
         characterController.enabled = false;
         SetActiveDimension(target);
@@ -948,13 +968,91 @@ public class PlayerMovement : AttributesSync {
         Camera.main.GetComponent<SnowParticles>().toggleParticles(target.snow);
         Camera.main.GetComponent<FogShader>().ChangeDimension(target.name);
     }
-    private void setFrictionIce(bool onIce) {
-        groundAcceleration = onIce ? iceInfo.accel : desertInfo.accel;
-        groundDeceleration = onIce ? iceInfo.decel : desertInfo.decel;
-        friction = onIce ? iceInfo.fric : desertInfo.fric;
-        characterController.stepOffset = onIce ? 0f : 0.55f;
+
+    //Allow teleporting only every 2 seconds
+    IEnumerator teleTrue() {
+        HealthController.tpAnim = true;
+        isTeleporting = true;
+        yield return new WaitForSeconds(2f);
+        isTeleporting = false;
+        canTeleport = true;
+    }
+    
+    //Method to get players unstuck from builds they place that intersect with their character by temporarily making the builds non-collidable
+    void CheckIfStuckAndMoveUp() {
+        Vector3 capsuleBottom = transform.position + characterController.center - Vector3.up * (characterController.height / 2 - characterController.radius);
+        Vector3 capsuleTop = transform.position + characterController.center + Vector3.up * (characterController.height / 2 - characterController.radius);
+
+        Collider[] hitColliders = Physics.OverlapCapsule(capsuleBottom, capsuleTop, characterController.radius, collisionMask);
+        if (hitColliders.Length == 0) return;
+
+        bool isBuildCollision = false;
+        foreach (var col in hitColliders) {
+            if (col.tag == "Build" || col.tag == "Ramp" || col.tag == "Wall" || col.tag == "Floor") {
+                isBuildCollision = true;
+                break;
+            }
+        }
+        if (!isBuildCollision) return;
+
+        Vector3 start = transform.position;
+        Dictionary<Collider, int> originalLayers = new Dictionary<Collider, int>();
+        foreach (var col in hitColliders) {
+            if (col.tag == "Ramp") {
+                originalLayers[col] = col.gameObject.layer;
+                col.gameObject.layer = 2;
+            }
+        }
+
+        RaycastHit hit;
+        if (!Physics.Raycast(transform.position + new Vector3(0, 0.5f, 0), Vector3.up, out hit, 3.5f, collisionMask2)) {
+            foreach (var entry in originalLayers) entry.Key.gameObject.layer = entry.Value;
+
+            for (int i = 0; i < maxUnstuckAttempts; i++) {
+                characterController.enabled = false;
+                transform.position += Vector3.up * unstuckDistance;
+                characterController.enabled = true;
+                capsuleBottom = transform.position + characterController.center - Vector3.up * (characterController.height / 2 - characterController.radius);
+                capsuleTop = transform.position + characterController.center + Vector3.up * (characterController.height / 2 - characterController.radius);
+                hitColliders = Physics.OverlapCapsule(capsuleBottom, capsuleTop, characterController.radius, collisionMask);
+                if (hitColliders.Length == 0) { unstuckFail = false; break; }
+                else unstuckFail = true;
+            }
+
+            if (unstuckFail) {
+                newVelocity.y = 0;
+                foreach (Collider thing in hitColliders) thing.transform.gameObject.layer = 11;
+                characterController.enabled = false;
+                transform.position = start;
+                characterController.enabled = true;
+            }
+        } else {
+            foreach (var entry in originalLayers) entry.Key.gameObject.layer = entry.Value;
+            foreach (Collider thing in hitColliders) thing.transform.gameObject.layer = 11;
+        }
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//-----Procedural Animations-----//
     IEnumerator ApplyLandingShake(float magnitude) {
         float duration = 0.2f;
         float elapsed = 0f;
@@ -968,35 +1066,6 @@ public class PlayerMovement : AttributesSync {
             yield return null;
         }
         landingCameraOffset = Vector3.zero;
-    }
-
-    IEnumerator teleTrue() {
-        HealthController.tpAnim = true;
-        isTeleporting = true;
-        yield return new WaitForSeconds(2f);
-        isTeleporting = false;
-        canTeleport = true;
-    }
-
-    private bool IsTopFaceCollision(ControllerColliderHit collision) {
-        return Vector3.Angle(collision.normal, Vector3.up) <= characterController.slopeLimit;
-    }
-
-    private bool IsOnSlope() {
-        RaycastHit hit;
-        LayerMask layerMask = SlopeMask;
-        if (!Physics.SphereCast(transform.position, 0.545f, Vector3.down, out hit, 0.5f, layerMask)) {
-            onSlope = false;
-            return false;
-        }
-        angleSlope = Vector3.Angle(hit.normal, Vector3.up);
-        Debug.Log("Slope angle: " + angleSlope);
-        if (angleSlope > 0 && angleSlope <= 47) {
-            onSlope = true;
-            return true;
-        }
-        onSlope = false;
-        return false;
     }
 
     IEnumerator stationaryHealing() {
@@ -1154,59 +1223,6 @@ public class PlayerMovement : AttributesSync {
         jumpOffsetTwo = 0;
     }
 
-    void CheckIfStuckAndMoveUp() {
-        Vector3 capsuleBottom = transform.position + characterController.center - Vector3.up * (characterController.height / 2 - characterController.radius);
-        Vector3 capsuleTop = transform.position + characterController.center + Vector3.up * (characterController.height / 2 - characterController.radius);
-
-        Collider[] hitColliders = Physics.OverlapCapsule(capsuleBottom, capsuleTop, characterController.radius, collisionMask);
-        if (hitColliders.Length == 0) return;
-
-        bool isBuildCollision = false;
-        foreach (var col in hitColliders) {
-            if (col.tag == "Build" || col.tag == "Ramp" || col.tag == "Wall" || col.tag == "Floor") {
-                isBuildCollision = true;
-                break;
-            }
-        }
-        if (!isBuildCollision) return;
-
-        Vector3 start = transform.position;
-        Dictionary<Collider, int> originalLayers = new Dictionary<Collider, int>();
-        foreach (var col in hitColliders) {
-            if (col.tag == "Ramp") {
-                originalLayers[col] = col.gameObject.layer;
-                col.gameObject.layer = 2;
-            }
-        }
-
-        RaycastHit hit;
-        if (!Physics.Raycast(transform.position + new Vector3(0, 0.5f, 0), Vector3.up, out hit, 3.5f, collisionMask2)) {
-            foreach (var entry in originalLayers) entry.Key.gameObject.layer = entry.Value;
-
-            for (int i = 0; i < maxUnstuckAttempts; i++) {
-                characterController.enabled = false;
-                transform.position += Vector3.up * unstuckDistance;
-                characterController.enabled = true;
-                capsuleBottom = transform.position + characterController.center - Vector3.up * (characterController.height / 2 - characterController.radius);
-                capsuleTop = transform.position + characterController.center + Vector3.up * (characterController.height / 2 - characterController.radius);
-                hitColliders = Physics.OverlapCapsule(capsuleBottom, capsuleTop, characterController.radius, collisionMask);
-                if (hitColliders.Length == 0) { unstuckFail = false; break; }
-                else unstuckFail = true;
-            }
-
-            if (unstuckFail) {
-                newVelocity.y = 0;
-                foreach (Collider thing in hitColliders) thing.transform.gameObject.layer = 11;
-                characterController.enabled = false;
-                transform.position = start;
-                characterController.enabled = true;
-            }
-        } else {
-            foreach (var entry in originalLayers) entry.Key.gameObject.layer = entry.Value;
-            foreach (Collider thing in hitColliders) thing.transform.gameObject.layer = 11;
-        }
-    }
-
     IEnumerator rotLerpX() {
         lerpingXRot = true;
         if (gunXRot > 0) {
@@ -1267,32 +1283,8 @@ public class PlayerMovement : AttributesSync {
         }
         lerpingYRot = false;
     }
-
-    private void LateUpdate() {
-        if (!_avatar.IsOwner) return;
-        normalPush = Vector3.zero;
-        // Reset gun to base position each frame to prevent accumulation jitter
-        // Skip reset during reloading so the reload animation can drive akm
-        if (!Shooting.reloading) {
-            akm.localPosition = akmBaseLocalPos;
-            akm.localEulerAngles = akmBaseLocalRot;
-        }
-        if (!dead) {
-            //float CameraBodyOffset = .5f * Mathf.Abs(Mathf.Sin(Camera.main.transform.eulerAngles.x * Mathf.Deg2Rad));
-            //GetComponent<MeshRenderer>().sharedMaterial = (CameraBodyOffset < 0.4f) ? selfMaterial : playerMaterial;
-            playerCamera.gameObject.transform.position = transform.position + new Vector3(.5f * Mathf.Sin(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad), .75f, .5f * Mathf.Cos(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad)) + landingCameraOffset;
-            playerCamera.gameObject.transform.position = transform.position + new Vector3(0, .75f, 0) + landingCameraOffset;
-            if (!Shooting.reloading) {
-                Vector3 shootOffset = new Vector3((-Shaker.yRot - Shaker.zRot) / 500, Shaker.easedRotationChange / 125, -Shaker.easedRotationChange / 250) * shootAnimTune;
-                if (IsValidVector3(shootOffset))
-                    akm.localPosition += akm.parent.InverseTransformVector(shootOffset);
-            }
-        } else {
-            playerCamera.gameObject.transform.position = new Vector3(0, -5, 0);
-            akm.position = new Vector3(0, -30, 0);
-        }
-
-        // Momentum camera tilt
+    private void SideMovementCameraTilt()
+    {
         Vector3 horizontalMovement = new Vector3(movement.x, 0, movement.z);
         float horizontalSpeed = horizontalMovement.magnitude;
 
@@ -1306,6 +1298,27 @@ public class PlayerMovement : AttributesSync {
 
         float lerpSpeed = (horizontalSpeed > 2f) ? 5f : 8f;
         sideTilt = Mathf.Lerp(sideTilt, targetSideTilt, Time.deltaTime * lerpSpeed);
+    }
+    private void LateUpdate() {
+        if (!_avatar.IsOwner) return;
+        if (!Shooting.reloading) {
+            akm.localPosition = akmBaseLocalPos;
+            akm.localEulerAngles = akmBaseLocalRot;
+        }
+        if (!dead) {
+            playerCamera.gameObject.transform.position = transform.position + new Vector3(.5f * Mathf.Sin(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad), .75f, .5f * Mathf.Cos(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad)) + landingCameraOffset;
+            playerCamera.gameObject.transform.position = transform.position + new Vector3(0, .75f, 0) + landingCameraOffset;
+            if (!Shooting.reloading) {
+                Vector3 shootOffset = new Vector3((-Shaker.yRot - Shaker.zRot) / 500, Shaker.easedRotationChange / 125, -Shaker.easedRotationChange / 250) * shootAnimTune;
+                if (IsValidVector3(shootOffset))
+                    akm.localPosition += akm.parent.InverseTransformVector(shootOffset);
+            }
+        } else {
+            playerCamera.gameObject.transform.position = new Vector3(0, -5, 0);
+            akm.position = new Vector3(0, -30, 0);
+        }
+
+        SideMovementCameraTilt();
 
         if (!Shaker.shooting && isGrounded) {
             if (IsValidVector3(new Vector3(currentCameraRotationX - Shaker.easedRotationChange - Mathf.Abs(walkingShake.newY) * 10f,
