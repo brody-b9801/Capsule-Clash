@@ -30,7 +30,7 @@ public class SettingsController : MonoBehaviour
 
     private HashSet<KeyCode> usedThisSession = new HashSet<KeyCode>();
     public static int lifetimeKills;
-    private int sessionKillsSaved = 0; // Track kills already saved to prevent double-counting
+    private int sessionKillsSaved = 0;
     public TextMeshProUGUI startScreenText;
     private static readonly HashSet<KeyCode> blockedKeys = new HashSet<KeyCode>
     {

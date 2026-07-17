@@ -223,6 +223,7 @@ public class PlayerMovement : AttributesSync {
     public Material spaceSky;
     public Material iceSky;
     public static Vector3 shotBoost;
+    private Vector3 normalPush = Vector3.zero;
     // -------------------------------------------------------------------------
     // Input
     // -------------------------------------------------------------------------
@@ -397,9 +398,6 @@ public class PlayerMovement : AttributesSync {
             string finalResult = result.Replace("​", "");
             username = (finalResult.Length > 0) ? usernameText.text : "Player";
 
-            Debug.Log("Username set to: " + username);
-            Debug.Log("KillCount at start: " + killCount);
-
             // Kick off the opening scene
             RetroDither.isTeleporting = true;
             maskController.Initialize(playerCamera);
@@ -538,8 +536,7 @@ public class PlayerMovement : AttributesSync {
         if (isGround()) {
             characterController.stepOffset = (currDimension != "Maze") ? 0.55f : 0f;
             groundBeneath = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.down), out hit, 1.5f, GroundMask);
-            // Leave upward velocity (jump, launchpad, dash) alone -- sticking would cancel it
-            // before it ever moves us. Self-clears once gravity brings y back down.
+
             if (newVelocity.y <= 0f) {
                 if (groundBeneath)
                     newVelocity = movement - new Vector3(0, 100f, 0);
@@ -574,7 +571,6 @@ public class PlayerMovement : AttributesSync {
                 if (Physics.SphereCast(transform.position, 0.545f, Vector3.down, out hit, 0.5f, SlopeMask)) {
                     if (hit.transform.gameObject.tag == "Ramp" || hit.transform.gameObject.tag == "Floor" || hit.transform.gameObject.tag == "Wall")
                     {
-                        Debug.Log("onBuild");
                         setFrictionIce(false);
                     } else
                     {
@@ -592,7 +588,6 @@ public class PlayerMovement : AttributesSync {
                 lastGroundedHeight = transform.position.y;
                 if (!jumpedLast) {
                     newVelocity.y = Mathf.Min(movement.y, 0f);
-                    Debug.Log("Grounded, but not jumped last. Setting newVelocity.y to: " + newVelocity.y);
                 }
             }
         }
@@ -653,8 +648,11 @@ public class PlayerMovement : AttributesSync {
             shotBoost = Vector3.zero;
         }
         // Move
-        if (!isStuck)
+        if (!isStuck) {
             characterController.Move((newVelocity + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
+            Debug.DrawRay(transform.position, new Vector3(newVelocity.x, 0, newVelocity.z) * 5f, Color.cyan);
+        }
+        
         shotBoost = Vector3.Lerp(shotBoost, Vector3.zero, Time.deltaTime);
 
         // Sprint
@@ -897,10 +895,15 @@ public class PlayerMovement : AttributesSync {
 
         if (isGround()) resetPrev = false;
 
-        if (hit.normal.y < -0.25f && !resetPrev && newVelocity.y > 0) {
+        if (hit.normal.y < -0.85f && !resetPrev && newVelocity.y > 0) {
             newVelocity.y = 0;
             resetPrev = true;
         }
+
+        if (!IsTopFaceCollision(hit) && !onSlope) {
+            normalPush = new Vector3(hit.normal.x, 0, hit.normal.z);
+            Debug.Log(normalPush);
+        } 
 
         if (IsTopFaceCollision(hit) && isGround()) fastAir = false;
 
@@ -976,7 +979,7 @@ public class PlayerMovement : AttributesSync {
     }
 
     private bool IsTopFaceCollision(ControllerColliderHit collision) {
-        return Vector3.Angle(collision.normal, Vector3.up) < 90f;
+        return Vector3.Angle(collision.normal, Vector3.up) <= characterController.slopeLimit;
     }
 
     private bool IsOnSlope() {
@@ -987,6 +990,7 @@ public class PlayerMovement : AttributesSync {
             return false;
         }
         angleSlope = Vector3.Angle(hit.normal, Vector3.up);
+        Debug.Log("Slope angle: " + angleSlope);
         if (angleSlope > 0 && angleSlope <= 47) {
             onSlope = true;
             return true;
@@ -1266,7 +1270,7 @@ public class PlayerMovement : AttributesSync {
 
     private void LateUpdate() {
         if (!_avatar.IsOwner) return;
-
+        normalPush = Vector3.zero;
         // Reset gun to base position each frame to prevent accumulation jitter
         // Skip reset during reloading so the reload animation can drive akm
         if (!Shooting.reloading) {
