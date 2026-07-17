@@ -20,7 +20,7 @@ public class SettingsController : MonoBehaviour
     [SerializeField] private Slider rotSpeed;
 
     [SerializeField] private GameObject keybindsButton;
-     GameObject volumeSettings;
+    [SerializeField] private GameObject volumeSettings;
     [SerializeField] private GameObject rotationSettings;
 
     [SerializeField] private TextMeshProUGUI text;
@@ -76,8 +76,10 @@ public class SettingsController : MonoBehaviour
 
     public void updateValues()
     {
+        Debug.Log("Updating settings values");
         rs = rotSpeed.value;
         volumePercent = volume.value;
+        Debug.Log(volumePercent);
         PlayerMovement playerMovement = FindObjectOfType<PlayerMovement>();
         
         if (playerMovement != null)
@@ -162,7 +164,7 @@ public class SettingsController : MonoBehaviour
 
             yield return null;
         }
-
+        updateValues();
         yield return new WaitForSeconds(1f);
     }
 
