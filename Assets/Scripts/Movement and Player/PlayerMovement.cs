@@ -445,20 +445,23 @@ public class PlayerMovement : AttributesSync {
 
         isGrounded = isGround();
         lastFrameMovement = movement;
+        HandleCameraRotation();
+        HandleMovement();
+        HandleJumpAndGravity();
+        
+        SetExtraneousStates(); //needs cleanup
+        HandleLaunch();
+        KeyEvents();
+        HandleDashing();
+        HandleShotBoost();
+        ManageSprintState();
+        SetAimRotSpeed();
+        BorderWarning();
+        UpdateDynamicFOV();
+    }
 
-        // Camera rotation
-        float mouseX = Input.GetAxis("Mouse X");
-        float mouseY = Input.GetAxis("Mouse Y");
-        rotationX = -(mouseY * rotationSpeed);
-        rotationY = mouseX * rotationSpeed;
-
-        currentCameraRotationX += rotationX;
-        currentCameraRotationX = Mathf.Clamp(currentCameraRotationX, -maxLookDownAngle, maxLookUpAngle);
-        currentCameraRotationY += rotationY;
-
-        transform.localEulerAngles = new Vector3(0.0f, currentCameraRotationY, 0.0f);
-
-        //Set target speed
+    private float SetTargetSpeed()
+    {
         float baseSpeed;
         if (isAiming)
             baseSpeed = 2.5f;
@@ -471,29 +474,34 @@ public class PlayerMovement : AttributesSync {
         else
             baseSpeed = 8.5f;
 
-        float targetSpeed = baseSpeed * upgradeManager.speedMultiplier;
+        return baseSpeed * upgradeManager.speedMultiplier;
+    }
 
-        RaycastHit hit;
-
-        // --- Movement ---
-        // Vector3 forwardDirection = Vector3.ProjectOnPlane(playerTransform.forward, Vector3.up).normalized;
-        // Vector3 rightDirection = Vector3.ProjectOnPlane(playerTransform.right, Vector3.up).normalized;
+    private void HandleMovement()
+    {        
         if (isGrounded && newVelocity.y < 0) newVelocity.y = -2;
 
+        Vector3 inputDirection = new Vector3(_horizontal, 0, _vertical);
+        Vector3 moveDirection = Vector3.zero;
+        if (inputDirection.magnitude > 1f) inputDirection.Normalize();
+
+        moveDirection = inputDirection;
+            
         Vector3 forward = playerCamera.transform.forward;
         Vector3 right = playerCamera.transform.right;
         forward.y = 0f;
         right.y = 0f;
-        Vector3 inputDirection = forward * _vertical + right * _horizontal;
-        if (inputDirection.magnitude > 1f) inputDirection.Normalize();
-        newVelocity = new Vector3(inputDirection.x * targetSpeed, newVelocity.y, inputDirection.z * targetSpeed);
-        movement = new Vector3(newVelocity.x, 0, newVelocity.z);
-        characterController.Move((movement + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
-        percentAccelerated = Mathf.Clamp01(new Vector3(newVelocity.x, 0, newVelocity.z).magnitude / (targetSpeed * 0.8f));
 
+        moveDirection = forward * inputDirection.z + right * inputDirection.x;
+        if (moveDirection.magnitude > 1f) moveDirection.Normalize();
+        float targetSpeed = SetTargetSpeed();
+        characterController.Move((moveDirection * targetSpeed + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
+        percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
+    }
+
+    private void HandleJumpAndGravity() {
         if (_jump) maskController.TryFeed();
 
-        //Handle Jump
         if (_jump && isGrounded && !isAiming && !maskController.LookingAtMask) {
             if (currDimension == "Maze")
                 newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
@@ -508,7 +516,22 @@ public class PlayerMovement : AttributesSync {
 
         newVelocity.y -= gravity * Time.deltaTime;
         characterController.Move(new Vector3(0, newVelocity.y, 0) * Time.deltaTime);
+    }
 
+    private void HandleCameraRotation() {
+        float mouseX = Input.GetAxis("Mouse X");
+        float mouseY = Input.GetAxis("Mouse Y");
+        rotationX = -(mouseY * rotationSpeed);
+        rotationY = mouseX * rotationSpeed;
+
+        currentCameraRotationX += rotationX;
+        currentCameraRotationX = Mathf.Clamp(currentCameraRotationX, -maxLookDownAngle, maxLookUpAngle);
+        currentCameraRotationY += rotationY;
+        transform.localEulerAngles = new Vector3(0.0f, currentCameraRotationY, 0.0f);
+    }
+
+    private void SetExtraneousStates() {
+        RaycastHit hit;
         if (isGrounded) {
             characterController.stepOffset = (currDimension != "Maze") ? 0.55f : 0f;
             if (currDimension == "Desert") {
@@ -553,31 +576,13 @@ public class PlayerMovement : AttributesSync {
             groundBeneath = false;
             if (groundedPrev) {
                 lastGroundedHeight = transform.position.y;
-                if (!jumpedLast) {
-                    newVelocity.y = Mathf.Min(movement.y, 0f);
-                }
             }
         }
-        // Jumping
+        if (!canTakeDamage) StartCoroutine(Invulnerable());
+        CameraZoom.moving = (_horizontal || _vertical);
+    }
 
-        // Respawn
-        if (Input.GetKey(KeyCode.R) && dead) Respawn();
-
-        // Healing
-        if (Input.GetKey(KeyCode.Q) && !Shooting.reloading && !CameraZoom.moving && !Shaker.shooting
-            && isGrounded && !healParticles.healing && healthWidth < 180.0f)
-            StartCoroutine(stationaryHealing());
-
-        // Launch pads
-        if (launch) {
-            newVelocity.y = launchForce;
-            jumpedLast = true;
-            resetPrev = false;
-            HealthController.noFDAnim = true;
-            StartCoroutine(resetLaunch());
-        }
-
-        // Dashing
+    private void HandleDashing() {
         if (_dash && dashes > 0 && !isGround() && currDimension != "Maze") {
             HealthController.noFDAnim = true;
             dashes--;
@@ -593,14 +598,33 @@ public class PlayerMovement : AttributesSync {
         }
 
         if (!resettingDashes) StartCoroutine(addDash());
+    }
 
-        if (currDimension != "Ice" || !isGround())
-        {
-            shotBoost = Vector3.zero;
+    private void HandleLaunch()
+    {
+        // Launch pads
+        if (launch) {
+            newVelocity.y = launchForce;
+            jumpedLast = true;
+            resetPrev = false;
+            HealthController.noFDAnim = true;
+            StartCoroutine(resetLaunch());
         }
-        shotBoost = Vector3.Lerp(shotBoost, Vector3.zero, Time.deltaTime);
+    }
+    private void KeyEvents()
+    {
+        // Respawn
 
+        if (Input.GetKey(KeyCode.R) && dead) Respawn();
+
+        // Healing
+
+        if (Input.GetKey(KeyCode.Q) && !Shooting.reloading && !CameraZoom.moving && !Shaker.shooting
+            && isGrounded && !healParticles.healing && healthWidth < 180.0f)
+            StartCoroutine(stationaryHealing());
+        
         // Sprint
+
         if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
             && isGround() && StaminaController.canSprint && !isAiming) {
             isSprinting = true;
@@ -612,27 +636,30 @@ public class PlayerMovement : AttributesSync {
             isSprinting = false;
             fastAir = false;
         }
+        
+        // Unlock cursor
+        
+        if (Input.GetKeyUp(KeyCode.Escape)) {
+            Cursor.lockState = CursorLockMode.None;
+            Shooting.lockCursor = false;
+        }
+    }
 
+    private void ManageSprintState() {
         if (!StaminaController.canSprint) fastAir = false;
 
         if (sprintingPrev && groundedPrev && !isGround()) {
             fastAir = true;
             isSprinting = true;
         }
-        SetAimRotSpeed();
+    }
 
-        if (!canTakeDamage) StartCoroutine(Invulnerable());
-
-        CameraZoom.moving = (_horizontal || _vertical);
-        
-        BorderWarning();
-
-        if (Input.GetKeyUp(KeyCode.Escape)) {
-            Cursor.lockState = CursorLockMode.None;
-            Shooting.lockCursor = false;
+    private void HandleShotBoost() {        
+        if (currDimension != "Ice" || !isGround())
+        {
+            shotBoost = Vector3.zero;
         }
-
-        UpdateDynamicFOV();
+        shotBoost = Vector3.Lerp(shotBoost, Vector3.zero, Time.deltaTime);
     }
 
     private void UpdateDynamicFOV() {
