@@ -7,6 +7,7 @@ using Alteruna;
 using TMPro;
 using NUnit.Framework;
 using Unity.VisualScripting;
+using Cinemachine.Utility;
 
 [RequireComponent(typeof(MaskController))]
 public class PlayerMovement : AttributesSync {
@@ -253,6 +254,7 @@ public class PlayerMovement : AttributesSync {
     private DimensionInfo spaceInfo;
     private DimensionInfo iceInfo;
     private DimensionInfo[] allDimensions;
+    Vector3 floorNormal = Vector3.up;
 
     private void InitializeDimensions() {
         desertInfo = new DimensionInfo {
@@ -423,16 +425,14 @@ public class PlayerMovement : AttributesSync {
     public bool isGround()
     {
         RaycastHit hit;
-        if (Physics.SphereCast(transform.position + characterController.center, characterController.radius, Vector3.down, out hit, characterController.height / 2f + characterController.skinWidth * 2, GroundMask, QueryTriggerInteraction.Ignore))
+        if (Physics.SphereCast(transform.position + characterController.center, characterController.radius, Vector3.down, out hit, characterController.height / 2f + characterController.skinWidth * 2, GroundMask, QueryTriggerInteraction.Ignore)) {
+            floorNormal = hit.normal;
             return true;
+        }
         return false;
     }
 
     private bool CanJump() { return isGrounded; }
-
-    // -------------------------------------------------------------------------
-    // Update
-    // -------------------------------------------------------------------------
 
     private void Update() {
         if (!_avatar.IsOwner) return;
@@ -477,28 +477,26 @@ public class PlayerMovement : AttributesSync {
         return baseSpeed * upgradeManager.speedMultiplier;
     }
 
-    private void HandleMovement()
-    {        
-        if (isGrounded && newVelocity.y < 0) newVelocity.y = -2;
+private void HandleMovement()
+{
+    Vector3 inputDirection = new Vector3(_horizontal, 0, _vertical);
+    if (inputDirection.magnitude > 1f) inputDirection.Normalize();
 
-        Vector3 inputDirection = new Vector3(_horizontal, 0, _vertical);
-        Vector3 moveDirection = Vector3.zero;
-        if (inputDirection.magnitude > 1f) inputDirection.Normalize();
+    Vector3 forward = transform.forward;
+    Vector3 right = transform.right;
+    forward.y = 0f;
+    right.y = 0f;
 
-        moveDirection = inputDirection;
-            
-        Vector3 forward = playerCamera.transform.forward;
-        Vector3 right = playerCamera.transform.right;
-        forward.y = 0f;
-        right.y = 0f;
+    Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
+    if (moveDirection.magnitude > 1f) moveDirection.Normalize();
 
-        moveDirection = forward * inputDirection.z + right * inputDirection.x;
-        if (moveDirection.magnitude > 1f) moveDirection.Normalize();
-        float targetSpeed = SetTargetSpeed();
-        characterController.Move((moveDirection * targetSpeed + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
-        percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
-    }
+    float targetSpeed = SetTargetSpeed();
 
+    characterController.Move((moveDirection * targetSpeed + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
+
+    //percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
+    percentAccelerated = 1;
+}
     private void HandleJumpAndGravity() {
         if (_jump) maskController.TryFeed();
 
@@ -513,9 +511,20 @@ public class PlayerMovement : AttributesSync {
             resetPrev = false;
             if (isSprinting) fastAir = true;
         }
+        bool wasGrounded = characterController.isGrounded;
 
+        if (wasGrounded && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast)
+        {
+            characterController.Move(Vector3.down * SetTargetSpeed() * Time.deltaTime * Mathf.Tan(characterController.slopeLimit));
+        }
+        if (!isGrounded && groundedPrev && !jumpedLast)
+        {
+            newVelocity.y = 0;
+            Debug.Log("test");
+        } 
         newVelocity.y -= gravity * Time.deltaTime;
         characterController.Move(new Vector3(0, newVelocity.y, 0) * Time.deltaTime);
+        groundedPrev = isGrounded;
     }
 
     private void HandleCameraRotation() {
@@ -728,7 +737,7 @@ public class PlayerMovement : AttributesSync {
         planeToProject = hit.normal;
         string hitTag = hit.transform.gameObject.tag;
 
-        if (IsTopFaceCollision(hit) || onSlope) {
+        if (isGrounded) {
             if (!groundedPrev && hitTag != "Launchpad" && hitTag != "Portal") {
                 float heightChange = (lastGroundedHeight - transform.position.y) - 8;
                 if (heightChange > 0) {
@@ -740,11 +749,10 @@ public class PlayerMovement : AttributesSync {
                 HealthController.updateHealth();
             }
             jumpedLast = false;
+            resetPrev = false;
         }
 
         if (hit.gameObject.CompareTag("Launchpad")) launch = true;
-
-        if (isGround()) resetPrev = false;
 
         // if (hit.normal.y < -0.85f && !resetPrev && newVelocity.y > 0) {
         //     newVelocity.y = 0;
@@ -1368,7 +1376,6 @@ public class PlayerMovement : AttributesSync {
                 akm.localEulerAngles += rotOffset;
         }
 
-        groundedPrev = isGround();
         sprintingPrev = isSprinting;
 
         if (rotationX != 0)
