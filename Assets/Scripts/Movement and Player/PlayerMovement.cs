@@ -523,7 +523,8 @@ private void HandleMovement()
             Debug.Log("test");
         } 
         newVelocity.y -= gravity * Time.deltaTime;
-        characterController.Move(new Vector3(0, newVelocity.y, 0) * Time.deltaTime);
+        Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
+        characterController.Move(verticalVelo * Time.deltaTime);
         groundedPrev = isGrounded;
     }
 
