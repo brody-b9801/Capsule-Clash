@@ -36,7 +36,7 @@ public class PlayerMovement : AttributesSync {
     private SyncedKey _jump;
     private SyncedKey _dash;
     public static bool started = false;
-    [SerializeField] private GameObject collider;
+    [SerializeField] private GameObject capsuleCollider;
     [SerializeField] private Transform playerTransform;
     private Vector3 lastPosition;
     private static Vector3 velocityTransform;
@@ -165,7 +165,7 @@ public class PlayerMovement : AttributesSync {
     private TextMeshProUGUI usernameText;
     public string username;
     public int killCount = 0;
-    private GameObject light;
+    private GameObject sceneLight;
     [SerializeField] private float walkAnimTuneGun = 1f;
     [SerializeField] private float walkAnimTune = 1f;
     [SerializeField] private float jumpAnimTune = 1f;
@@ -334,7 +334,7 @@ public class PlayerMovement : AttributesSync {
             Shooting.lockCursor = true;
             usernameText = GameObject.Find("UsernameInput").GetComponent<TextMeshProUGUI>();
             dt = GameObject.Find("DashText").GetComponent<TextMeshProUGUI>();
-            light = GameObject.Find("DynamicLight");
+            sceneLight = GameObject.Find("DynamicLight");
             meshCollider = GetComponent<CapsuleCollider>();
             avatarString = _avatar.ToString();
             started = true;
@@ -356,7 +356,7 @@ public class PlayerMovement : AttributesSync {
             characterController = GetComponent<CharacterController>();
             Cursor.lockState = CursorLockMode.Locked;
             lastPosition = playerTransform.position;
-            collider.layer = 10;
+            capsuleCollider.layer = 10;
             transform.GetComponent<Renderer>().material = selfMaterial;
             borderInstance = Instantiate(borderPrefab, Vector3.zero, Quaternion.identity).transform;
             _borderRenderers = borderInstance.GetComponentsInChildren<Renderer>();
@@ -420,11 +420,14 @@ public class PlayerMovement : AttributesSync {
         velocityTransform = (currentPosition - lastPosition) / Time.deltaTime;
         lastPosition = currentPosition;
     }
+    public bool isGround()
+    {
+        RaycastHit hit;
+        if (Physics.SphereCast(transform.position + characterController.center, characterController.radius, Vector3.down, out hit, characterController.height / 2f + characterController.skinWidth * 2, GroundMask, QueryTriggerInteraction.Ignore))
+            return true;
+        return false;
+    }
 
-    public static bool isGround() { return isGrounded; }
-
-    // The slope spherecast is wider than the ground raycast, so it still reports a hit for a
-    // frame or two after you clear a ramp's edge. Require real ground below before allowing a jump.
     private bool CanJump() { return isGrounded; }
 
     // -------------------------------------------------------------------------
@@ -440,7 +443,7 @@ public class PlayerMovement : AttributesSync {
 
         usernameDisplay.transform.gameObject.GetComponent<MeshRenderer>().enabled = false;
 
-        isGrounded = characterController.isGrounded;
+        isGrounded = isGround();
         lastFrameMovement = movement;
 
         // Camera rotation
@@ -459,17 +462,37 @@ public class PlayerMovement : AttributesSync {
         float baseSpeed;
         if (isAiming)
             baseSpeed = 2.5f;
-        else if (isSprinting && isGround())
+        else if (isSprinting && isGrounded)
             baseSpeed = 12.0f;
         else if (isSprinting && fastAir)
             baseSpeed = 10.0f;
-        else if (!isGround())
+        else if (!isGrounded)
             baseSpeed = 7.5f;
         else
             baseSpeed = 8.5f;
 
         float targetSpeed = baseSpeed * upgradeManager.speedMultiplier;
-        
+
+        RaycastHit hit;
+
+        // --- Movement ---
+        // Vector3 forwardDirection = Vector3.ProjectOnPlane(playerTransform.forward, Vector3.up).normalized;
+        // Vector3 rightDirection = Vector3.ProjectOnPlane(playerTransform.right, Vector3.up).normalized;
+        if (isGrounded && newVelocity.y < 0) newVelocity.y = -2;
+
+        Vector3 forward = playerCamera.transform.forward;
+        Vector3 right = playerCamera.transform.right;
+        forward.y = 0f;
+        right.y = 0f;
+        Vector3 inputDirection = forward * _vertical + right * _horizontal;
+        if (inputDirection.magnitude > 1f) inputDirection.Normalize();
+        newVelocity = new Vector3(inputDirection.x * targetSpeed, newVelocity.y, inputDirection.z * targetSpeed);
+        movement = new Vector3(newVelocity.x, 0, newVelocity.z);
+        characterController.Move((movement + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
+        percentAccelerated = Mathf.Clamp01(new Vector3(newVelocity.x, 0, newVelocity.z).magnitude / (targetSpeed * 0.8f));
+
+        if (_jump) maskController.TryFeed();
+
         //Handle Jump
         if (_jump && isGrounded && !isAiming && !maskController.LookingAtMask) {
             if (currDimension == "Maze")
@@ -483,35 +506,12 @@ public class PlayerMovement : AttributesSync {
             if (isSprinting) fastAir = true;
         }
 
-        RaycastHit hit;
+        newVelocity.y -= gravity * Time.deltaTime;
+        characterController.Move(new Vector3(0, newVelocity.y, 0) * Time.deltaTime);
 
-        // --- Movement ---
-        // Vector3 forwardDirection = Vector3.ProjectOnPlane(playerTransform.forward, Vector3.up).normalized;
-        // Vector3 rightDirection = Vector3.ProjectOnPlane(playerTransform.right, Vector3.up).normalized;
-        Vector3 forwardDirection = playerTransform.forward.normalized;
-        Vector3 rightDirection = playerTransform.right.normalized;
-        Vector3 inputDirection = forwardDirection * _vertical + rightDirection * _horizontal;
-        if (inputDirection.magnitude > 1f) inputDirection.Normalize();
-        newVelocity = new Vector3(inputDirection.x * targetSpeed, newVelocity.y, inputDirection.z * targetSpeed);
-        newVelocity.y = isGrounded ? newVelocity.y : newVelocity.y - gravity * Time.deltaTime;
-        characterController.Move((newVelocity + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
-
-
-
-
-        // Ground detection
-        if (isGround()) {
+        if (isGrounded) {
             characterController.stepOffset = (currDimension != "Maze") ? 0.55f : 0f;
-            groundBeneath = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.down), out hit, 1.5f, GroundMask);
-
-            // if (newVelocity.y <= 0f) {
-            //     if (groundBeneath)
-            //         newVelocity = movement - new Vector3(0, 100f, 0);
-            //     else
-            //         newVelocity.y = -(gravity * Time.deltaTime);
-            // }
             if (currDimension == "Desert") {
-                RaycastHit[] hits;
                 Vector3 p1 = transform.position + Vector3.up * 0.5f;
                 Vector3 p2 = transform.position + Vector3.down * 0.5f;
                 int capsuleHitCount = Physics.CapsuleCastNonAlloc(p1, p2, 0.55f, wishDir, _capsuleHits, 0.5f, DefaultMask);
@@ -559,9 +559,6 @@ public class PlayerMovement : AttributesSync {
             }
         }
         // Jumping
-
-
-        if (_jump) maskController.TryFeed();
 
         // Respawn
         if (Input.GetKey(KeyCode.R) && dead) Respawn();
@@ -622,7 +619,6 @@ public class PlayerMovement : AttributesSync {
             fastAir = true;
             isSprinting = true;
         }
-
         SetAimRotSpeed();
 
         if (!canTakeDamage) StartCoroutine(Invulnerable());
@@ -698,8 +694,6 @@ public class PlayerMovement : AttributesSync {
         launch = false;
     }
 
-
-
     void OnControllerColliderHit(ControllerColliderHit hit) {
         if (!_avatar.IsOwner) return;
 
@@ -740,10 +734,9 @@ public class PlayerMovement : AttributesSync {
             else if (hit.gameObject == portal2B) HandleTeleportation(portal2A, spaceInfo);
             else if (hit.gameObject == portal3A) HandleTeleportation(portal3B, desertInfo);
             else if (hit.gameObject == portal3B) HandleTeleportation(portal3A, iceInfo);
-        }
-
-        if (hit.gameObject == portal4 && canTeleport && MaskController.keyCount == 3) {
-            //Start boss fight scene, to be implemented
+            else if (hit.gameObject == portal4 && MaskController.keyCount == 3) {
+                //Start boss fight scene, to be implemented
+            }
         }
     }
         private void setFrictionIce(bool onIce) {

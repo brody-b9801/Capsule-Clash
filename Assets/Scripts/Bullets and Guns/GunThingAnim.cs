@@ -8,11 +8,11 @@ public class GunThingAnim : MonoBehaviour
     public static bool movingState = false;
     public static bool gunMoving = false;
     void Update() {
-        if (PlayerMovement.isGround() && CameraZoom.moving && !movingState) {
+        if (PlayerMovement.isGrounded && CameraZoom.moving && !movingState) {
             movingState = true;
             gunMoving = true;
         }
-        if (!CameraZoom.moving || !PlayerMovement.isGround()) {
+        if (!CameraZoom.moving || !PlayerMovement.isGrounded) {
             movingState = false;
         }
     }

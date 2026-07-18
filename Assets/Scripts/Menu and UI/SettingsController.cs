@@ -80,7 +80,7 @@ public class SettingsController : MonoBehaviour
         rs = rotSpeed.value;
         volumePercent = volume.value;
         Debug.Log(volumePercent);
-        PlayerMovement playerMovement = FindObjectOfType<PlayerMovement>();
+        PlayerMovement playerMovement = FindFirstObjectByType<PlayerMovement>();
         
         if (playerMovement != null)
         {
