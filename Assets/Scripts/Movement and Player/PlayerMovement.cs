@@ -425,7 +425,7 @@ public class PlayerMovement : AttributesSync {
 
     // The slope spherecast is wider than the ground raycast, so it still reports a hit for a
     // frame or two after you clear a ramp's edge. Require real ground below before allowing a jump.
-    private bool CanJump() { return isGrounded || (onSlope && groundBeneath); }
+    private bool CanJump() { return isGrounded; }
 
     // -------------------------------------------------------------------------
     // Update
@@ -493,9 +493,8 @@ public class PlayerMovement : AttributesSync {
         Vector3 inputDirection = forwardDirection * _vertical + rightDirection * _horizontal;
         if (inputDirection.magnitude > 1f) inputDirection.Normalize();
         newVelocity = new Vector3(inputDirection.x * targetSpeed, newVelocity.y, inputDirection.z * targetSpeed);
-        newVelocity.y -= gravity * Time.deltaTime;
+        newVelocity.y = isGrounded ? newVelocity.y : newVelocity.y - gravity * Time.deltaTime;
         characterController.Move((newVelocity + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
-        Debug.Log(characterController.isGrounded);
 
 
 
@@ -555,7 +554,7 @@ public class PlayerMovement : AttributesSync {
             if (groundedPrev) {
                 lastGroundedHeight = transform.position.y;
                 if (!jumpedLast) {
-                    //newVelocity.y = Mathf.Min(movement.y, 0f);
+                    newVelocity.y = Mathf.Min(movement.y, 0f);
                 }
             }
         }

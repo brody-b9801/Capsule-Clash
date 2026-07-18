@@ -465,7 +465,7 @@ public class Shooting : AttributesSync
             velocity += PlayerMovement.dashVector;
         }
 
-        bulletRb.velocity = velocity;
+        bulletRb.linearVelocity = velocity;
         bulletRb.rotation = Quaternion.LookRotation(fireDirection);
 
         end            = targetPoint;

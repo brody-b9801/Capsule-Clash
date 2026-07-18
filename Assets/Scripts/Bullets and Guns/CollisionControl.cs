@@ -77,9 +77,9 @@ public class CollisionControl : AttributesSync
         Debug.DrawRay(previousPosition, currentPosition - previousPosition, Color.cyan);
 
         // Apply rotation immediately upon instantiation (first Update after spawn)
-        if (!rotationApplied && rb != null && rb.velocity != Vector3.zero)
+        if (!rotationApplied && rb != null && rb.linearVelocity != Vector3.zero)
         {
-            rb.rotation = Quaternion.LookRotation(rb.velocity.normalized);
+            rb.rotation = Quaternion.LookRotation(rb.linearVelocity.normalized);
             rotationApplied = true;
         }
 
@@ -92,7 +92,7 @@ public class CollisionControl : AttributesSync
         // Shotgun range limit
         if (shottieBool && bulletDist > 20f) {
             if (rb != null) {
-                rb.velocity = Vector3.zero;
+                rb.linearVelocity = Vector3.zero;
             }
             if (trail != null) { trail.emitting = false; trail.enabled = false; trail.Clear(); }
             BroadcastRemoteMethod(1);
@@ -206,7 +206,7 @@ public class CollisionControl : AttributesSync
         visualEnabled   = false;
         Visual.SetActive(false);
         bulletOne.SetActive(false);
-        if (rb != null) rb.velocity = Vector3.zero;
+        if (rb != null) rb.linearVelocity = Vector3.zero;
         if (trail == null)
             trail = bulletOne != null ? bulletOne.GetComponentInChildren<TrailRenderer>() : GetComponentInChildren<TrailRenderer>();
         if (trail != null)

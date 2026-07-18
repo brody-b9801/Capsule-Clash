@@ -22,7 +22,7 @@ public class AddMeshCollidersRecursive : MonoBehaviour
                     mc = child.gameObject.AddComponent<MeshCollider>();
 
                 mc.sharedMesh = mf.sharedMesh;
-                mc.inflateMesh = false;
+                //mc.inflateMesh = false;
                 mc.convex = false;
 
                 // Provide Contacts

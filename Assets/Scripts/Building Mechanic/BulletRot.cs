@@ -8,6 +8,6 @@ public class BulletRot : MonoBehaviour
 
     void Update()
     {
-        transform.rotation = Quaternion.Euler(rb.velocity);        
+        transform.rotation = Quaternion.Euler(rb.linearVelocity);        
     }
 }

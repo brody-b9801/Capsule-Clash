@@ -56,7 +56,7 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Capsule-Clash.sln",
+    "dotnet.defaultSolution": "Capsule-Clash.slnx",
     "python-envs.defaultEnvManager": "ms-python.python:venv",
     "python-envs.pythonProjects": []
 }

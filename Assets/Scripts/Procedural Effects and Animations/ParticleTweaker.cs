@@ -46,7 +46,7 @@ public class ParticleTweaker : MonoBehaviour
         {
             FitRadiusToView();
         }
-        float deltaY = rb.velocity.y;
+        float deltaY = rb.linearVelocity.y;
         
         if (PlayerMovement.isGrounded && !PlayerMovement.onSlope)
         {
