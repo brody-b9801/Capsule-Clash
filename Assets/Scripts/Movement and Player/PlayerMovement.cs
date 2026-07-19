@@ -383,7 +383,6 @@ public class PlayerMovement : AttributesSync {
             Shooting.reloadNum = 30;
             GunThingAnim.movingState = false;
             dashes = 0;
-            characterController.enableOverlapRecovery = false;
             ObjectSpawner.buildNum = 25;
             lastGroundedHeight = -13;
             currentCameraRotationX = 0;
@@ -436,7 +435,6 @@ public class PlayerMovement : AttributesSync {
 
     private void Update() {
         if (!_avatar.IsOwner) return;
-
         IsOnSlope();
         CheckIfStuckAndMoveUp();
         dt.text = dashes.ToString();
@@ -515,7 +513,7 @@ private void HandleMovement()
 
         if (wasGrounded && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast)
         {
-            characterController.Move(Vector3.down * SetTargetSpeed() * Time.deltaTime * Mathf.Tan(characterController.slopeLimit));
+            characterController.Move(Vector3.down * SetTargetSpeed() * Time.deltaTime * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad));
         }
         if (!isGrounded && groundedPrev && !jumpedLast)
         {
