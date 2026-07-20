@@ -444,8 +444,7 @@ public class PlayerMovement : AttributesSync {
         isGrounded = isGround();
         lastFrameMovement = movement;
         HandleCameraRotation();
-        HandleMovement();
-        HandleJumpAndGravity();
+        characterController.Move(GetMovementVector() + GetJumpAndGravityVector());
         
         SetExtraneousStates(); //needs cleanup
         HandleLaunch();
@@ -475,7 +474,7 @@ public class PlayerMovement : AttributesSync {
         return baseSpeed * upgradeManager.speedMultiplier;
     }
 
-private void HandleMovement()
+private Vector3 GetMovementVector()
 {
     Vector3 inputDirection = new Vector3(_horizontal, 0, _vertical);
     if (inputDirection.magnitude > 1f) inputDirection.Normalize();
@@ -490,12 +489,11 @@ private void HandleMovement()
 
     float targetSpeed = SetTargetSpeed();
 
-    characterController.Move((moveDirection * targetSpeed + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
-
     //percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
     percentAccelerated = 1;
+    return (moveDirection * targetSpeed + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime;
 }
-    private void HandleJumpAndGravity() {
+    private Vector3 GetJumpAndGravityVector() {
         if (_jump) maskController.TryFeed();
 
         if (_jump && isGrounded && !isAiming && !maskController.LookingAtMask) {
@@ -511,10 +509,8 @@ private void HandleMovement()
         }
         bool wasGrounded = characterController.isGrounded;
 
-        if (wasGrounded && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast)
-        {
-            characterController.Move(Vector3.down * SetTargetSpeed() * Time.deltaTime * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad));
-        }
+        Vector3 groundingForce = wasGrounded && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed() * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
+
         if (!isGrounded && groundedPrev && !jumpedLast)
         {
             newVelocity.y = 0;
@@ -522,8 +518,8 @@ private void HandleMovement()
         } 
         newVelocity.y -= gravity * Time.deltaTime;
         Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
-        characterController.Move(verticalVelo * Time.deltaTime);
         groundedPrev = isGrounded;
+        return (verticalVelo + groundingForce) * Time.deltaTime;
     }
 
     private void HandleCameraRotation() {
