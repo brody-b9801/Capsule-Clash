@@ -7,11 +7,21 @@ using System.Collections.Generic;
 public class SettingsController : MonoBehaviour
 {
     public GameObject xButton;
-
-    public static KeyCode floorKey = KeyCode.X;
-    public static KeyCode wallKey  = KeyCode.Z;
-    public static KeyCode rampKey  = KeyCode.C;
-    public static KeyCode breakKey = KeyCode.V;
+    [System.Serializable]
+    public struct Keys
+    {
+        public KeyCode floorKey;
+        public KeyCode wallKey;
+        public KeyCode rampKey;
+        public KeyCode breakKey;
+    }
+    public Keys buildKeys = new Keys
+    {
+        floorKey = KeyCode.X,
+        wallKey  = KeyCode.Z,
+        rampKey  = KeyCode.C,
+        breakKey = KeyCode.V
+    };
 
     public static float volumePercent = 1f;
     public static float rs = 10f;
@@ -47,23 +57,9 @@ public class SettingsController : MonoBehaviour
         KeyCode.Mouse6
     };
 
-    const string PREF_FLOOR = "key_floor";
-    const string PREF_RAMP  = "key_ramp";
-    const string PREF_WALL  = "key_wall";
-    const string PREF_BREAK = "key_break";
-    const string PREF_RS    = "rot_speed";
-    const string PREF_VOL   = "volume";
-
-    const string PREF_KILLS = "lifetime_kills";
-
     void Awake()
     {
-        LoadSettings();
-
-        lifetimeKills = PlayerPrefs.GetInt(PREF_KILLS, 0);
-        sessionKillsSaved = 0; // Reset for new session
-        rotSpeed.value = rs;
-        volume.value = volumePercent;
+        sessionKillsSaved = 0;
     }
 
     void Update()
@@ -72,30 +68,6 @@ public class SettingsController : MonoBehaviour
         if (startScreenText.gameObject != null) {
             startScreenText.text = "Version: " + JSONFetcher.currentVersion + "\nLifetime Kills: " + lifetimeKills;
         }
-    }
-
-    public void updateValues()
-    {
-        Debug.Log("Updating settings values");
-        rs = rotSpeed.value;
-        volumePercent = volume.value;
-        Debug.Log(volumePercent);
-        PlayerMovement playerMovement = FindFirstObjectByType<PlayerMovement>();
-        
-        if (playerMovement != null)
-        {
-            int currentKills = (int)playerMovement.killCount;
-            int newKillsThisSession = currentKills - sessionKillsSaved;
-            
-            // Only add the new kills since last save
-            if (newKillsThisSession > 0)
-            {
-                lifetimeKills = PlayerPrefs.GetInt(PREF_KILLS, 0) + newKillsThisSession;
-                sessionKillsSaved = currentKills;
-            }
-        }
-
-        SaveSettings();
     }
 
     public void setBinds()
@@ -114,12 +86,10 @@ public class SettingsController : MonoBehaviour
     {
         canExit = false;
         
-        yield return SetKey("WALL",  k => wallKey  = k);
-        yield return SetKey("FLOOR", k => floorKey = k);
-        yield return SetKey("RAMP",  k => rampKey  = k);
-        yield return SetKey("BREAK", k => breakKey = k);
-
-        SaveSettings();
+        yield return SetKey("WALL",  k => buildKeys.wallKey  = k);
+        yield return SetKey("FLOOR", k => buildKeys.floorKey = k);
+        yield return SetKey("RAMP",  k => buildKeys.rampKey  = k);
+        yield return SetKey("BREAK", k => buildKeys.breakKey = k);
 
         keybindsButton.SetActive(true);
         volumeSettings.SetActive(true);
@@ -164,16 +134,15 @@ public class SettingsController : MonoBehaviour
 
             yield return null;
         }
-        updateValues();
         yield return new WaitForSeconds(1f);
     }
 
     void UnassignKeyFromOthers(KeyCode key)
     {
-        if (floorKey == key) floorKey = KeyCode.None;
-        if (rampKey  == key) rampKey  = KeyCode.None;
-        if (wallKey  == key) wallKey  = KeyCode.None;
-        if (breakKey == key) breakKey = KeyCode.None;
+        if (buildKeys.floorKey == key) buildKeys.floorKey = KeyCode.None;
+        if (buildKeys.rampKey  == key) buildKeys.rampKey  = KeyCode.None;
+        if (buildKeys.wallKey  == key) buildKeys.wallKey  = KeyCode.None;
+        if (buildKeys.breakKey == key) buildKeys.breakKey = KeyCode.None;
     }
 
     IEnumerator Reject(string name, string message)
@@ -181,30 +150,5 @@ public class SettingsController : MonoBehaviour
         text.text = message;
         yield return new WaitForSeconds(0.75f);
         text.text = $"Press a key to set {name}";
-    }
-    void SaveSettings()
-    {
-        PlayerPrefs.SetInt(PREF_FLOOR, (int)floorKey);
-        PlayerPrefs.SetInt(PREF_RAMP,  (int)rampKey);
-        PlayerPrefs.SetInt(PREF_WALL,  (int)wallKey);
-        PlayerPrefs.SetInt(PREF_BREAK, (int)breakKey);
-
-        PlayerPrefs.SetFloat(PREF_RS, rs);
-        PlayerPrefs.SetFloat(PREF_VOL, volumePercent);
-        
-        PlayerPrefs.SetInt(PREF_KILLS, lifetimeKills);
-
-        PlayerPrefs.Save();
-    }
-
-    void LoadSettings()
-    {
-        floorKey = (KeyCode)PlayerPrefs.GetInt(PREF_FLOOR, (int)floorKey);
-        rampKey  = (KeyCode)PlayerPrefs.GetInt(PREF_RAMP,  (int)rampKey);
-        wallKey  = (KeyCode)PlayerPrefs.GetInt(PREF_WALL,  (int)wallKey);
-        breakKey = (KeyCode)PlayerPrefs.GetInt(PREF_BREAK, (int)breakKey);
-
-        rs            = PlayerPrefs.GetFloat(PREF_RS, rs);
-        volumePercent = PlayerPrefs.GetFloat(PREF_VOL, volumePercent);
     }
 }
