@@ -15,7 +15,7 @@ public class SettingsController : MonoBehaviour
         public KeyCode rampKey;
         public KeyCode breakKey;
     }
-    public Keys buildKeys = new Keys
+    public static Keys buildKeys = new Keys
     {
         floorKey = KeyCode.X,
         wallKey  = KeyCode.Z,

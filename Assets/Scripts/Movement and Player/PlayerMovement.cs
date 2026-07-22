@@ -165,7 +165,7 @@ public class PlayerMovement : AttributesSync {
     private float targetSideTilt;
     private TextMeshProUGUI usernameText;
     public string username;
-    public int killCount = 0;
+    public static int killCount = 0;
     private GameObject sceneLight;
     [SerializeField] private float walkAnimTuneGun = 1f;
     [SerializeField] private float walkAnimTune = 1f;
@@ -903,7 +903,6 @@ private Vector3 GetMovementVector()
             HealthController.updateHealth();
             HealthController.healAnim = true;
         }
-        settingsControl.updateValues();
     }
 
     IEnumerator Invulnerable() {

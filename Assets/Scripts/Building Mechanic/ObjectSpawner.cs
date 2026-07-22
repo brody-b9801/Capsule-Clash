@@ -55,21 +55,21 @@ public class ObjectSpawner : AttributesSync
         {
             var spawned = playerSpawnedObjects;
 
-            if (Input.GetKey((KeyCode)SettingsController.floorKey) && buildNum > 0) {
+            if (Input.GetKey((KeyCode)SettingsController.buildKeys.floorKey) && buildNum > 0) {
                 SpawnFloor();
             }
 
-            if (Input.GetKey((KeyCode)SettingsController.wallKey) && buildNum > 0)
+            if (Input.GetKey((KeyCode)SettingsController.buildKeys.wallKey) && buildNum > 0)
             {
                 SpawnWall();
             }
 
-            if (Input.GetKey((KeyCode)SettingsController.rampKey) && buildNum > 0)
+            if (Input.GetKey((KeyCode)SettingsController.buildKeys.rampKey) && buildNum > 0)
             {
                 SpawnRamp();
             }
 
-            if (Input.GetKeyDown((KeyCode)SettingsController.breakKey))
+            if (Input.GetKeyDown((KeyCode)SettingsController.buildKeys.breakKey))
             {
                 Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
                 RaycastHit hit;

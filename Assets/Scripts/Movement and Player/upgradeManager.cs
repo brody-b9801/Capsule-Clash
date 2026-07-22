@@ -39,7 +39,7 @@ public class upgradeManager : MonoBehaviour
 
 
     //array to track which upgrades have been purchased
-    private int[] upgradesPurchased = new int[9];
+    public static int[] upgradesPurchased = new int[9];
     private RectTransform[] upgradeRects = new RectTransform[9];
 
     void Start()

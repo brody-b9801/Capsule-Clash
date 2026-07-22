@@ -27,9 +27,9 @@ public class MaskController : MonoBehaviour {
     private bool seenSpaceMask = false;
     private bool seenIceMask = false;
 
-    private bool mazeKeyAcquired = false;
-    private bool spaceKeyAcquired = false;
-    private bool iceKeyAcquired = false;
+    public static bool mazeKeyAcquired = false;
+    public static bool spaceKeyAcquired = false;
+    public static bool iceKeyAcquired = false;
 
     private bool desertEntered = false;
     private bool mazeEntered = false;
