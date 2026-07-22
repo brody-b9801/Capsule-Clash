@@ -15,7 +15,7 @@ public class SettingsController : MonoBehaviour
         public KeyCode rampKey;
         public KeyCode breakKey;
     }
-    public static Keys buildKeys = new Keys
+    public static Keys buildKeys = new()
     {
         floorKey = KeyCode.X,
         wallKey  = KeyCode.Z,
@@ -38,11 +38,13 @@ public class SettingsController : MonoBehaviour
     private bool waitingForKey;
     private bool canExit = true;
 
-    private HashSet<KeyCode> usedThisSession = new HashSet<KeyCode>();
+    private static readonly WaitForSeconds keySetDelay = new(1f);
+    private static readonly WaitForSeconds rejectDelay = new(0.75f);
+
+    private readonly HashSet<KeyCode> usedThisSession = new();
     public static int lifetimeKills;
-    private int sessionKillsSaved = 0;
     public TextMeshProUGUI startScreenText;
-    private static readonly HashSet<KeyCode> blockedKeys = new HashSet<KeyCode>
+    private static readonly HashSet<KeyCode> blockedKeys = new()
     {
         KeyCode.W, KeyCode.A, KeyCode.S, KeyCode.D,
         KeyCode.Q, KeyCode.E, KeyCode.R,
@@ -56,11 +58,6 @@ public class SettingsController : MonoBehaviour
         KeyCode.Mouse4, KeyCode.Mouse5,
         KeyCode.Mouse6
     };
-
-    void Awake()
-    {
-
-    }
 
     void Update()
     {
@@ -148,7 +145,7 @@ public class SettingsController : MonoBehaviour
 
             yield return null;
         }
-        yield return new WaitForSeconds(1f);
+        yield return keySetDelay;
     }
 
     void UnassignKeyFromOthers(KeyCode key)
@@ -162,7 +159,7 @@ public class SettingsController : MonoBehaviour
     IEnumerator Reject(string name, string message)
     {
         text.text = message;
-        yield return new WaitForSeconds(0.75f);
+        yield return rejectDelay;
         text.text = $"Press a key to set {name}";
     }
 }
