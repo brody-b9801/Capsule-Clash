@@ -84,38 +84,47 @@ public class upgradeManager : MonoBehaviour
                     speedMultiplier += upgradeFactor * .75f;
                     upgradePoints -= (int)upgradeCost;
                     upgradesPurchased[0]++;
+                    SaveSystem.SavePlayerData();
                 } else if (upgradesPurchased[1] < 4 && Input.GetKeyDown(KeyCode.Alpha2)) {
                     jumpMultiplier += upgradeFactor;
                     upgradePoints -= (int)upgradeCost;
                     upgradesPurchased[1]++;
+                    SaveSystem.SavePlayerData();
                 } else if (upgradesPurchased[2] < 4 && Input.GetKeyDown(KeyCode.Alpha3)) {
                     dashForceMultiplier += upgradeFactor;
                     upgradePoints -= (int)upgradeCost;
                     upgradesPurchased[2]++;
+                    SaveSystem.SavePlayerData();
                 } else if (upgradesPurchased[3] < 4 && Input.GetKeyDown(KeyCode.Alpha4)) {
                     dashRegenMultiplier += upgradeFactor * 2;
                     upgradePoints -= (int)upgradeCost;
                     upgradesPurchased[3]++;
+                    SaveSystem.SavePlayerData();
                 } else if (upgradesPurchased[4] < 4 && Input.GetKeyDown(KeyCode.Alpha5)) {
                     regenSpeedMultiplier += upgradeFactor;
                     upgradePoints -= (int)upgradeCost;
                     upgradesPurchased[4]++;
+                    SaveSystem.SavePlayerData();
                 } else if (upgradesPurchased[5] < 4 && Input.GetKeyDown(KeyCode.Alpha6)) {
                     staminaRegenMultiplier += upgradeFactor;
                     upgradePoints -= (int)upgradeCost;
                     upgradesPurchased[5]++;
+                    SaveSystem.SavePlayerData();
                 } else if (upgradesPurchased[6] < 4 && Input.GetKeyDown(KeyCode.Alpha7)) {
                     fireRateMultiplier += upgradeFactor;
                     upgradePoints -= (int)upgradeCost;
                     upgradesPurchased[6]++;
+                    SaveSystem.SavePlayerData();
                 } else if (upgradesPurchased[7] < 4 && Input.GetKeyDown(KeyCode.Alpha8)) {
                     damageMultiplier += upgradeFactor;
                     upgradePoints -= (int)upgradeCost;
                     upgradesPurchased[7]++;
+                    SaveSystem.SavePlayerData();
                 } else if (upgradesPurchased[8] < 4 && Input.GetKeyDown(KeyCode.Alpha9)) {
                     reloadSpeedMultiplier += upgradeFactor;
                     upgradePoints -= (int)upgradeCost;
                     upgradesPurchased[8]++;
+                    SaveSystem.SavePlayerData();
                 }
             }
             

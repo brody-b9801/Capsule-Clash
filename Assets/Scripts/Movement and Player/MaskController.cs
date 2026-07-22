@@ -190,6 +190,7 @@ public class MaskController : MonoBehaviour {
             keyCount++;
             ResetMaskState();
             activeSceneCoroutine = StartCoroutine(cutscene);
+            SaveSystem.SavePlayerData();
         } else if (activeSceneCoroutine == null) {
             activeSceneCoroutine = StartCoroutine(InsufficientPoints());
         }
@@ -399,7 +400,7 @@ public class MaskController : MonoBehaviour {
         StartMaskSpeak("For your efforts, I reward you with upgrade tokens");
         while (MaskSpeaking) yield return null;
         upgradeManager.upgradePoints += 12;
-
+        SaveSystem.SavePlayerData();
         if (!AllKeysAcquired) {
             StartMaskSpeak("Press T to open the upgrade menu and spend your tokens, and I to view your inventory");
             while (MaskSpeaking) yield return null;
@@ -436,7 +437,7 @@ public class MaskController : MonoBehaviour {
         StartMaskSpeak("For your efforts, I reward you with upgrade tokens");
         while (MaskSpeaking) yield return null;
         upgradeManager.upgradePoints += 12;
-
+        SaveSystem.SavePlayerData();
         if (!AllKeysAcquired) {
             StartMaskSpeak("Press T to open the upgrade menu and spend your tokens and Press I to view your keys");
             while (MaskSpeaking) yield return null;
@@ -474,7 +475,7 @@ public class MaskController : MonoBehaviour {
         StartMaskSpeak("For your efforts, I reward you with upgrade tokens");
         while (MaskSpeaking) yield return null;
         upgradeManager.upgradePoints += 12;
-
+        SaveSystem.SavePlayerData();
         if (!AllKeysAcquired) {
             StartMaskSpeak("Press T to open the upgrade menu and spend your tokens and Press I to view your keys");
             while (MaskSpeaking) yield return null;

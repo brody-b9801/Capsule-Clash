@@ -59,7 +59,7 @@ public class SettingsController : MonoBehaviour
 
     void Awake()
     {
-        sessionKillsSaved = 0;
+
     }
 
     void Update()
@@ -68,6 +68,18 @@ public class SettingsController : MonoBehaviour
         if (startScreenText.gameObject != null) {
             startScreenText.text = "Version: " + JSONFetcher.currentVersion + "\nLifetime Kills: " + lifetimeKills;
         }
+    }
+
+    public void UpdateVolume()
+    {
+        volumePercent = volume.value;
+        SaveSystem.SavePlayerData();
+    }
+
+    public void UpdateRotationSpeed()
+    {
+        rs = rotSpeed.value;
+        SaveSystem.SavePlayerData();
     }
 
     public void setBinds()
@@ -90,6 +102,8 @@ public class SettingsController : MonoBehaviour
         yield return SetKey("FLOOR", k => buildKeys.floorKey = k);
         yield return SetKey("RAMP",  k => buildKeys.rampKey  = k);
         yield return SetKey("BREAK", k => buildKeys.breakKey = k);
+
+        SaveSystem.SavePlayerData();
 
         keybindsButton.SetActive(true);
         volumeSettings.SetActive(true);

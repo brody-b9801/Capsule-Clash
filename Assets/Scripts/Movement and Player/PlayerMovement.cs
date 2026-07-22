@@ -331,7 +331,6 @@ public class PlayerMovement : AttributesSync {
             iceSpawnPosContainer = GameObject.Find("IceSpawnContainer").transform;
             spaceSpawnPosContainer = GameObject.Find("VoidSpawnContainer").transform;
             mazeSpawnPosContainer = GameObject.Find("MazeSpawnContainer").transform;
-            killCount = 0;
             Shooting.canShoot = true;
             Shooting.lockCursor = true;
             usernameText = GameObject.Find("UsernameInput").GetComponent<TextMeshProUGUI>();
@@ -902,6 +901,7 @@ private Vector3 GetMovementVector()
             healthWidth = 180.0f;
             HealthController.updateHealth();
             HealthController.healAnim = true;
+            SaveSystem.SavePlayerData();
         }
     }
 
