@@ -495,6 +495,9 @@ private Vector3 GetMovementVector()
     private Vector3 GetJumpAndGravityVector() {
         if (_jump) maskController.TryFeed();
 
+        if (isGrounded && !jumpedLast && newVelocity.y < 0)
+            newVelocity.y = 0;
+
         if (_jump && isGrounded && !isAiming && !maskController.LookingAtMask) {
             if (currDimension == "Maze")
                 newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
@@ -586,7 +589,7 @@ private Vector3 GetMovementVector()
     }
 
     private void HandleDashing() {
-        if (_dash && dashes > 0 && !isGround() && currDimension != "Maze") {
+        if (_dash && dashes > 0 && !isGrounded && currDimension != "Maze") {
             HealthController.noFDAnim = true;
             dashes--;
             dashVector = Vector3.Project(dashVector, playerCamera.transform.forward * dashForce)
@@ -629,7 +632,7 @@ private Vector3 GetMovementVector()
         // Sprint
 
         if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            && isGround() && StaminaController.canSprint && !isAiming) {
+            && isGrounded && StaminaController.canSprint && !isAiming) {
             isSprinting = true;
         } else {
             if (!fastAir) isSprinting = false;
@@ -651,16 +654,16 @@ private Vector3 GetMovementVector()
     private void ManageSprintState() {
         if (!StaminaController.canSprint) fastAir = false;
 
-        if (sprintingPrev && groundedPrev && !isGround()) {
+        if (sprintingPrev && groundedPrev && !isGrounded) {
             fastAir = true;
             isSprinting = true;
         }
     }
 
-    private void HandleShotBoost() {        
-        if (currDimension != "Ice" || !isGround())
-        {
+    private void HandleShotBoost() {
+        if (currDimension != "Ice" || !isGrounded) {
             shotBoost = Vector3.zero;
+            return;
         }
         shotBoost = Vector3.Lerp(shotBoost, Vector3.zero, Time.deltaTime);
     }
@@ -684,7 +687,7 @@ private Vector3 GetMovementVector()
 
     private void SetAimRotSpeed()
     {
-        if ((Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && isGround()) {
+        if ((Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && isGrounded) {
             isAiming = true;
             rotationSpeed = SettingsController.rs * (1.5f / 4.0f);
         } else {
