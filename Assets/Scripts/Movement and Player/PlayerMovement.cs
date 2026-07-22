@@ -423,7 +423,7 @@ public class PlayerMovement : AttributesSync {
     public bool isGround()
     {
         RaycastHit hit;
-        if (Physics.SphereCast(transform.position + characterController.center, characterController.radius, Vector3.down, out hit, characterController.height / 2f + characterController.skinWidth * 2, GroundMask, QueryTriggerInteraction.Ignore)) {
+        if (Physics.SphereCast(transform.position + characterController.center, characterController.radius * 0.95f, Vector3.down, out hit, characterController.height / 2f + characterController.skinWidth * 2, GroundMask, QueryTriggerInteraction.Ignore)) {
             floorNormal = hit.normal;
             return true;
         }
@@ -494,9 +494,8 @@ private Vector3 GetMovementVector()
 }
     private Vector3 GetJumpAndGravityVector() {
         if (_jump) maskController.TryFeed();
-
-        if (isGrounded && !jumpedLast && newVelocity.y < 0)
-            newVelocity.y = 0;
+        
+        bool wasGrounded = characterController.isGrounded;
 
         if (_jump && isGrounded && !isAiming && !maskController.LookingAtMask) {
             if (currDimension == "Maze")
@@ -509,15 +508,14 @@ private Vector3 GetMovementVector()
             resetPrev = false;
             if (isSprinting) fastAir = true;
         }
-        bool wasGrounded = characterController.isGrounded;
 
         Vector3 groundingForce = wasGrounded && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed() * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
 
-        if (!isGrounded && groundedPrev && !jumpedLast)
-        {
+        if (!isGrounded && groundedPrev && !jumpedLast)  {
             newVelocity.y = 0;
-            Debug.Log("test");
-        } 
+            Debug.Log("Resetting vertical velocity due to leaving the ground unexpectedly.");
+        }
+
         newVelocity.y -= gravity * Time.deltaTime;
         Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
         groundedPrev = isGrounded;
@@ -996,6 +994,7 @@ private Vector3 GetMovementVector()
 
             if (unstuckFail) {
                 newVelocity.y = 0;
+                Debug.Log("Failed to unstuck after maximum attempts.");
                 foreach (Collider thing in hitColliders) thing.transform.gameObject.layer = 11;
                 characterController.enabled = false;
                 transform.position = start;
