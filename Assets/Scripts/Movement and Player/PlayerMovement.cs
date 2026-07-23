@@ -84,7 +84,6 @@ public class PlayerMovement : AttributesSync {
     private CharacterController characterController;
     private bool resetPrev = false;
     private bool launch = false;
-    private Vector3 planeToProject;
     private float angleSlope;
     private Transform gunThing;
     [SerializeField] private float targetWalkXPos;
@@ -425,7 +424,10 @@ public class PlayerMovement : AttributesSync {
         RaycastHit hit;
         if (Physics.SphereCast(transform.position + characterController.center, characterController.radius, Vector3.down, out hit, characterController.height / 2f + characterController.skinWidth * 2, GroundMask, QueryTriggerInteraction.Ignore)) {
             floorNormal = hit.normal;
-            return true;
+
+            bool result = Vector3.Angle(floorNormal, Vector3.up) <= characterController.slopeLimit;
+            Debug.Log(result);
+            return result;
         }
         return false;
     }
@@ -485,7 +487,10 @@ private Vector3 GetMovementVector()
 
     Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
     if (moveDirection.magnitude > 1f) moveDirection.Normalize();
-
+    if (isGrounded) {
+        moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
+        moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
+    }
     float targetSpeed = SetTargetSpeed();
 
     //percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
@@ -515,9 +520,8 @@ private Vector3 GetMovementVector()
             newVelocity.y = 0;
         }
         if (!isGrounded) newVelocity.y -= gravity * Time.deltaTime;
-        
+
         Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
-        Debug.Log(Vector3.Angle(floorNormal, Vector3.up));
         //FIX TO ONLY APPLY WHEN NOT WALL/CEILING
         groundedPrev = isGrounded;
         return (verticalVelo + groundingForce) * Time.deltaTime;
@@ -728,14 +732,49 @@ private Vector3 GetMovementVector()
 
     void OnControllerColliderHit(ControllerColliderHit hit) {
         if (!_avatar.IsOwner) return;
-
-        dashVector = Vector3.zero;
-        planeToProject = hit.normal;
+        
         string hitTag = hit.transform.gameObject.tag;
-
         if (isGrounded) {
-            if (!groundedPrev && hitTag != "Launchpad" && hitTag != "Portal") {
-                float heightChange = (lastGroundedHeight - transform.position.y) - 8;
+            HandleFallDamage(hitTag);
+            jumpedLast = false;
+            fastAir = false;
+            resetPrev = false;
+        }
+        VelocityResetCheck(hit.normal);
+        if (hit.gameObject.CompareTag("Launchpad")) launch = true;
+        TeleportationCheck(hit.gameObject);
+
+    }
+
+    private void TeleportationCheck(GameObject hitObject) {        
+        if (canTeleport) {
+            if (hitObject == portal1A) HandleTeleportation(portal1B, desertInfo);
+            else if (hitObject == portal1B) HandleTeleportation(portal1A, mazeInfo);
+            else if (hitObject == portal2A) HandleTeleportation(portal2B, desertInfo);
+            else if (hitObject == portal2B) HandleTeleportation(portal2A, spaceInfo);
+            else if (hitObject == portal3A) HandleTeleportation(portal3B, desertInfo);
+            else if (hitObject == portal3B) HandleTeleportation(portal3A, iceInfo);
+            else if (hitObject == portal4 && MaskController.keyCount == 3) {
+                //Start boss fight scene, to be implemented
+            }
+        }
+    }
+    
+    private void VelocityResetCheck(Vector3 hitNormal) {
+        if (Vector3.Angle(dashVector, hitNormal) > 90f) { //check to reset dash if hit wall
+            dashVector = Vector3.zero;
+        }
+        if  (Vector3.Angle(hitNormal, Vector3.down) < characterController.slopeLimit) { //check to reset vertical velocity if hit ceiling
+            Debug.Log("Hit ceiling, resetting vertical velocity.");
+            newVelocity.y = 0f;
+        }
+
+    }
+
+    private void HandleFallDamage(string hitTag)
+    {
+        if (!groundedPrev && hitTag != "Launchpad" && hitTag != "Portal") {
+                float heightChange = lastGroundedHeight - transform.position.y - 8;
                 if (heightChange > 0) {
                     float shakeMagnitude = Mathf.Min(heightChange / 20f, 1f);
                     StartCoroutine(ApplyLandingShake(shakeMagnitude));
@@ -744,31 +783,6 @@ private Vector3 GetMovementVector()
                 if (healthWidth <= 0) Die();
                 HealthController.updateHealth();
             }
-            jumpedLast = false;
-            resetPrev = false;
-        }
-
-        if (hit.gameObject.CompareTag("Launchpad")) launch = true;
-
-        // if (hit.normal.y < -0.85f && !resetPrev && newVelocity.y > 0) {
-        //     newVelocity.y = 0;
-        //     resetPrev = true;
-        // }
-
-
-        if (IsTopFaceCollision(hit) && isGround()) fastAir = false;
-
-        if (canTeleport) {
-            if (hit.gameObject == portal1A) HandleTeleportation(portal1B, desertInfo);
-            else if (hit.gameObject == portal1B) HandleTeleportation(portal1A, mazeInfo);
-            else if (hit.gameObject == portal2A) HandleTeleportation(portal2B, desertInfo);
-            else if (hit.gameObject == portal2B) HandleTeleportation(portal2A, spaceInfo);
-            else if (hit.gameObject == portal3A) HandleTeleportation(portal3B, desertInfo);
-            else if (hit.gameObject == portal3B) HandleTeleportation(portal3A, iceInfo);
-            else if (hit.gameObject == portal4 && MaskController.keyCount == 3) {
-                //Start boss fight scene, to be implemented
-            }
-        }
     }
         private void setFrictionIce(bool onIce) {
         groundAcceleration = onIce ? iceInfo.accel : desertInfo.accel;
@@ -995,7 +1009,6 @@ private Vector3 GetMovementVector()
 
             if (unstuckFail) {
                 newVelocity.y = 0;
-                Debug.Log("Failed to unstuck after maximum attempts.");
                 foreach (Collider thing in hitColliders) thing.transform.gameObject.layer = 11;
                 characterController.enabled = false;
                 transform.position = start;
