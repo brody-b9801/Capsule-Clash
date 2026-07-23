@@ -423,7 +423,7 @@ public class PlayerMovement : AttributesSync {
     public bool isGround()
     {
         RaycastHit hit;
-        if (Physics.SphereCast(transform.position + characterController.center, characterController.radius * 0.95f, Vector3.down, out hit, characterController.height / 2f + characterController.skinWidth * 2, GroundMask, QueryTriggerInteraction.Ignore)) {
+        if (Physics.SphereCast(transform.position + characterController.center, characterController.radius, Vector3.down, out hit, characterController.height / 2f + characterController.skinWidth * 2, GroundMask, QueryTriggerInteraction.Ignore)) {
             floorNormal = hit.normal;
             return true;
         }
@@ -513,11 +513,12 @@ private Vector3 GetMovementVector()
 
         if (!isGrounded && groundedPrev && !jumpedLast)  {
             newVelocity.y = 0;
-            Debug.Log("Resetting vertical velocity due to leaving the ground unexpectedly.");
         }
-
-        newVelocity.y -= gravity * Time.deltaTime;
+        if (!isGrounded) newVelocity.y -= gravity * Time.deltaTime;
+        
         Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
+        Debug.Log(Vector3.Angle(floorNormal, Vector3.up));
+        //FIX TO ONLY APPLY WHEN NOT WALL/CEILING
         groundedPrev = isGrounded;
         return (verticalVelo + groundingForce) * Time.deltaTime;
     }
@@ -537,7 +538,7 @@ private Vector3 GetMovementVector()
     private void SetExtraneousStates() {
         RaycastHit hit;
         if (isGrounded) {
-            characterController.stepOffset = (currDimension != "Maze") ? 0.55f : 0f;
+            characterController.stepOffset = (currDimension != "Maze") ? 0 : 0f;
             if (currDimension == "Desert") {
                 Vector3 p1 = transform.position + Vector3.up * 0.5f;
                 Vector3 p2 = transform.position + Vector3.down * 0.5f;
