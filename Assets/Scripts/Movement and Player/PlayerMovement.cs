@@ -430,7 +430,7 @@ public bool isGround() {
         floorNormal = hit.normal;
         return Vector3.Angle(floorNormal, Vector3.up) <= characterController.slopeLimit;
     }
-    floorNormal = Vector3.up;   // don't keep a stale normal
+    floorNormal = Vector3.up; 
     return false;
 }
 
@@ -515,19 +515,14 @@ private Vector3 GetMovementVector()
         }
         Vector3 groundingForce = Vector3.zero;
         if (isGrounded && !jumpedLast && newVelocity.y <= 0f) {
-            float horizSpeed = new Vector3(movement.x, 0f, movement.z).magnitude / Time.deltaTime;
-            float stick = Mathf.Max(2f, horizSpeed * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad));
-            newVelocity.y = 0f;
-            groundingForce = Vector3.down * stick;
+            newVelocity.y = -2;
         } else {
+            groundingForce = wasGrounded && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed() * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
             newVelocity.y = Mathf.Max(newVelocity.y - gravity * Time.deltaTime, -50f);
         }
-        // if (!isGrounded) newVelocity.y -= gravity * Time.deltaTime;
-        // else newVelocity.y = 0;
 
         Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
 
-        //FIX TO ONLY APPLY WHEN NOT WALL/CEILING
         groundedPrev = isGrounded;
         return (verticalVelo + groundingForce) * Time.deltaTime;
     }
