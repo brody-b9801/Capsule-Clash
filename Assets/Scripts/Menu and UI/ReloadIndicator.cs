@@ -9,6 +9,10 @@ public class ReloadIndicator : MonoBehaviour
     [SerializeField] private Image HealBar;
     private bool healAnimStarted = false;
 
+    void Awake()
+    {
+        transform.SetParent(null); //easier then rearranging prefabs and whatnot
+    }
     void Start()
     {
         ReloadBar = GameObject.Find("ReloadBlack").GetComponent<Image>();
