@@ -6,16 +6,26 @@ public class ReloadAnimation : MonoBehaviour
 {
     private static Animator animator;
     public static bool ShootState = false;
-    private static ReloadAnimation instance; 
+    private static ReloadAnimation instance;
     private GameObject camCasing;
+    private MeshRenderer casingRenderer;
+
+    // frame to jump to when skipping the second-shell load
+    private const float SkipToFrame = 100f;
+    private const float ClipFrameCount = 120f;
+    private const int SkipLayer = 0;
+
+    private bool pendingSkip;
 
     void OnEnable()
     {
         animator = GetComponent<Animator>();
         animator.SetTrigger("NoReload");
-        camCasing = GameObject.Find("CamCasing");
-    }
 
+        camCasing = GameObject.Find("CamCasing");
+        if (camCasing != null)
+            casingRenderer = camCasing.GetComponent<MeshRenderer>();
+    }
     public static void PlayReload()
     {
         ShootState = false;
@@ -23,7 +33,7 @@ public class ReloadAnimation : MonoBehaviour
         animator.SetTrigger("Reload");
     }
 
-    public void EndReload() 
+    public void EndReload()
     {
         ShootState = false;
         PlayerMovement.lerpingWalkDone = false;
@@ -33,33 +43,72 @@ public class ReloadAnimation : MonoBehaviour
     public static void PlayAnim()
     {
         if (CollisionControl.avatar)
-        {        
+        {
             animator.SetTrigger("Shoot");
             ShootState = true;
         }
     }
 
-    public void EndAnim() 
+    public void EndAnim()
     {
-        if (ShootState) {
+        if (ShootState)
+        {
             animator.SetTrigger("NoReload");
             ShootState = false;
-        } else {
+        }
+        else
+        {
             animator.SetTrigger("Reload");
         }
     }
 
-    void enable() {
-        if (Shooting.shotgun)
-            camCasing.transform.GetComponent<MeshRenderer>().enabled = true;
-    }
-    
-    void enable2() {
-        if (Shooting.shotgun && Shooting.shottieNum == 0) 
-            camCasing.transform.GetComponent<MeshRenderer>().enabled = true;
+    private void SetCasingVisible(bool visible)
+    {
+        if (casingRenderer != null)
+            casingRenderer.enabled = visible;
     }
 
-    void disable() {
-        camCasing.transform.GetComponent<MeshRenderer>().enabled = false;
+    public void enable()
+    {
+        if (Shooting.shotgun)
+            SetCasingVisible(true);
+    }
+
+    public void enable2()
+    {
+        Debug.Log(Shooting.shottieNum);
+        if (Shooting.shotgun && Shooting.shottieNum == 0) 
+            SetCasingVisible(true);
+        else if (Shooting.shotgun)
+            pendingSkip = true;
+    }
+
+    public void disable1()
+    {
+        SetCasingVisible(false);
+    }
+
+    public void disable2()
+    {
+        SetCasingVisible(false);
+    }
+
+    public void disable3()
+    {
+        SetCasingVisible(false);
+    }
+
+    void LateUpdate()
+    {
+        if (!pendingSkip) return;
+        pendingSkip = false;
+
+        AnimatorStateInfo state = animator.IsInTransition(SkipLayer)
+            ? animator.GetNextAnimatorStateInfo(SkipLayer)
+            : animator.GetCurrentAnimatorStateInfo(SkipLayer);
+
+        animator.Play(state.fullPathHash, SkipLayer, SkipToFrame / ClipFrameCount);
+
+        SetCasingVisible(false);
     }
 }

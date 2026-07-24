@@ -31,7 +31,7 @@ public class ReloadIndicator : MonoBehaviour
         ReloadBar.gameObject.SetActive(true);
         ReloadBarBg.SetActive(true);
         ReloadBar.rectTransform.sizeDelta = new Vector2(66.0f, ReloadBar.rectTransform.sizeDelta.y);
-        ReloadBar.transform.parent.GetComponent<MonoBehaviour>().StartCoroutine(DecreaseWidthOverTime(2.01f / upgradeManager.reloadSpeedMultiplier));    
+        ReloadBar.transform.parent.GetComponent<MonoBehaviour>().StartCoroutine(DecreaseWidthOverTime((Shooting.shotgun && Shooting.shottieNum == 1) ? 1.31f : 2.01f / upgradeManager.reloadSpeedMultiplier));    
     }
 
     IEnumerator healBarAnim()

@@ -581,7 +581,7 @@ public class Shooting : AttributesSync
     IEnumerator waitReload()
     {
         reloading = true;
-        yield return new WaitForSeconds(2.01f / upgradeManager.reloadSpeedMultiplier);
+        yield return new WaitForSeconds((shotgun && shottieNum == 1) ? 1.31f : 2.01f / upgradeManager.reloadSpeedMultiplier);
 
         if (shotgun) shottieNum = 2;
         else         reloadNum  = 30;

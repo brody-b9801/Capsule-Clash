@@ -221,6 +221,7 @@ public class PlayerMovement : AttributesSync {
     public Material spaceSky;
     public Material iceSky;
     public static Vector3 shotBoost;
+    private bool wasGrounded;
     // -------------------------------------------------------------------------
     // Input
     // -------------------------------------------------------------------------
@@ -419,18 +420,19 @@ public class PlayerMovement : AttributesSync {
         velocityTransform = (currentPosition - lastPosition) / Time.deltaTime;
         lastPosition = currentPosition;
     }
-    public bool isGround()
-    {
-        RaycastHit hit;
-        if (Physics.SphereCast(transform.position + characterController.center, characterController.radius, Vector3.down, out hit, characterController.height / 2f + characterController.skinWidth * 2, GroundMask, QueryTriggerInteraction.Ignore)) {
-            floorNormal = hit.normal;
+public bool isGround() {
+    Vector3 origin = transform.position + characterController.center;
+    float castDist = characterController.height * 0.5f - characterController.radius
+                     + characterController.skinWidth + 0.08f;
 
-            bool result = Vector3.Angle(floorNormal, Vector3.up) <= characterController.slopeLimit;
-            Debug.Log(result);
-            return result;
-        }
-        return false;
+    if (Physics.SphereCast(origin, characterController.radius - 0.01f, Vector3.down,
+                           out RaycastHit hit, castDist, GroundMask, QueryTriggerInteraction.Ignore)) {
+        floorNormal = hit.normal;
+        return Vector3.Angle(floorNormal, Vector3.up) <= characterController.slopeLimit;
     }
+    floorNormal = Vector3.up;   // don't keep a stale normal
+    return false;
+}
 
     private bool CanJump() { return isGrounded; }
 
@@ -446,7 +448,7 @@ public class PlayerMovement : AttributesSync {
         lastFrameMovement = movement;
         HandleCameraRotation();
         characterController.Move(GetMovementVector() + GetJumpAndGravityVector());
-        
+        wasGrounded = isGrounded;
         SetExtraneousStates(); //needs cleanup
         HandleLaunch();
         KeyEvents();
@@ -491,16 +493,14 @@ private Vector3 GetMovementVector()
         moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
         moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
     }
-    float targetSpeed = SetTargetSpeed();
-
-    //percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
-    percentAccelerated = 1;
-    return (moveDirection * targetSpeed + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime;
+    float targetSpeed = SetTargetSpeed();    
+    movement = (moveDirection * targetSpeed + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime;
+    percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f * Time.deltaTime));
+    return movement;
 }
     private Vector3 GetJumpAndGravityVector() {
         if (_jump) maskController.TryFeed();
         
-        bool wasGrounded = characterController.isGrounded;
 
         if (_jump && isGrounded && !isAiming && !maskController.LookingAtMask) {
             if (currDimension == "Maze")
@@ -513,15 +513,20 @@ private Vector3 GetMovementVector()
             resetPrev = false;
             if (isSprinting) fastAir = true;
         }
-
-        Vector3 groundingForce = wasGrounded && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed() * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
-
-        if (!isGrounded && groundedPrev && !jumpedLast)  {
-            newVelocity.y = 0;
+        Vector3 groundingForce = Vector3.zero;
+        if (isGrounded && !jumpedLast && newVelocity.y <= 0f) {
+            float horizSpeed = new Vector3(movement.x, 0f, movement.z).magnitude / Time.deltaTime;
+            float stick = Mathf.Max(2f, horizSpeed * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad));
+            newVelocity.y = 0f;
+            groundingForce = Vector3.down * stick;
+        } else {
+            newVelocity.y = Mathf.Max(newVelocity.y - gravity * Time.deltaTime, -50f);
         }
-        if (!isGrounded) newVelocity.y -= gravity * Time.deltaTime;
+        // if (!isGrounded) newVelocity.y -= gravity * Time.deltaTime;
+        // else newVelocity.y = 0;
 
         Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
+
         //FIX TO ONLY APPLY WHEN NOT WALL/CEILING
         groundedPrev = isGrounded;
         return (verticalVelo + groundingForce) * Time.deltaTime;
@@ -765,7 +770,6 @@ private Vector3 GetMovementVector()
             dashVector = Vector3.zero;
         }
         if  (Vector3.Angle(hitNormal, Vector3.down) < characterController.slopeLimit) { //check to reset vertical velocity if hit ceiling
-            Debug.Log("Hit ceiling, resetting vertical velocity.");
             newVelocity.y = 0f;
         }
 
@@ -866,7 +870,6 @@ private Vector3 GetMovementVector()
         dashes = 0;
         ObjectSpawner.buildNum = 25;
         transform.localEulerAngles = Vector3.zero;
-        movement = Vector3.zero;
         newVelocity = Vector3.zero;
         characterController.enabled = false;
         dead = false;
