@@ -1975,7 +1975,7 @@ AnimationClip:
     intParameter: 0
     messageOptions: 0
   - time: 0.33333334
-    functionName: enable2
+    functionName: enable
     data: 
     objectReferenceParameter: {fileID: 0}
     floatParameter: 0
@@ -1989,7 +1989,7 @@ AnimationClip:
     intParameter: 0
     messageOptions: 0
   - time: 1.0333333
-    functionName: enable
+    functionName: enable2
     data: 
     objectReferenceParameter: {fileID: 0}
     floatParameter: 0

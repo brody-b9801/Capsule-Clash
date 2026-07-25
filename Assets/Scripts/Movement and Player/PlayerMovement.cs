@@ -403,6 +403,7 @@ public class PlayerMovement : AttributesSync {
             InitializeDimensions();
             SetActiveDimension(desertInfo);
             GetComponent<MeshRenderer>().enabled = false;
+            //characterController.enableOverlapRecovery = false;
         } else {
             foreach (Transform child in transform) {
                 if (child.name == "Renderer") child.gameObject.SetActive(false);
@@ -420,19 +421,27 @@ public class PlayerMovement : AttributesSync {
         velocityTransform = (currentPosition - lastPosition) / Time.deltaTime;
         lastPosition = currentPosition;
     }
-public bool isGround() {
-    Vector3 origin = transform.position + characterController.center;
-    float castDist = characterController.height * 0.5f - characterController.radius
-                     + characterController.skinWidth + 0.08f;
+    public bool isGround() {
+        Vector3 origin = transform.position + characterController.center;
+        float castDist = characterController.height * 0.5f - characterController.radius
+                        + characterController.skinWidth + 0.08f;
 
-    if (Physics.SphereCast(origin, characterController.radius - 0.01f, Vector3.down,
-                           out RaycastHit hit, castDist, GroundMask, QueryTriggerInteraction.Ignore)) {
-        floorNormal = hit.normal;
-        return Vector3.Angle(floorNormal, Vector3.up) <= characterController.slopeLimit;
+        if (Physics.SphereCast(origin, characterController.radius - 0.01f, Vector3.down,
+                            out RaycastHit hit, castDist, GroundMask, QueryTriggerInteraction.Ignore)) {
+
+            floorNormal = hit.normal;
+
+            if (Physics.Raycast(hit.point + Vector3.up * 0.05f, Vector3.down,
+                                out RaycastHit faceHit, 0.15f, GroundMask, QueryTriggerInteraction.Ignore)
+                && faceHit.collider == hit.collider) {
+                floorNormal = faceHit.normal;
+            }
+
+            return Vector3.Angle(floorNormal, Vector3.up) <= characterController.slopeLimit;
+        }
+        floorNormal = Vector3.up;
+        return false;
     }
-    floorNormal = Vector3.up; 
-    return false;
-}
 
     private bool CanJump() { return isGrounded; }
 
@@ -445,6 +454,7 @@ public bool isGround() {
         usernameDisplay.transform.gameObject.GetComponent<MeshRenderer>().enabled = false;
 
         isGrounded = isGround();
+        Debug.Log(isGrounded);
         lastFrameMovement = movement;
         HandleCameraRotation();
         characterController.Move(GetMovementVector() + GetJumpAndGravityVector());
@@ -491,6 +501,7 @@ private Vector3 GetMovementVector()
     if (moveDirection.magnitude > 1f) moveDirection.Normalize();
     if (isGrounded) {
         moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
+        Debug.Log(floorNormal);
         moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
     }
     float targetSpeed = SetTargetSpeed();    
@@ -542,7 +553,7 @@ private Vector3 GetMovementVector()
     private void SetExtraneousStates() {
         RaycastHit hit;
         if (isGrounded) {
-            characterController.stepOffset = (currDimension != "Maze") ? 0 : 0f;
+            characterController.stepOffset = (currDimension != "Maze" && currDimension != "Ice") ? 0 : 0f;
             if (currDimension == "Desert") {
                 Vector3 p1 = transform.position + Vector3.up * 0.5f;
                 Vector3 p2 = transform.position + Vector3.down * 0.5f;
