@@ -553,7 +553,7 @@ private Vector3 GetMovementVector()
     private void SetExtraneousStates() {
         RaycastHit hit;
         if (isGrounded) {
-            characterController.stepOffset = (currDimension != "Maze" && currDimension != "Ice") ? 0 : 0f;
+            characterController.stepOffset = (currDimension != "Maze" && currDimension != "Ice") ? 0.55f : 0f;
             if (currDimension == "Desert") {
                 Vector3 p1 = transform.position + Vector3.up * 0.5f;
                 Vector3 p2 = transform.position + Vector3.down * 0.5f;
@@ -1307,8 +1307,7 @@ private Vector3 GetMovementVector()
             playerCamera.gameObject.transform.position = transform.position + new Vector3(0, .75f, 0) + landingCameraOffset;
             if (!Shooting.reloading) {
                 Vector3 shootOffset = new Vector3((-Shaker.yRot - Shaker.zRot) / 500, Shaker.easedRotationChange / 125, -Shaker.easedRotationChange / 250) * shootAnimTune;
-                if (IsValidVector3(shootOffset))
-                    akm.localPosition += akm.parent.InverseTransformVector(shootOffset);
+                akm.localPosition += akm.parent.InverseTransformVector(shootOffset);
             }
         } else {
             playerCamera.gameObject.transform.position = new Vector3(0, -5, 0);
@@ -1318,17 +1317,11 @@ private Vector3 GetMovementVector()
         SideMovementCameraTilt();
 
         if (!Shaker.shooting && isGrounded) {
-            if (IsValidVector3(new Vector3(currentCameraRotationX - Shaker.easedRotationChange - Mathf.Abs(walkingShake.newY) * 10f,
-                                           currentCameraRotationY + Shaker.yRot + 2.5f * walkingShake.newX,
-                                           -3f * walkingShake.newX + -10f * gunYRot + 10 * sideTilt)))
                 playerCamera.gameObject.transform.localEulerAngles = new Vector3(
-                    jumpOffsetTwo * jumpAnimTune + BreathingAnim.yVal * -6 * breatheAnimTune + currentCameraRotationX - Shaker.easedRotationChange - Mathf.Abs(walkingShake.newY) * 10f * walkAnimTune,
-                    currentCameraRotationY + Shaker.yRot + 2.5f * walkingShake.newX * walkAnimTune,
-                    -3f * walkingShake.newX * walkAnimTune + turnAnimTune * -1.2f * gunYRot + 2.1f * sideTilt * sidewaysAnimTune);
+                    jumpOffsetTwo * jumpAnimTune + BreathingAnim.yVal * -6 * breatheAnimTune + currentCameraRotationX - Shaker.easedRotationChange - Mathf.Abs(walkingShake.newY) * 10f * walkAnimTune * 1.5f,
+                    currentCameraRotationY + Shaker.yRot + 2.5f * walkingShake.newX * walkAnimTune * 1.5f,
+                    turnAnimTune * -1.2f * gunYRot + 2.1f * sideTilt * sidewaysAnimTune);
         } else {
-            if (IsValidVector3(new Vector3(currentCameraRotationX - Shaker.easedRotationChange,
-                                           currentCameraRotationY + Shaker.yRot,
-                                           Shaker.zRot + -1.5f * gunYRot + -10 * sideTilt)))
                 playerCamera.gameObject.transform.localEulerAngles = new Vector3(
                     breatheAnimTune * BreathingAnim.yVal * -10 + currentCameraRotationX - Shaker.easedRotationChange,
                     currentCameraRotationY + Shaker.yRot * shootAnimTune,
@@ -1345,9 +1338,8 @@ private Vector3 GetMovementVector()
         if (!CameraZoom.moving || Shaker.shooting || CameraZoom.isAiming || !isSprinting)
             lerpingWalkDone = false;
 
-        if (IsValidVector3(playerCamera.gameObject.transform.localPosition + playerCamera.transform.right * (walkingShake.newX / 12.5f) + playerCamera.transform.up * (Mathf.Abs(walkingShake.newY / 2.5f))))
             playerCamera.gameObject.transform.localPosition +=
-                playerCamera.transform.right * ((walkingShake.newX / 12.5f) * walkAnimTune) +
+                playerCamera.transform.right * ((walkingShake.newX / -10f) * walkAnimTune) +
                 playerCamera.transform.up * (0.25f * BreathingAnim.yVal * breatheAnimTune + Mathf.Abs((walkingShake.newY / 2.5f) * walkAnimTune));
 
         if (!CameraZoom.isAiming && !lerpingAimEnd && !lerpingAimDoneEnd)
@@ -1357,15 +1349,12 @@ private Vector3 GetMovementVector()
 
         if (!CameraZoom.isAiming) {
             lerpingAimDone = false;
-            if (IsValidVector3(new Vector3(Mathf.Clamp((Shaker.yRot + Shaker.zRot) * 1000000000f, -0.00125f, 0.00125f) - aimVectorPos.x,
-                                           Shaker.easedRotationChange / 100f - aimVectorPos.y,
-                                           -Shaker.easedRotationChange / 75f - aimVectorPos.z)))
+
                 gunThing.localPosition = new Vector3(
                     Mathf.Clamp((Shaker.yRot + Shaker.zRot) * 1000000000f, -0.00125f, 0.00125f) * shootAnimTune - aimVectorPos.x,
                     Shaker.easedRotationChange / 100f * shootAnimTune - aimVectorPos.y,
                     -Shaker.easedRotationChange / 75f * shootAnimTune - aimVectorPos.z);
         } else {
-            if (IsValidVector3(new Vector3(-aimVectorPos.x, -aimVectorPos.y, -aimVectorPos.z)))
                 gunThing.localPosition = new Vector3(-aimVectorPos.x, -aimVectorPos.y, -aimVectorPos.z);
         }
 
@@ -1384,14 +1373,12 @@ private Vector3 GetMovementVector()
                     -0.01f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune + BreathingAnim.yVal * 0.025f * breatheAnimTune + Mathf.Abs(walkingShake.newY) * 0.045f * walkAnimTuneGun + walkVectorPos.y + jumpOffset * jumpAnimTune + Shooting.changeOffset * shootAnimTune,
                     Mathf.Abs(walkingShake.newY) * 0.03f * walkAnimTuneGun + walkVectorPos.z);
             }
-            if (IsValidVector3(posOffset))
                 akm.localPosition += posOffset;
 
             Vector3 rotOffset = new Vector3(
                 2f * Mathf.Sin(jumpOffset / 0.0075f * Mathf.PI / 2f) * jumpAnimTune + BreathingAnim.yVal * 3.5f * breatheAnimTune + Shooting.changeRotOffset * shootAnimTune - Mathf.Abs(walkingShake.newY) * -16.5f * walkAnimTuneGun + walkVectorRot.x * walkAnimTuneGun - gunXRot * turnAnimTune * 0.6f + 0.4f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune,
                 -walkingShake.newX * 5.25f * walkAnimTuneGun + walkVectorRot.y * walkAnimTuneGun + gunYRot * turnAnimTune * 0.6f + Mathf.Clamp(0f, -Mathf.Infinity, 0),
                 walkingShake.newX * 2.25f * walkAnimTuneGun + walkVectorRot.z * walkAnimTuneGun + sideTilt * sidewaysAnimTune * 1.5f);
-            if (IsValidVector3(rotOffset))
                 akm.localEulerAngles += rotOffset;
         }
 
