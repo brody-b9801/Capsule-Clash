@@ -129,13 +129,16 @@ public class MaskController : MonoBehaviour {
 
         if (PlayerMovement.currDimension == "Desert") return;
 
-        if (!Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out RaycastHit hit, 5f))
-            return;
-
-        switch (hit.transform.gameObject.name) {
-            case "MaskMaze": seeingMazeMask = true; break;
-            case "MaskSpace": seeingSpaceMask = true; break;
-            case "MaskIce": seeingIceMask = true; break;
+        GameObject maskToDetect = null;
+        ref bool seeing = ref seeingMazeMask;
+        switch (PlayerMovement.currDimension)
+        {
+            case "Maze": maskToDetect = mazeMaskTransform.gameObject; break;
+            case "Space": maskToDetect = spaceMaskTransform.gameObject; seeing = ref seeingSpaceMask; break;
+            case "Ice": maskToDetect = iceMaskTransform.gameObject; seeing = ref seeingIceMask; break;
+        }
+        if (Vector3.Distance(playerCamera.transform.position, maskToDetect.transform.position) < 5f && Vector3.Angle(playerCamera.transform.forward, maskToDetect.transform.position - playerCamera.transform.position) < 30f) {
+            seeing = true;
         }
     }
 
