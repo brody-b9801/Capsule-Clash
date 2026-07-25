@@ -59,6 +59,14 @@ public class SettingsController : MonoBehaviour
         KeyCode.Mouse6
     };
 
+    void Start()
+    {
+        if (volume != null)
+            volume.SetValueWithoutNotify(volumePercent);
+        if (rotSpeed != null)
+            rotSpeed.SetValueWithoutNotify(rs);
+    }
+
     void Update()
     {
         xButton.SetActive(canExit);

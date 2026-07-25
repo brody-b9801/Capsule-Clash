@@ -39,13 +39,24 @@ public class PlayerData
     }
 }
 public class SaveSystem : MonoBehaviour
-{   
-    void Awake()
+{
+    static bool loaded;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    static void Init()
     {
+        loaded = false;
         LoadPlayerData();
+        loaded = true;
     }
 
-    private void LoadPlayerData()
+    void Awake()
+    {
+        if (!loaded)
+            LoadPlayerData();
+    }
+
+    private static void LoadPlayerData()
     {
         string path = Application.persistentDataPath + "/playerdata.json";
         if (!System.IO.File.Exists(path))

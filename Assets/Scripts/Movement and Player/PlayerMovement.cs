@@ -1318,8 +1318,8 @@ private Vector3 GetMovementVector()
 
         if (!Shaker.shooting && isGrounded) {
                 playerCamera.gameObject.transform.localEulerAngles = new Vector3(
-                    jumpOffsetTwo * jumpAnimTune + BreathingAnim.yVal * -6 * breatheAnimTune + currentCameraRotationX - Shaker.easedRotationChange - Mathf.Abs(walkingShake.newY) * 10f * walkAnimTune * 1.5f,
-                    currentCameraRotationY + Shaker.yRot + 2.5f * walkingShake.newX * walkAnimTune * 1.5f,
+                    jumpOffsetTwo * jumpAnimTune + BreathingAnim.yVal * -6 * breatheAnimTune + currentCameraRotationX - Shaker.easedRotationChange - Mathf.Abs(walkingShake.newY) * 10f * walkAnimTune,
+                    currentCameraRotationY + Shaker.yRot + 2.5f * walkingShake.newX * walkAnimTune,
                     turnAnimTune * -1.2f * gunYRot + 2.1f * sideTilt * sidewaysAnimTune);
         } else {
                 playerCamera.gameObject.transform.localEulerAngles = new Vector3(
