@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Alteruna;
+using System.Linq;
 
 public class BuildUI : AttributesSync
 {
@@ -19,6 +20,8 @@ public class BuildUI : AttributesSync
     public static bool isHost;
     [SerializeField] private Transform arrow;
     [SynchronizableField] private float syncedBuildTime; 
+    private List<bool> activePrevious = new List<bool>();
+
     void Update()
     {
         if (!started)
@@ -53,6 +56,31 @@ public class BuildUI : AttributesSync
 
     }
 
+    public void enableUI()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Transform child = transform.GetChild(i);
+            if (child.name != "MaskText")
+            {
+                child.gameObject.SetActive(activePrevious.ElementAtOrDefault(i));
+            }
+        }
+    }
+
+    public void disableUI()
+    {
+        activePrevious.Clear();
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Transform child = transform.GetChild(i);
+            if (child.name != "MaskText")
+            {
+                activePrevious.Add(child.gameObject.activeSelf);
+                child.gameObject.SetActive(false);
+            }
+        }
+    }
 
     IEnumerator lerpBuild() {
         float time = 0;

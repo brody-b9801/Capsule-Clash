@@ -21,4 +21,14 @@ public class GunThingAnim : MonoBehaviour
         if (!movingState)
             gunMoving = false;      
     }
+
+    public void enableGun()
+    {
+        transform.GetChild(1).gameObject.SetActive(true);
+    }
+
+    public void disableGun()
+    {
+        transform.GetChild(1).gameObject.SetActive(false);
+    }
 }

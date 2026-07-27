@@ -57,7 +57,8 @@ public class SaveSystem : MonoBehaviour
     }
 
     private static void LoadPlayerData()
-    {
+    {   
+        return;
         string path = Application.persistentDataPath + "/playerdata.json";
         if (!System.IO.File.Exists(path))
             return;
@@ -97,6 +98,7 @@ public class SaveSystem : MonoBehaviour
     }
     public static void SavePlayerData()
     {
+        return;
         PlayerData playerData = new PlayerData(
             SettingsController.volumePercent,
             SettingsController.rs,

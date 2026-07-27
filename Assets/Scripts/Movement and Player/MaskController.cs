@@ -6,6 +6,7 @@ public class MaskController : MonoBehaviour {
     private const string FeedPrompt = "Press Space to Feed Me 5 Capsules, I MUST GROW";
 
     public static int keyCount = 0;
+    [SerializeField] private GameObject keyPrefab;
 
     private Camera playerCamera;
     private TextMeshProUGUI maskText;
@@ -30,11 +31,15 @@ public class MaskController : MonoBehaviour {
     public static bool mazeKeyAcquired = false;
     public static bool spaceKeyAcquired = false;
     public static bool iceKeyAcquired = false;
+    public static bool maskAnimationPlaying = false;
 
     private bool desertEntered = false;
     private bool mazeEntered = false;
     private bool spaceEntered = false;
     private bool iceEntered = false;
+    private Transform cam;
+    private BuildUI ui;
+    private GunThingAnim gun;
 
     private readonly string[] generationVerbs = { "Generating", "Working", "Producing", "Thinking", "Calculating", "Contemplating", "Processing", "Analyzing", "Computing", "Synthesizing" };
 
@@ -43,12 +48,15 @@ public class MaskController : MonoBehaviour {
 
     public void Initialize(Camera camera) {
         playerCamera = camera;
+        cam = camera.transform;
         maskText = GameObject.Find("MaskText").GetComponent<TextMeshProUGUI>();
         portal4 = GameObject.Find("portal4");
         mazeMaskTransform = GameObject.Find("MaskMaze").transform;
         spaceMaskTransform = GameObject.Find("MaskSpace").transform;
         iceMaskTransform = GameObject.Find("MaskIce").transform;
         keyCount = 0;
+        ui = GameObject.FindObjectsByType<BuildUI>(FindObjectsSortMode.None)[0];
+        gun = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
     }
 
     public void BeginOpeningScene() {
@@ -119,7 +127,9 @@ public class MaskController : MonoBehaviour {
 
         UpdateMaskDetection();
         UpdateMaskPrompts();
-        RotateMask();
+        if (!maskAnimationPlaying) {
+            RotateMask();
+        }
     }
 
     private void UpdateMaskDetection() {
@@ -131,13 +141,14 @@ public class MaskController : MonoBehaviour {
 
         GameObject maskToDetect = null;
         ref bool seeing = ref seeingMazeMask;
+        ref bool keyAcquired = ref mazeKeyAcquired;
         switch (PlayerMovement.currDimension)
         {
-            case "Maze": maskToDetect = mazeMaskTransform.gameObject; break;
-            case "Space": maskToDetect = spaceMaskTransform.gameObject; seeing = ref seeingSpaceMask; break;
-            case "Ice": maskToDetect = iceMaskTransform.gameObject; seeing = ref seeingIceMask; break;
+            case "Maze": maskToDetect = mazeMaskTransform.gameObject;  break;
+            case "Space": maskToDetect = spaceMaskTransform.gameObject; seeing = ref seeingSpaceMask; keyAcquired = ref spaceKeyAcquired; break;
+            case "Ice": maskToDetect = iceMaskTransform.gameObject; seeing = ref seeingIceMask; keyAcquired = ref iceKeyAcquired; break;
         }
-        if (Vector3.Distance(playerCamera.transform.position, maskToDetect.transform.position) < 5f && Vector3.Angle(playerCamera.transform.forward, maskToDetect.transform.position - playerCamera.transform.position) < 30f) {
+        if (!keyAcquired && Vector3.Distance(playerCamera.transform.position, maskToDetect.transform.position) < 5f && Vector3.Angle(playerCamera.transform.forward, maskToDetect.transform.position - playerCamera.transform.position) < 30f) {
             seeing = true;
         }
     }
@@ -317,6 +328,7 @@ public class MaskController : MonoBehaviour {
 
     IEnumerator StartIceScene() {
         while (MaskSpeaking) yield return null;
+        iceKeyAcquired = false;
         if (iceEntered) {
             StartMaskSpeak("Welcome back to the Tundra");
         } else {
@@ -471,12 +483,15 @@ public class MaskController : MonoBehaviour {
 
     IEnumerator StartIceKeyCutscene() {
         while (MaskSpeaking) yield return null;
-
+        Vector3 posChange = GetKeySceneMovement();
+        Quaternion camRot = cam.rotation;
+        yield return StartCoroutine(KeyCutsceneStart(posChange));
         StartMaskSpeak("You have fed me well, Capsule");
         while (MaskSpeaking) yield return null;
 
-        StartMaskSpeak("For your efforts, I reward you with upgrade tokens");
+        StartMaskSpeak("For your efforts, I reward you with a key and upgrade tokens");
         while (MaskSpeaking) yield return null;
+        yield return StartCoroutine(GiveKey(GameObject.Find("MaskIce").transform.position));
         upgradeManager.upgradePoints += 12;
         SaveSystem.SavePlayerData();
         if (!AllKeysAcquired) {
@@ -503,8 +518,76 @@ public class MaskController : MonoBehaviour {
 
         GameObject maskObj = GameObject.Find("MaskIce");
         if (maskObj != null) maskObj.SetActive(false);
+        yield return StartCoroutine(KeyCutsceneEnd(posChange, camRot));
 
         activeSceneCoroutine = null;
+    }
+
+    private Vector3 GetKeySceneMovement()
+    {
+        Vector3 startPosition = cam.position;
+        float distToMask = Vector3.Distance(startPosition, GameObject.Find("MaskIce").transform.position);
+        Vector3 endPosition = startPosition + -transform.forward * distToMask + transform.right * distToMask + transform.up * distToMask;
+        return endPosition - startPosition;
+    }
+
+    IEnumerator KeyCutsceneStart(Vector3 posChange)
+    {
+        ui.disableUI();
+        gun.disableGun();
+        maskAnimationPlaying = true;
+        Shooting.canShoot = false;
+
+        float lerpTime = 1f;
+        float timeAcc = 0f;
+        Vector3 startPosition = cam.position;
+        cam.LookAt(GameObject.Find("MaskIce").transform);
+        Vector3 startRotation = cam.rotation.eulerAngles;
+        Vector3 endRotation = cam.rotation.eulerAngles + new Vector3(14.04f, -90f, 0f);
+        while (timeAcc < lerpTime) {
+            timeAcc += Time.deltaTime;
+            cam.position = Vector3.Lerp(startPosition, startPosition + posChange, timeAcc / lerpTime);
+            cam.LookAt(GameObject.Find("MaskIce").transform.position - transform.forward);
+            yield return null;
+        }
+        yield break;
+    }
+
+    IEnumerator KeyCutsceneEnd(Vector3 posChange, Quaternion endRot)
+    {
+        float lerpTime = 1f;
+        float timeAcc = 0f;
+        Vector3 startPosition = cam.position;
+        Quaternion startRot = cam.rotation;
+        while (timeAcc < lerpTime) {
+            timeAcc += Time.deltaTime;
+            cam.position = Vector3.Lerp(startPosition, startPosition - posChange, timeAcc / lerpTime);
+            cam.rotation = Quaternion.Slerp(startRot, endRot, timeAcc / lerpTime);
+            yield return null;
+        }
+        maskAnimationPlaying = false;
+        Shooting.canShoot = true;
+        gun.enableGun();
+        ui.enableUI();
+        yield break;
+    }
+
+    IEnumerator GiveKey(Vector3 maskPosition)
+    {
+        Vector3 startPosition = maskPosition;
+        Vector3 endPosition = transform.Find("RenderedBody").position;
+        Transform keyPrefabInstance = Instantiate(keyPrefab, startPosition, Quaternion.identity).transform;
+        float rotationSpeed = 360f; // degrees per second
+        float lerpTime = 1f;
+        float timeAcc = 0f;
+        while (timeAcc < lerpTime) {
+            timeAcc += Time.deltaTime;
+            keyPrefabInstance.position = Vector3.Lerp(startPosition, endPosition, timeAcc / lerpTime);
+            keyPrefabInstance.rotation = Quaternion.Euler(new Vector3(0, rotationSpeed * timeAcc / lerpTime, 0));
+            yield return null;
+        }
+        Destroy(keyPrefabInstance.gameObject);
+        yield break;
     }
 
     IEnumerator InsufficientPoints() {
