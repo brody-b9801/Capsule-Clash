@@ -457,7 +457,8 @@ public class PlayerMovement : AttributesSync {
         Debug.Log(isGrounded);
         lastFrameMovement = movement;
         HandleCameraRotation();
-        characterController.Move(GetMovementVector() + GetJumpAndGravityVector());
+        UpdateMovementVector();
+        characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
         wasGrounded = isGrounded;
         SetExtraneousStates(); //needs cleanup
         HandleLaunch();
@@ -487,7 +488,7 @@ public class PlayerMovement : AttributesSync {
         return baseSpeed * upgradeManager.speedMultiplier;
     }
 
-private Vector3 GetMovementVector()
+private void UpdateMovementVector()
 {
     Vector3 inputDirection = new Vector3(_horizontal, 0, _vertical);
     if (inputDirection.magnitude > 1f) inputDirection.Normalize();
@@ -496,7 +497,8 @@ private Vector3 GetMovementVector()
     Vector3 right = transform.right;
     forward.y = 0f;
     right.y = 0f;
-
+    float targetSpeed = SetTargetSpeed();
+    float baseSpeed = targetSpeed / upgradeManager.speedMultiplier;
     Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
     if (moveDirection.magnitude > 1f) moveDirection.Normalize();
     if (isGrounded) {
@@ -504,10 +506,46 @@ private Vector3 GetMovementVector()
         Debug.Log(floorNormal);
         moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
     }
-    float targetSpeed = SetTargetSpeed();    
-    movement = (moveDirection * targetSpeed + (upgradeManager.dashForceMultiplier * dashVector)) * Time.deltaTime - shotBoost * 10 * Time.deltaTime;
-    percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f * Time.deltaTime));
-    return movement;
+    if (moveDirection.magnitude > characterController.minMoveDistance)
+    {
+        Vector3 projectedMoveDirection = Vector3.Project(movement, moveDirection);
+        Vector3 perpendicularMovement = movement - projectedMoveDirection;
+        float perpendicularSpeed = perpendicularMovement.magnitude;
+        if (perpendicularSpeed > characterController.minMoveDistance)
+        {   
+            float turnFrictionScale = 3f; //Used for tuning how snappy turns feel
+            float frictionDrop = perpendicularSpeed * friction * turnFrictionScale * Time.deltaTime;
+            perpendicularMovement *= Mathf.Max(perpendicularSpeed - frictionDrop, 0f) / perpendicularSpeed;
+        }
+        movement = projectedMoveDirection + perpendicularMovement;
+        projectedMoveDirection = Vector3.Project(movement, moveDirection);
+        float currentSpeed = projectedMoveDirection.magnitude * Mathf.Sign(Vector3.Dot(projectedMoveDirection, moveDirection));
+        float alignment = Vector3.Dot(moveDirection.normalized, movement.normalized);
+        float accelRate = (alignment < 0.5f) ? groundDeceleration : groundAcceleration;
+        if (isSprinting) accelRate *= sprintAccelerationMultiplier;
+
+        float addSpeed = baseSpeed - currentSpeed;
+        if (addSpeed > 0) {
+            float accelSpeed = Mathf.Min(accelRate * Time.deltaTime, addSpeed);
+            movement += moveDirection * accelSpeed;
+        }
+
+        float currentMag = movement.magnitude;
+        if (currentMag > baseSpeed && currentMag < targetSpeed)
+            movement = movement.normalized * Mathf.Lerp(currentMag, targetSpeed, Time.deltaTime * 5f);
+    } else {
+        float speed = movement.magnitude;
+        if (speed > 0.01f) {
+            float drop = speed * friction * Time.deltaTime;
+            movement *= Mathf.Max(speed - drop, 0) / speed;
+        } else {
+            movement = Vector3.zero;
+        }
+    }
+    float maxAllowedSpeed = targetSpeed * 1.1f;
+    if (movement.magnitude > maxAllowedSpeed) movement = movement.normalized * maxAllowedSpeed;
+
+    percentAccelerated = Mathf.Clamp01(movement.magnitude / (targetSpeed * 0.8f));    percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f * Time.deltaTime));
 }
     private Vector3 GetJumpAndGravityVector() {
         if (_jump) maskController.TryFeed();
@@ -801,8 +839,6 @@ private Vector3 GetMovementVector()
         characterController.stepOffset = onIce ? 0f : 0.55f;
     }
 
-
-
     private bool IsTopFaceCollision(ControllerColliderHit collision) {
         return Vector3.Angle(collision.normal, Vector3.up) <= characterController.slopeLimit;
     }
@@ -855,7 +891,6 @@ private Vector3 GetMovementVector()
         for (int i = 0; i < _borderRenderers.Length; i++)
             _borderRenderers[i].sharedMaterial.color = borderColor;
     }
-
 
     //-----Death/Damage-----//     
     public void Die() {             
@@ -1028,26 +1063,6 @@ private Vector3 GetMovementVector()
             foreach (Collider thing in hitColliders) thing.transform.gameObject.layer = 11;
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //-----Procedural Animations-----//
     IEnumerator ApplyLandingShake(float magnitude) {
