@@ -1,4 +1,4 @@
-using System.Collections; 
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -13,8 +13,6 @@ public class walkingShake : MonoBehaviour
 
     private float amplitude;
     private float frequency;
-
-    // FINAL upgraded values used for motion
     private float finalAmplitude;
     private float finalFrequency;
 
@@ -34,6 +32,7 @@ public class walkingShake : MonoBehaviour
 
     private float groundedTime = 0f;
     private const float groundedThreshold = 0.05f;
+    private Coroutine lerpZeroXRoutine;
 
     void Start()
     {
@@ -45,6 +44,13 @@ public class walkingShake : MonoBehaviour
 
     void Update()
     {
+        // Guard every frequency this frame: the time/rampUpTime rescales below and
+        // the 1/frequency periods in the coroutines all divide by these, so a zero
+        // anywhere turns time into Inf and every Sin/Cos downstream into NaN.
+        walkFrequency = Mathf.Max(walkFrequency, 0.01f);
+        sprintFrequency = Mathf.Max(sprintFrequency, 0.01f);
+        aimFrequency = Mathf.Max(aimFrequency, 0.01f);
+
         float oldFreq = frequency;
 
         float amplitudeUpgrade = 1f + ((upgradeManager.speedMultiplier - 1f) * 0.05f);
@@ -86,8 +92,28 @@ public class walkingShake : MonoBehaviour
 
         if (groundedTime >= groundedThreshold)
         {
-            if (GunThingAnim.gunMoving && GunThingAnim.movingState && !lerpingX)
+            if (GunThingAnim.gunMoving && GunThingAnim.movingState)
             {
+                if (lerpingX)
+                {
+                    if (lerpZeroXRoutine != null)
+                        StopCoroutine(lerpZeroXRoutine);
+                    lerpZeroXRoutine = null;
+                    lerpingX = false;
+
+                    rampedUp = true;
+                    rampingUp = false;
+
+                    float resumeFrequency = Mathf.Max(finalFrequency, 0.01f);
+                    float resumeAmplitude = Mathf.Max(Mathf.Abs(finalAmplitude), 0.0001f);
+                    float phase = Mathf.Acos(Mathf.Clamp(newX / resumeAmplitude, -1f, 1f));
+
+                    if (newY < 0f)
+                        phase = (2f * Mathf.PI) - phase;
+
+                    time = phase / (resumeFrequency * Mathf.PI);
+                }
+
                 lerpComplete = false;
 
                 if (!rampedUp && !rampingUp)
@@ -107,13 +133,13 @@ public class walkingShake : MonoBehaviour
             else
             {
                 if (!lerpingX && !rampingUp && !lerpComplete)
-                    StartCoroutine(lerpZeroX());
+                    lerpZeroXRoutine = StartCoroutine(lerpZeroX());
             }
         }
         else
         {
             if (!lerpingX && !rampingUp && !lerpComplete)
-                StartCoroutine(lerpZeroX());
+                lerpZeroXRoutine = StartCoroutine(lerpZeroX());
         }
     }
 
@@ -124,11 +150,12 @@ public class walkingShake : MonoBehaviour
         rampUpTime = 0f;
 
         float targetSign = Mathf.Sign(Mathf.Cos(time * finalFrequency * Mathf.PI) * finalAmplitude);
+        float safeFrequency = Mathf.Max(finalFrequency, 0.01f);
 
-        while (rampUpTime < (1f / finalFrequency))
+        while (rampUpTime < (1f / safeFrequency))
         {
-            newY = Mathf.Sin(rampUpTime * finalFrequency * Mathf.PI) * finalAmplitude * 0.666666f;
-            newXRef = Mathf.Sin(rampUpTime * finalFrequency * 0.5f * Mathf.PI) * finalAmplitude;
+            newY = Mathf.Sin(rampUpTime * safeFrequency * Mathf.PI) * finalAmplitude * 0.666666f;
+            newXRef = Mathf.Sin(rampUpTime * safeFrequency * 0.5f * Mathf.PI) * finalAmplitude;
 
             rampUpTime += Time.deltaTime;
             newX = newXRef * targetSign;
@@ -146,11 +173,13 @@ public class walkingShake : MonoBehaviour
         lerpingX = true;
 
         float modPrev = 0f;
-        float startX = newX;
 
-        if (!((xPrev > newX && newX > 0) || (xPrev < newX && newX < 0)) && walkStarted || !PlayerMovement.isGrounded) 
+        float safeFrequency = Mathf.Max(finalFrequency, 0.01f);
+        float easeAmplitude = Mathf.Max(Mathf.Abs(newX), Mathf.Abs(finalAmplitude));
+
+        if (easeAmplitude < 0.0001f || !((xPrev > newX && newX > 0) || (xPrev < newX && newX < 0)) && walkStarted || !PlayerMovement.isGrounded)
         {
-            float duration = (1f / finalFrequency) / 2f;
+            float duration = (1f / safeFrequency) / 2f;
             float elapsedTime = 0f;
 
             float initialX = newX;
@@ -158,8 +187,10 @@ public class walkingShake : MonoBehaviour
 
             while (elapsedTime < duration)
             {
-                newX = Mathf.Lerp(initialX, 0, elapsedTime / duration);
-                newY = Mathf.Lerp(initialY, 0, elapsedTime / duration);
+
+                float t = Mathf.SmoothStep(0f, 1f, elapsedTime / duration);
+                newX = Mathf.Lerp(initialX, 0, t);
+                newY = Mathf.Lerp(initialY, 0, t);
                 elapsedTime += Time.deltaTime;
                 yield return null;
             }
@@ -167,26 +198,30 @@ public class walkingShake : MonoBehaviour
             newX = 0f;
             newY = 0f;
 
-            time = (initialX > 0 || (initialX == 0 && xPrev > 0)) ? 1f / finalFrequency : 0f;
+            time = (initialX > 0 || (initialX == 0 && xPrev > 0)) ? 1f / safeFrequency : 0f;
 
             lerpingX = false;
+            lerpZeroXRoutine = null;
             lerpComplete = true;
             walkStarted = false;
             yield break;
         }
 
         float amplitudeX = Mathf.Abs(newX);
-        float timeX = time * finalFrequency / (0.5f * finalFrequency * (amplitudeX / finalAmplitude));
-        float amplitudeY = walkStarted ? finalAmplitude : finalAmplitude * 0.666666f;
+        float normalizedX = Mathf.Clamp(amplitudeX / easeAmplitude, 0.1f, 1f);
+        float rateX = 0.5f * safeFrequency * normalizedX;
 
-        while (!(modPrev > (time / (1f / finalFrequency)) % 1f)) 
+        float timeX = time * safeFrequency / rateX;
+        float amplitudeY = walkStarted ? easeAmplitude : easeAmplitude * 0.666666f;
+
+        while (!(modPrev > (time / (1f / safeFrequency)) % 1f))
         {
-            modPrev = (time / (1f / finalFrequency)) % 1f;
+            modPrev = (time / (1f / safeFrequency)) % 1f;
             time += Time.deltaTime;
             timeX += Time.deltaTime;
 
-            newY = Mathf.Sin(time * finalFrequency * Mathf.PI) * amplitudeY;
-            newX = Mathf.Cos(timeX * (0.5f * finalFrequency * (amplitudeX / finalAmplitude)) * Mathf.PI) * finalAmplitude;
+            newY = Mathf.Sin(time * safeFrequency * Mathf.PI) * amplitudeY;
+            newX = Mathf.Cos(timeX * rateX * Mathf.PI) * easeAmplitude;
 
             yield return null;
         }
@@ -194,6 +229,7 @@ public class walkingShake : MonoBehaviour
         newX = 0f;
         newY = 0f;
         lerpingX = false;
+        lerpZeroXRoutine = null;
         lerpComplete = true;
         walkStarted = false;
     }

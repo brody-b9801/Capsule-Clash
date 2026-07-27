@@ -564,27 +564,6 @@ public class MaskController : MonoBehaviour {
         yield break;
     }
 
-    private Transform getMaskTransform()
-    {
-        Transform mask;
-        switch (PlayerMovement.currDimension)
-        {
-            case "Ice":
-                mask = GameObject.Find("MaskIce").transform;
-                break;
-            case "Space":
-                mask = GameObject.Find("MaskSpace").transform;
-                break;
-            case "Maze":
-                mask = GameObject.Find("MaskMaze").transform;
-                break;
-            default:
-                mask = null;
-                break;
-        }
-        return mask;
-    }
-
     IEnumerator KeyCutsceneEnd(Vector3 posChange, Quaternion endRot)
     {
         float lerpTime = 1f;
@@ -620,6 +599,26 @@ public class MaskController : MonoBehaviour {
         }
         Destroy(keyPrefabInstance.gameObject);
         yield break;
+    }
+    private Transform getMaskTransform()
+    {
+        Transform mask;
+        switch (PlayerMovement.currDimension)
+        {
+            case "Ice":
+                mask = GameObject.Find("MaskIce").transform;
+                break;
+            case "Space":
+                mask = GameObject.Find("MaskSpace").transform;
+                break;
+            case "Maze":
+                mask = GameObject.Find("MaskMaze").transform;
+                break;
+            default:
+                mask = null;
+                break;
+        }
+        return mask;
     }
 
     IEnumerator InsufficientPoints() {

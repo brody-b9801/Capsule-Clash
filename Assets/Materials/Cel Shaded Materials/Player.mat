@@ -178,7 +178,7 @@ Material:
     - _FlatShadowTint: {r: 0.92156863, g: 0.92156863, b: 1, a: 1}
     - _FresnelColor: {r: 1, g: 1, b: 1, a: 1}
     - _FresnelDotColor: {r: 1, g: 1, b: 1, a: 1}
-    - _HighColor: {r: 1, g: 0.7137255, b: 0.64705884, a: 1}
+    - _HighColor: {r: 1, g: 0.7058824, b: 1, a: 1}
     - _HighlightDotColor: {r: 1, g: 1, b: 1, a: 1}
     - _InkColor: {r: 0.35, g: 0.35, b: 0.45, a: 1}
     - _LitColor: {r: 1, g: 1, b: 1, a: 1}
