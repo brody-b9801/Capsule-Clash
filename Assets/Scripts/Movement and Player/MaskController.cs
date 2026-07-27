@@ -115,7 +115,7 @@ public class MaskController : MonoBehaviour {
     }
 
     private void OpenFinalPortal() {
-        if (portal4 != null) portal4.GetComponent<FaceTextToPlayer>().PortalOpen();
+        if (portal4 != null) portal4.transform.GetChild(0).GetComponent<FaceTextToPlayer>().PortalOpen();
     }
 
     // -------------------------------------------------------------------------
@@ -408,12 +408,15 @@ public class MaskController : MonoBehaviour {
 
     IEnumerator StartMazeKeyCutscene() {
         while (MaskSpeaking) yield return null;
-
+        Vector3 posChange = GetKeySceneMovement();
+        Quaternion camRot = cam.rotation;
+        yield return StartCoroutine(KeyCutsceneStart(posChange));
         StartMaskSpeak("You have fed me well, Capsule");
         while (MaskSpeaking) yield return null;
 
         StartMaskSpeak("For your efforts, I reward you with upgrade tokens");
         while (MaskSpeaking) yield return null;
+        yield return StartCoroutine(GiveKey(GameObject.Find("MaskMaze").transform.position));
         upgradeManager.upgradePoints += 12;
         SaveSystem.SavePlayerData();
         if (!AllKeysAcquired) {
@@ -439,18 +442,22 @@ public class MaskController : MonoBehaviour {
 
         GameObject maskObj = GameObject.Find("MaskMaze");
         if (maskObj != null) maskObj.SetActive(false);
+        yield return StartCoroutine(KeyCutsceneEnd(posChange, camRot));
 
         activeSceneCoroutine = null;
     }
 
     IEnumerator StartSpaceKeyCutscene() {
         while (MaskSpeaking) yield return null;
-
+        Vector3 posChange = GetKeySceneMovement();
+        Quaternion camRot = cam.rotation;
+        yield return StartCoroutine(KeyCutsceneStart(posChange));
         StartMaskSpeak("You have fed me well, Capsule");
         while (MaskSpeaking) yield return null;
 
         StartMaskSpeak("For your efforts, I reward you with upgrade tokens");
         while (MaskSpeaking) yield return null;
+        yield return StartCoroutine(GiveKey(GameObject.Find("MaskSpace").transform.position));
         upgradeManager.upgradePoints += 12;
         SaveSystem.SavePlayerData();
         if (!AllKeysAcquired) {
@@ -477,6 +484,8 @@ public class MaskController : MonoBehaviour {
 
         GameObject maskObj = GameObject.Find("MaskSpace");
         if (maskObj != null) maskObj.SetActive(false);
+        yield return StartCoroutine(KeyCutsceneEnd(posChange, camRot));
+        yield return StartCoroutine(KeyCutsceneEnd(posChange, camRot));
 
         activeSceneCoroutine = null;
     }
@@ -525,14 +534,16 @@ public class MaskController : MonoBehaviour {
 
     private Vector3 GetKeySceneMovement()
     {
+        Transform mask = getMaskTransform();
         Vector3 startPosition = cam.position;
-        float distToMask = Vector3.Distance(startPosition, GameObject.Find("MaskIce").transform.position);
+        float distToMask = Vector3.Distance(startPosition, mask.position);
         Vector3 endPosition = startPosition + -transform.forward * distToMask + transform.right * distToMask + transform.up * distToMask;
         return endPosition - startPosition;
     }
 
     IEnumerator KeyCutsceneStart(Vector3 posChange)
     {
+        Transform mask = getMaskTransform();
         ui.disableUI();
         gun.disableGun();
         maskAnimationPlaying = true;
@@ -541,16 +552,37 @@ public class MaskController : MonoBehaviour {
         float lerpTime = 1f;
         float timeAcc = 0f;
         Vector3 startPosition = cam.position;
-        cam.LookAt(GameObject.Find("MaskIce").transform);
+        cam.LookAt(mask);
         Vector3 startRotation = cam.rotation.eulerAngles;
         Vector3 endRotation = cam.rotation.eulerAngles + new Vector3(14.04f, -90f, 0f);
         while (timeAcc < lerpTime) {
             timeAcc += Time.deltaTime;
             cam.position = Vector3.Lerp(startPosition, startPosition + posChange, timeAcc / lerpTime);
-            cam.LookAt(GameObject.Find("MaskIce").transform.position - transform.forward);
+            cam.LookAt(mask.position - transform.forward);
             yield return null;
         }
         yield break;
+    }
+
+    private Transform getMaskTransform()
+    {
+        Transform mask;
+        switch (PlayerMovement.currDimension)
+        {
+            case "Ice":
+                mask = GameObject.Find("MaskIce").transform;
+                break;
+            case "Space":
+                mask = GameObject.Find("MaskSpace").transform;
+                break;
+            case "Maze":
+                mask = GameObject.Find("MaskMaze").transform;
+                break;
+            default:
+                mask = null;
+                break;
+        }
+        return mask;
     }
 
     IEnumerator KeyCutsceneEnd(Vector3 posChange, Quaternion endRot)
