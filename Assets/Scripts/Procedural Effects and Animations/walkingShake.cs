@@ -44,9 +44,6 @@ public class walkingShake : MonoBehaviour
 
     void Update()
     {
-        // Guard every frequency this frame: the time/rampUpTime rescales below and
-        // the 1/frequency periods in the coroutines all divide by these, so a zero
-        // anywhere turns time into Inf and every Sin/Cos downstream into NaN.
         walkFrequency = Mathf.Max(walkFrequency, 0.01f);
         sprintFrequency = Mathf.Max(sprintFrequency, 0.01f);
         aimFrequency = Mathf.Max(aimFrequency, 0.01f);
