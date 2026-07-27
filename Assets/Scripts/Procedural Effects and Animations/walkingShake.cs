@@ -44,6 +44,10 @@ public class walkingShake : MonoBehaviour
 
     void Update()
     {
+        walkFrequency = Mathf.Max(walkFrequency, 0.01f);
+        sprintFrequency = Mathf.Max(sprintFrequency, 0.01f);
+        aimFrequency = Mathf.Max(aimFrequency, 0.01f);
+
         float oldFreq = frequency;
 
         float amplitudeUpgrade = 1f + ((upgradeManager.speedMultiplier - 1f) * 0.05f);
