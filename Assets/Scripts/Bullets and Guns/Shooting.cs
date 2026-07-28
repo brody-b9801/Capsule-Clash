@@ -240,7 +240,7 @@ public class Shooting : AttributesSync
         if (!shotgun)
         {
             if (Input.GetMouseButton(0) && Time.time >= nextFireTime &&
-                reloadNum > 0 && !reloading && canShoot && !PlayerMovement.dead)
+                reloadNum > 0 && !reloading && canShoot && !PlayerMovement.dead && !HoverCheck.isHovering)
             {
                 Vector3 useCameraPos = IsValidVector3(cameraPosition) ? cameraPosition : posSave;
                 posSave = useCameraPos;
@@ -271,7 +271,7 @@ public class Shooting : AttributesSync
         else
         {
             if (Input.GetMouseButtonDown(0) && Time.time >= nextFireTime &&
-                shottieNum > 0 && !reloading && canShoot && !PlayerMovement.dead)
+                shottieNum > 0 && !reloading && canShoot && !PlayerMovement.dead && !HoverCheck.isHovering)
             {
                 Vector3 useCameraPos = IsValidVector3(cameraPosition) ? cameraPosition : posSave;
                 posSave = useCameraPos;
@@ -591,7 +591,7 @@ public class Shooting : AttributesSync
 
     private void LateUpdate()
     {
-        if (lockCursor && !ButtonHoverDetector.isHovering)
+        if (lockCursor && !HoverCheck.isHovering)
             Cursor.lockState = CursorLockMode.Locked;
     }
 

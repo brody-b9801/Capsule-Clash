@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class ButtonHoverDetector : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public class HoverCheck : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     public static bool isHovering;
 

@@ -81,7 +81,8 @@ namespace Alteruna
 
 				LeaveButton.onClick.AddListener(() =>
 				{	
-					CamTwo.cullingMask &= ~(1 << LayerMask.NameToLayer("UI"));
+					//CamTwo.cullingMask &= ~(1 << LayerMask.NameToLayer("UI"));
+            		GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0].enableGun();
 					transform.gameObject.GetComponent<MenuHandler>().titleStart();
 					Multiplayer.CurrentRoom?.Leave();
 					_refreshTime = RefreshInterval;
