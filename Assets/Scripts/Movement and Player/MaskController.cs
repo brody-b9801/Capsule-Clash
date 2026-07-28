@@ -156,7 +156,7 @@ public class MaskController : MonoBehaviour {
     private void UpdateMaskPrompts() {
         if (seeingMazeMask) {
             if (!seenMaskMaze) {
-                activeSceneCoroutine = StartCoroutine(MaskMazeScene());
+                InterruptWithMaskScene(MaskMazeScene());
                 seenMaskMaze = true;
             } else if (!MaskSpeaking) {
                 maskText.text = FeedPrompt;
@@ -167,7 +167,7 @@ public class MaskController : MonoBehaviour {
 
         if (seeingSpaceMask) {
             if (!seenSpaceMask) {
-                activeSceneCoroutine = StartCoroutine(MaskSpaceScene());
+                InterruptWithMaskScene(MaskSpaceScene());
                 seenSpaceMask = true;
             } else if (!MaskSpeaking) {
                 maskText.text = FeedPrompt;
@@ -178,7 +178,7 @@ public class MaskController : MonoBehaviour {
 
         if (seeingIceMask) {
             if (!seenIceMask) {
-                activeSceneCoroutine = StartCoroutine(MaskIceScene());
+                InterruptWithMaskScene(MaskIceScene());
                 seenIceMask = true;
             } else if (!MaskSpeaking) {
                 maskText.text = FeedPrompt;
@@ -186,6 +186,16 @@ public class MaskController : MonoBehaviour {
         } else if (PlayerMovement.currDimension == "Ice" && maskText.text == FeedPrompt) {
             maskText.text = "";
         }
+    }
+
+    /// <summary>
+    /// Cancels whatever dialogue is currently playing (typically a dimension-entry
+    /// scene) and immediately starts the given mask scene. Walking up to a mask
+    /// always takes priority over the "Welcome to the ..." sequence.
+    /// </summary>
+    private void InterruptWithMaskScene(IEnumerator maskScene) {
+        ResetMaskState();
+        activeSceneCoroutine = StartCoroutine(maskScene);
     }
 
     public void TryFeed() {

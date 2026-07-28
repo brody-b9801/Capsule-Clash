@@ -222,6 +222,7 @@ public class PlayerMovement : AttributesSync {
     public Material iceSky;
     public static Vector3 shotBoost;
     private bool wasGrounded;
+    private GunThingAnim gunRenderer;
     // -------------------------------------------------------------------------
     // Input
     // -------------------------------------------------------------------------
@@ -325,6 +326,8 @@ public class PlayerMovement : AttributesSync {
         _avatar = GetComponent<Alteruna.Avatar>();
 
         if (_avatar.IsOwner) {
+            gunRenderer = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
+            gunRenderer.enableGun();
             settingsControl = GameObject.Find("Room Menu (1)").GetComponent<SettingsController>();
             leaderboardControl = GetComponent<LeaderboardControl>();
             maskController = GetComponent<MaskController>();
@@ -404,6 +407,7 @@ public class PlayerMovement : AttributesSync {
             SetActiveDimension(desertInfo);
             GetComponent<MeshRenderer>().enabled = false;
             //characterController.enableOverlapRecovery = false;
+
         } else {
             foreach (Transform child in transform) {
                 if (child.name == "Renderer") child.gameObject.SetActive(false);
