@@ -9,9 +9,6 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using NUnit.Framework.Internal;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Generic object pool. Works for any Component type.
-// ─────────────────────────────────────────────────────────────────────────────
 public class ObjectPool<T> where T : Component
 {
     private readonly T _prefab;
@@ -55,13 +52,8 @@ public class ObjectPool<T> where T : Component
         _pool.Enqueue(instance);
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shooting – uses object pooling for bullets, muzzle particles, and casings.
-// ─────────────────────────────────────────────────────────────────────────────
 public class Shooting : AttributesSync
 {
-    // ── Serialised fields ──────────────────────────────────────────────────
     [SerializeField] private GameObject     bulletPrefab;
     [SerializeField] private Transform      gun;
     [SerializeField] private GameObject     player;
@@ -79,29 +71,24 @@ public class Shooting : AttributesSync
     [SerializeField] private Mesh           shotgunMesh;
     [SerializeField] private Mesh           M4Mesh;
 
-    // ── Pool sizes (tweak in Inspector via a wrapper if needed) ────────────
     private const int BulletPoolSize  = 30;
     private const int MuzzlePoolSize  = 10;
     private const int CasingPoolSize  = 30;
 
-    // ── Object pools ───────────────────────────────────────────────────────
     private ObjectPool<Rigidbody>      _bulletPool;
     private ObjectPool<ParticleSystem> _muzzlePool;
     private ObjectPool<Transform>      _casingPool;
 
-    // Shared pool roots (keeps hierarchy tidy)
     private Transform _bulletPoolRoot;
     private Transform _muzzlePoolRoot;
     private Transform _casingPoolRoot;
-
-    // ── Public / static state ──────────────────────────────────────────────
     public float bulletSpeed  = 15.0f;
     public float snipeSpeed   = 150.0f;
     public float fireRate;
     public float nextFireTime = 0.0f;
 
     public static int  reloadNum  = 30;
-    public static int  shottieNum = 2;
+    public static int shottieNum = 2;
     public static bool reloading  = false;
 
     public static bool playerShot;
@@ -120,7 +107,6 @@ public class Shooting : AttributesSync
     public static bool  playerJoin;
     public static bool  leaveHover = false;
 
-    // ── Private state ──────────────────────────────────────────────────────
     private static Spawner _spawner;
     private Alteruna.Avatar avatar;
 
@@ -151,7 +137,6 @@ public class Shooting : AttributesSync
 
     public float trailFadeDuration = 0.5f;
 
-    // ─────────────────────────────────────────────────────────────────────
     void Start()
     {
         avatar = GetComponent<Alteruna.Avatar>();
@@ -190,7 +175,6 @@ public class Shooting : AttributesSync
 
         camCasing.GetComponent<MeshRenderer>().enabled = false;
 
-        // ── Initialise pools ──────────────────────────────────────────────
         _bulletPoolRoot = CreatePoolRoot("Pool_Bullets");
         _muzzlePoolRoot = CreatePoolRoot("Pool_Muzzle");
         _casingPoolRoot = CreatePoolRoot("Pool_Casings");
@@ -214,72 +198,37 @@ public class Shooting : AttributesSync
         return go.transform;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void Update()
     {
         if (!avatar.IsOwner) return;
 
         isShooting = false;
 
-        // Muzzle-flash fade
-        muzzleFlashCamera.color = new Color(
-            muzzleFlashCamera.color.r,
-            muzzleFlashCamera.color.g,
-            muzzleFlashCamera.color.b, alphaVal);
+        muzzleFlashCamera.color = new Color(muzzleFlashCamera.color.r, muzzleFlashCamera.color.g, muzzleFlashCamera.color.b, alphaVal);
 
         // Movement delta
         Vector3 currentPosition = transform.position;
         deltaPosition    = currentPosition - previousPosition;
         previousPosition = currentPosition;
 
-        // Cache camera for this frame
         Vector3 cameraPosition = mainCameraTransform.position;
         Vector3 cameraForward  = mainCameraTransform.forward;
 
         // ── Fire ──────────────────────────────────────────────────────────
-        if (!shotgun)
-        {
-            if (Input.GetMouseButton(0) && Time.time >= nextFireTime &&
-                reloadNum > 0 && !reloading && canShoot && !PlayerMovement.dead && !HoverCheck.isHovering)
+        ref int ammo = ref shotgun ? ref shottieNum : ref reloadNum;
+
+            bool inputCheck = shotgun ? Input.GetMouseButtonDown(0) : Input.GetMouseButton(0);
+            if (inputCheck && Time.time >= nextFireTime &&
+                ammo > 0 && !reloading && canShoot && !PlayerMovement.dead && !HoverCheck.isHovering)
             {
                 Vector3 useCameraPos = IsValidVector3(cameraPosition) ? cameraPosition : posSave;
                 posSave = useCameraPos;
 
                 isShooting = true;
+                
 
-                FireBullet(useCameraPos, cameraForward,
-                    bulletSpawn.transform.position, 25f, 18f,
-                    bulletHole.position, bH.transform.position,
-                    Random.Range(-spread, spread),
-                    Random.Range(-spread, spread),
-                    Random.Range(-spread, spread), true);
-
-                Shaker.shooting = true;
-                Shaker.StopShake();
-                Shaker.Instance.Shake();
-                RetroDither.shotFired = true;
-                ReloadAnimation.PlayAnim();
-                StartCoroutine(EnableDisable());
-                nextFireTime = Time.time + 1f / (fireRate * upgradeManager.fireRateMultiplier);
-                reloadNum--;
-            }
-            else if (!(Input.GetMouseButton(0) && reloadNum > 0 && !reloading))
-            {
-                Shaker.shooting = false;
-            }
-        }
-        else
-        {
-            if (Input.GetMouseButtonDown(0) && Time.time >= nextFireTime &&
-                shottieNum > 0 && !reloading && canShoot && !PlayerMovement.dead && !HoverCheck.isHovering)
-            {
-                Vector3 useCameraPos = IsValidVector3(cameraPosition) ? cameraPosition : posSave;
-                posSave = useCameraPos;
-
-                isShooting = true;
-
-                const float spreadMulti = 10f;
-                for (int i = 0; i < 9; i++)
+                float spreadMulti = shotgun ? 10f : 1f;
+                for (int i = 0; i < (shotgun ? 9 : 1); i++)
                 {
                     FireBullet(useCameraPos, cameraForward,
                         bulletSpawn.transform.position, 25f, 15f,
@@ -293,28 +242,22 @@ public class Shooting : AttributesSync
                 Shaker.shooting = true;
                 Shaker.StopShake();
                 Shaker.Instance.Shake();
-                RetroDither.shotgunFired = true;
+                if (shotgun) RetroDither.shotgunFired = true;
+                else        RetroDither.shotFired    = true;
                 ReloadAnimation.PlayAnim();
                 StartCoroutine(EnableDisable());
                 nextFireTime = Time.time + 1f / fireRate * upgradeManager.fireRateMultiplier;
-                shottieNum--;
+                ammo--;
             }
-            else if (!(Input.GetMouseButton(0) && shottieNum > 0 && !reloading))
+            else if (!(inputCheck && ammo > 0 && !reloading))
             {
                 Shaker.shooting = false;
             }
-        }
 
         // ── Reload ────────────────────────────────────────────────────────
         if (Input.GetKeyDown(KeyCode.R))
         {
-            if (!shotgun && !reloading && reloadNum != 30)
-            {
-                ReloadAnimation.PlayReload();
-                StartCoroutine(waitReload());
-                ReloadIndicator.Reload();
-            }
-            else if (shotgun && !reloading && shottieNum != 2)
+            if ((!shotgun && !reloading && reloadNum != 30) || (shotgun && !reloading && shottieNum != 2))
             {
                 ReloadAnimation.PlayReload();
                 StartCoroutine(waitReload());

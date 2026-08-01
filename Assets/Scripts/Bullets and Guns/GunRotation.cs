@@ -16,12 +16,9 @@ public class GunRotation : AttributesSync
 
     void Update()
     {
-        if (avatar.IsOwner)
+        if (g1 != null && IsValidVector3(g1.transform.position) && IsValidQuaternion(g1.transform.rotation))
         {
-            if (g1 != null && IsValidVector3(g1.transform.position) && IsValidQuaternion(g1.transform.rotation))
-            {
-                gunPosition(g1.transform.position - new Vector3(0, 0.35f, 0), g1.transform.rotation);
-            }
+            gunPosition(g1.transform.position - new Vector3(0, 0.35f, 0), g1.transform.rotation);
         }
     }
 
@@ -33,7 +30,7 @@ public class GunRotation : AttributesSync
             gun.transform.position = pos;
             gun.transform.rotation = rot;
             gun.transform.localEulerAngles = gun.transform.localEulerAngles - new Vector3(0, 0, 0); 
-            gun.transform.localPosition = new Vector3(0.6f, gun.transform.localPosition.y, gun.transform.localPosition.z + 0.1f);
+            gun.transform.localPosition = avatar.IsOwner ? new Vector3(0.6f, gun.transform.localPosition.y - 0.05f, gun.transform.localPosition.z - 0.65f) : new Vector3(0.6f, gun.transform.localPosition.y, gun.transform.localPosition.z + 0.1f);
         }
     }
     private bool IsValidVector3(Vector3 vector)

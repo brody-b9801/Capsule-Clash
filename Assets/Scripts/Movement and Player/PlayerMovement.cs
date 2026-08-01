@@ -1322,7 +1322,7 @@ private void UpdateMovementVector()
             akm.localEulerAngles = akmBaseLocalRot;
         }
         if (!dead && !MaskController.maskAnimationPlaying) {
-            playerCamera.gameObject.transform.position = transform.position + new Vector3(.5f * Mathf.Sin(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad), .75f, .5f * Mathf.Cos(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad)) + landingCameraOffset;
+            //playerCamera.gameObject.transform.position = transform.position + new Vector3(.5f * Mathf.Sin(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad), .75f, .5f * Mathf.Cos(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad)) + landingCameraOffset;
             playerCamera.gameObject.transform.position = transform.position + new Vector3(0, .75f, 0) + landingCameraOffset;
             if (!Shooting.reloading) {
                 Vector3 shootOffset = new Vector3((-Shaker.yRot - Shaker.zRot) / 500, Shaker.easedRotationChange / 125, -Shaker.easedRotationChange / 250) * shootAnimTune;
