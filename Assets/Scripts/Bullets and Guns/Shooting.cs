@@ -278,62 +278,49 @@ public class Shooting : AttributesSync
         float randomX, float randomY, float randomZ,
         bool doMuzzleFlash)
     {
+        bool isOwner = avatar.IsOwner;
         lockCursor = true;
 
         Vector3 spawnMuzzlePosition = avatar.IsOwner ? bulletOrigin : bHPos;
         Vector3 spawnPosition       = bS;
 
-        if (!IsValidVector3(spawnMuzzlePosition) || !IsValidVector3(spawnPosition))
-            return;
-
-        // ── Rent bullet from pool ─────────────────────────────────────────
         Rigidbody bulletRb = _bulletPool.Get(spawnPosition, Quaternion.identity);
         GameObject bulletGO = bulletRb.gameObject;
         bulletGO.layer = avatar.IsOwner ? 7 : 6;
 
-        // Reset all state before use
         CollisionControl cc = bulletGO.GetComponent<CollisionControl>();
         cc.OnSpawn();
-        if (avatar.IsOwner)
+        if (isOwner)
         {
             cc.shooter        = avatar.ToString();
             cc.shottieBool    = shotgun;
-            CollisionControl.avatar = true;
-            playerShot        = true;
             lastShotDirection = direction;
         }
-        else
-        {
-            CollisionControl.avatar = false;
-            playerShot = false;
-        }
+        CollisionControl.avatar = isOwner;
+        playerShot = isOwner;
 
-        // Hook up the return-to-pool callback on CollisionControl
-        // CollisionControl must call this when the bullet is done.
         cc.OnReturnToPool = () => _bulletPool.Return(bulletRb, _bulletPoolRoot);
         cc.InitBullet(this);
 
         CollisionControl.playerFire = gameObject;
 
-        // ── Muzzle flash & casing ─────────────────────────────────────────
         if (doMuzzleFlash)
         {
             float randomAngle = Random.Range(-45f, 45f);
+            Transform bulletHoleRef = avatar.IsOwner ? bulletHole : bH.transform;
 
-            if (avatar.IsOwner)
-            {
-                if (IsValidQuaternion(bulletHole.transform.rotation))
+                if (IsValidQuaternion(bulletHoleRef.rotation))
                 {
-                    Quaternion muzzleRot = bulletHole.transform.rotation *
+                    Quaternion muzzleRot = bulletHoleRef.rotation *
                                           Quaternion.Euler(randomAngle, -90f, 0f);
 
                     ParticleSystem muzzleInst = _muzzlePool.Get(
-                        spawnMuzzlePosition, muzzleRot, bulletHole.transform);
+                        spawnMuzzlePosition, muzzleRot, bulletHoleRef);
                     muzzleInst.transform.localPosition = Vector3.zero;
                     muzzleInst.Play();
 
                     // Auto-return muzzle particle after it finishes
-                    StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bulletHole.transform));
+                    StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bulletHoleRef));
 
                     // ── Casing ────────────────────────────────────────────
                     Transform casing = _casingPool.Get(
@@ -344,26 +331,7 @@ public class Shooting : AttributesSync
                     if (casingAnim != null)
                         casingAnim.OnReturnToPool = () => _casingPool.Return(casing, _casingPoolRoot);
                 }
-            }
-            else
-            {
-                if (IsValidQuaternion(bH.transform.rotation))
-                {
-                    Quaternion muzzleRot = bH.transform.rotation *
-                                          Quaternion.Euler(randomAngle, -90f, 0f);
 
-                    ParticleSystem muzzleInst = _muzzlePool.Get(
-                        spawnMuzzlePosition, muzzleRot, bH.transform);
-                    muzzleInst.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
-                    muzzleInst.gameObject.layer     = 0;
-
-                    foreach (Transform child in muzzleInst.transform)
-                        child.gameObject.layer = 0;
-
-                    muzzleInst.Play();
-                    StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bH.transform));
-                }
-            }
         }
 
         // ── Trajectory ────────────────────────────────────────────────────
