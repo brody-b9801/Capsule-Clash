@@ -323,13 +323,23 @@ public class Shooting : AttributesSync
                     StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bulletHoleRef));
 
                     // ── Casing ────────────────────────────────────────────
-                    Transform casing = _casingPool.Get(
-                        casingSpawn.position, bulletCasingPrefab.transform.rotation, casingSpawn);
-                    casing.gameObject.layer = 5;
+                    if (avatar.IsOwner) {
+                        Transform casing = _casingPool.Get(
+                            casingSpawn.position, bulletCasingPrefab.transform.rotation, casingSpawn);
+                        casing.gameObject.layer = 5;
 
-                    BulletCasingAnim casingAnim = casing.GetComponent<BulletCasingAnim>();
-                    if (casingAnim != null)
-                        casingAnim.OnReturnToPool = () => _casingPool.Return(casing, _casingPoolRoot);
+                        BulletCasingAnim casingAnim = casing.GetComponent<BulletCasingAnim>();
+                        if (casingAnim != null)
+                            casingAnim.OnReturnToPool = () => _casingPool.Return(casing, _casingPoolRoot);
+                    }
+                    Transform casingHolder = transform.GetChild(2).GetChild(0).GetChild(1).GetChild(0);
+                    Transform nonCameraCasing = _casingPool.Get(
+                        casingHolder.position, bulletCasingPrefab.transform.rotation, casingHolder);
+                    nonCameraCasing.gameObject.layer = 11;
+
+                    BulletCasingAnim casingAnimNonCam = nonCameraCasing.GetComponent<BulletCasingAnim>();
+                    if (casingAnimNonCam != null)
+                        casingAnimNonCam.OnReturnToPool = () => _casingPool.Return(nonCameraCasing, _casingPoolRoot);
                 }
 
         }
