@@ -336,7 +336,7 @@ public class Shooting : AttributesSync
                     Transform nonCameraCasing = _casingPool.Get(
                         casingHolder.position, bulletCasingPrefab.transform.rotation, casingHolder);
                     nonCameraCasing.gameObject.layer = 11;
-
+                    if (avatar.IsOwner) nonCameraCasing.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
                     BulletCasingAnim casingAnimNonCam = nonCameraCasing.GetComponent<BulletCasingAnim>();
                     if (casingAnimNonCam != null)
                         casingAnimNonCam.OnReturnToPool = () => _casingPool.Return(nonCameraCasing, _casingPoolRoot);

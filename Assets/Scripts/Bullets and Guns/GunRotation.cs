@@ -12,6 +12,17 @@ public class GunRotation : AttributesSync
 
     void Start() {
         g1 = GameObject.Find("CamAKM").transform;
+        if (avatar.IsOwner) {
+            Transform rendererContainer = transform.GetChild(0);
+            for (int i = 0; i < rendererContainer.childCount; i++)
+            {
+                Transform child = rendererContainer.GetChild(i);
+                if (child.TryGetComponent<Renderer>(out Renderer renderer))
+                {
+                    renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+                }
+            }
+        }
     }
 
     void Update()
