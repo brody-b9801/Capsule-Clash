@@ -200,10 +200,10 @@ Shader "Hidden/NewImageEffectShader"
                 float4 col = tex2D(_MainTex, dUV);
                 col.a = 1.0;
 
-                float rowIdx = floor(uv.y * res.y);
-                float periodRows = max(2.0, floor(6.28318 * res.y / max(_ScanlineFrequency, 1.0) + 0.5));
-                float lines = sin(rowIdx / periodRows * 6.28318 + _Time.y * _ScanlineSpeed);
-                col *= lines * _ScanlineDarkness + (1.0 - _ScanlineDarkness);
+                float banding = abs(sin(i.uv.y * _ScanlineFrequency));
+                float effect = lerp(1.0, banding, _ScanlineDarkness);
+
+                col.rgb *= effect;
 
                 float3 bloom = tex2D(_BloomTex, sampleUV).rgb;
                 col.rgb += bloom * (_BloomStrength + _GlowStrength);
