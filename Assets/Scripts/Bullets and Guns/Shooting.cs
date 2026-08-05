@@ -170,9 +170,6 @@ public class Shooting : AttributesSync
         _spawner = GameObject.FindGameObjectWithTag("NetworkManager").GetComponent<Spawner>();
         cam2     = GameObject.Find("CameraTwo").GetComponent<Camera>();
 
-        foreach (Transform child in gunThing)
-            child.gameObject.layer = 1;
-
         camCasing.GetComponent<MeshRenderer>().enabled = false;
 
         _bulletPoolRoot = CreatePoolRoot("Pool_Bullets");
