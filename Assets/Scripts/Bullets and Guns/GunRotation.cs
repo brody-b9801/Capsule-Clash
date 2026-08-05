@@ -32,7 +32,7 @@ public class GunRotation : AttributesSync
     {
         if (g1 != null && IsValidVector3(g1.transform.position) && IsValidQuaternion(g1.transform.rotation))
             gunPosition(g1.transform.position - new Vector3(0, 0.35f, 0), g1.transform.rotation, false);
-        if (gm1 != null && IsValidVector3(gm1.transform.position) && IsValidQuaternion(gm1.transform.rotation))
+        if (gm1 != null && IsValidVector3(gm1.transform.localPosition) && IsValidQuaternion(gm1.transform.rotation))
             gunPosition(gm1.transform.position - new Vector3(0, 0.35f, 0), gm1.transform.rotation, true);
     }
 
@@ -46,7 +46,7 @@ public class GunRotation : AttributesSync
             thingToPosition.transform.localEulerAngles = thingToPosition.transform.localEulerAngles - new Vector3(0, 0, 0); 
             if (isMagazine)
             {
-                thingToPosition.transform.localPosition = gm1.transform.localPosition;
+                thingToPosition.transform.localPosition = pos;
             } else
             {
                 thingToPosition.transform.localPosition = avatar.IsOwner ? new Vector3(0.6f, thingToPosition.transform.localPosition.y - 0.05f, thingToPosition.transform.localPosition.z - 0.65f) : new Vector3(0.6f, thingToPosition.transform.localPosition.y, thingToPosition.transform.localPosition.z + 0.1f);
