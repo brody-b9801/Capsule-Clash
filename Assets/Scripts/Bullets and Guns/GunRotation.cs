@@ -44,7 +44,14 @@ public class GunRotation : AttributesSync
             thingToPosition.transform.position = pos;
             thingToPosition.transform.rotation = rot;
             thingToPosition.transform.localEulerAngles = thingToPosition.transform.localEulerAngles - new Vector3(0, 0, 0); 
-            thingToPosition.transform.localPosition = avatar.IsOwner ? new Vector3(0.6f, thingToPosition.transform.localPosition.y - 0.05f, thingToPosition.transform.localPosition.z - 0.65f) : new Vector3(0.6f, thingToPosition.transform.localPosition.y, thingToPosition.transform.localPosition.z + 0.1f);
+            if (isMagazine)
+            {
+                thingToPosition.transform.localPosition = gm1.transform.localPosition;
+            } else
+            {
+                thingToPosition.transform.localPosition = avatar.IsOwner ? new Vector3(0.6f, thingToPosition.transform.localPosition.y - 0.05f, thingToPosition.transform.localPosition.z - 0.65f) : new Vector3(0.6f, thingToPosition.transform.localPosition.y, thingToPosition.transform.localPosition.z + 0.1f);
+
+            }
         }
     }
     private bool IsValidVector3(Vector3 vector)
