@@ -13,19 +13,20 @@ public class upgradeManager : MonoBehaviour
     [SerializeField] private float upgradeFactor = 0.125f;
     [SerializeField] private float upgradeCost = 3;
 
-    public static int killPoints = 100;
-    public static int upgradePoints = 0;
+    public static upgradeManager Local { get; private set; }
 
-    //Static multipliers for upgrades
-    public static float speedMultiplier = 1; // Done
-    public static float jumpMultiplier = 1; // Done
-    public static float dashForceMultiplier = 1; // Done
-    public static float dashRegenMultiplier = 1; // Done
-    public static float regenSpeedMultiplier = 1; // Done
-    public static float staminaRegenMultiplier = 1; // Done
-    public static float fireRateMultiplier = 1; // Done
-    public static float damageMultiplier = 1; // Done
-    public static float reloadSpeedMultiplier = 1; // Done
+    public int killPoints = 100;
+    public int upgradePoints = 0;
+
+    public float speedMultiplier = 1; // Done
+    public float jumpMultiplier = 1; // Done
+    public float dashForceMultiplier = 1; // Done
+    public float dashRegenMultiplier = 1; // Done
+    public float regenSpeedMultiplier = 1; // Done
+    public float staminaRegenMultiplier = 1; // Done
+    public float fireRateMultiplier = 1; // Done
+    public float damageMultiplier = 1; // Done
+    public float reloadSpeedMultiplier = 1; // Done
 
     private bool openingWindow = false;
     private bool openingWindowInv = false;
@@ -37,10 +38,19 @@ public class upgradeManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI keyCountText;
     [SerializeField] private TextMeshProUGUI capsuleCountText;
 
-
-    //array to track which upgrades have been purchased
-    public static int[] upgradesPurchased = new int[9];
+    public int[] upgradesPurchased = new int[9];
     private RectTransform[] upgradeRects = new RectTransform[9];
+
+    void Awake()
+    {
+        Local = this;
+        SaveSystem.ApplyPendingUpgradeData(this);
+    }
+
+    void OnDestroy()
+    {
+        if (Local == this) Local = null;
+    }
 
     void Start()
     {

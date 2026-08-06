@@ -35,7 +35,7 @@ public class ReloadIndicator : MonoBehaviour
         ReloadBar.gameObject.SetActive(true);
         ReloadBarBg.SetActive(true);
         ReloadBar.rectTransform.sizeDelta = new Vector2(66.0f, ReloadBar.rectTransform.sizeDelta.y);
-        ReloadBar.transform.parent.GetComponent<MonoBehaviour>().StartCoroutine(DecreaseWidthOverTime((Shooting.shotgun && Shooting.shottieNum == 1) ? 1.31f : 2.01f / upgradeManager.reloadSpeedMultiplier));    
+        ReloadBar.transform.parent.GetComponent<MonoBehaviour>().StartCoroutine(DecreaseWidthOverTime((Shooting.shotgun && Shooting.shottieNum == 1) ? 1.31f : 2.01f / upgradeManager.Local.reloadSpeedMultiplier));
     }
 
     IEnumerator healBarAnim()
@@ -43,7 +43,7 @@ public class ReloadIndicator : MonoBehaviour
         healAnimStarted = true;
         HealBar.gameObject.SetActive(true);
         ReloadBarBg.SetActive(true);
-        float total = 3f / upgradeManager.regenSpeedMultiplier;
+        float total = 3f / upgradeManager.Local.regenSpeedMultiplier;
 
         HealBar.rectTransform.sizeDelta = new Vector2(0.0f, HealBar.rectTransform.sizeDelta.y);
         while (PlayerMovement.elapsedHealTime < total && healParticles.healing)
@@ -51,7 +51,7 @@ public class ReloadIndicator : MonoBehaviour
             float percent = PlayerMovement.elapsedHealTime / total;
             float newWidth = Mathf.Lerp(0.0f, 66.0f, percent);
             HealBar.rectTransform.sizeDelta = new Vector2(newWidth, HealBar.rectTransform.sizeDelta.y);
-            total = 3f / upgradeManager.regenSpeedMultiplier;
+            total = 3f / upgradeManager.Local.regenSpeedMultiplier;
             yield return null;
         }
         healAnimStarted = false;

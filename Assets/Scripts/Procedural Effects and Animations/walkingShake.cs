@@ -50,8 +50,8 @@ public class walkingShake : MonoBehaviour
 
         float oldFreq = frequency;
 
-        float amplitudeUpgrade = 1f + ((upgradeManager.speedMultiplier - 1f) * 0.05f);
-        float frequencyUpgrade = 1f + ((upgradeManager.speedMultiplier - 1f) * 0.1f);
+        float amplitudeUpgrade = 1f + ((upgradeManager.Local.speedMultiplier - 1f) * 0.05f);
+        float frequencyUpgrade = 1f + ((upgradeManager.Local.speedMultiplier - 1f) * 0.1f);
 
         if (PlayerMovement.isSprinting && amplitude != sprintAmplitude)
         {

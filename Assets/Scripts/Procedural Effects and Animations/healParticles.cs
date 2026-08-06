@@ -25,7 +25,7 @@ public class healParticles : MonoBehaviour
         {
             FitRadiusToView();
         }
-        emission.rateOverTime = healing ? 20f * upgradeManager.regenSpeedMultiplier : 0f;
+        emission.rateOverTime = healing ? 20f * upgradeManager.Local.regenSpeedMultiplier : 0f;
     }
 
     private void FitRadiusToView()

@@ -50,7 +50,7 @@ public class Shaker : MonoBehaviour
 
     private void Update() {
         if (shooting) {
-            downDuration = downDurationStart * 1/(1 + (upgradeManager.fireRateMultiplier - 1) * 4);
+            downDuration = downDurationStart * 1/(1 + (upgradeManager.Local.fireRateMultiplier - 1) * 4);
         } else {
             downDuration = downDurationStart;
         }

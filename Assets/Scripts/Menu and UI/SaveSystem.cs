@@ -42,6 +42,20 @@ public class SaveSystem : MonoBehaviour
 {
     static bool loaded;
 
+    // LoadPlayerData runs BeforeSceneLoad, when no upgradeManager exists yet, so
+    // upgrade state is buffered here and applied by upgradeManager.Awake().
+    static int pendingKillPoints = 100;
+    static int pendingUpgradePoints = 0;
+    static int[] pendingUpgradesPurchased;
+
+    public static void ApplyPendingUpgradeData(upgradeManager manager)
+    {
+        manager.killPoints = pendingKillPoints;
+        manager.upgradePoints = pendingUpgradePoints;
+        if (pendingUpgradesPurchased != null)
+            manager.upgradesPurchased = pendingUpgradesPurchased;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void Init()
     {
@@ -83,8 +97,8 @@ public class SaveSystem : MonoBehaviour
         MaskController.mazeKeyAcquired = playerData.mazeKeyAcquired;
         MaskController.spaceKeyAcquired = playerData.spaceKeyAcquired;
         MaskController.iceKeyAcquired = playerData.iceKeyAcquired;
-        upgradeManager.killPoints = playerData.capsuleEssence;
-        upgradeManager.upgradePoints = playerData.killPoints;
+        pendingKillPoints = playerData.capsuleEssence;
+        pendingUpgradePoints = playerData.killPoints;
         SettingsController.buildKeys = new SettingsController.Keys
         {
             floorKey = playerData.buildKeys.floorKey,
@@ -93,20 +107,31 @@ public class SaveSystem : MonoBehaviour
             breakKey = playerData.buildKeys.breakKey
         };
         if (playerData.upgradeLevels != null)
-            upgradeManager.upgradesPurchased = playerData.upgradeLevels;
+            pendingUpgradesPurchased = playerData.upgradeLevels;
         PlayerMovement.killCount = playerData.lifetimeKills;
+
+        // A manager may already exist if load is re-run after scene load.
+        if (upgradeManager.Local != null)
+            ApplyPendingUpgradeData(upgradeManager.Local);
     }
     public static void SavePlayerData()
     {
         return;
+        // Fall back to the buffered values when saving outside a scene that has
+        // an upgradeManager, so a save can't wipe loaded upgrade progress.
+        upgradeManager manager = upgradeManager.Local;
+        int savedKillPoints = manager != null ? manager.killPoints : pendingKillPoints;
+        int savedUpgradePoints = manager != null ? manager.upgradePoints : pendingUpgradePoints;
+        int[] savedUpgradesPurchased = manager != null ? manager.upgradesPurchased : pendingUpgradesPurchased;
+
         PlayerData playerData = new PlayerData(
             SettingsController.volumePercent,
             SettingsController.rs,
             MaskController.mazeKeyAcquired,
             MaskController.spaceKeyAcquired,
             MaskController.iceKeyAcquired,
-            upgradeManager.killPoints,
-            upgradeManager.upgradePoints,
+            savedKillPoints,
+            savedUpgradePoints,
             new PlayerData.BuildKeys
             {
                 floorKey = SettingsController.buildKeys.floorKey,
@@ -114,7 +139,7 @@ public class SaveSystem : MonoBehaviour
                 rampKey = SettingsController.buildKeys.rampKey,
                 breakKey = SettingsController.buildKeys.breakKey
             },
-            upgradeManager.upgradesPurchased,
+            savedUpgradesPurchased,
             PlayerMovement.killCount
         );
         string json = JsonConvert.SerializeObject(playerData);

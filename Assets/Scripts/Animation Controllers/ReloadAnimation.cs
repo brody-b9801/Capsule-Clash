@@ -14,7 +14,6 @@ public class ReloadAnimation : MonoBehaviour
     private const float SkipToFrame = 100f;
     private const float ClipFrameCount = 120f;
     private const int SkipLayer = 0;
-
     private bool pendingSkip;
 
     void OnEnable()
@@ -29,7 +28,7 @@ public class ReloadAnimation : MonoBehaviour
     public static void PlayReload()
     {
         ShootState = false;
-        animator.speed = upgradeManager.reloadSpeedMultiplier;
+        animator.speed = upgradeManager.Local.reloadSpeedMultiplier;
         animator.SetTrigger("Reload");
     }
 

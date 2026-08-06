@@ -143,7 +143,6 @@ public class PlayerMovement : AttributesSync {
     public Transform spawnPosContainer;
     
     // Dimension-specific spawn containers
-    public Transform desertSpawnPosContainer;
     private Transform mazeSpawnPosContainer;
     private Transform spaceSpawnPosContainer;
     private Transform iceSpawnPosContainer;    
@@ -256,7 +255,6 @@ public class PlayerMovement : AttributesSync {
     private DimensionInfo iceInfo;
     private DimensionInfo[] allDimensions;
     Vector3 floorNormal = Vector3.up;
-
     private void InitializeDimensions() {
         desertInfo = new DimensionInfo {
             name = "Desert",
@@ -407,7 +405,6 @@ public class PlayerMovement : AttributesSync {
             SetActiveDimension(desertInfo);
             GetComponent<MeshRenderer>().enabled = false;
             //characterController.enableOverlapRecovery = false;
-
         } else {
             foreach (Transform child in transform) {
                 if (child.name == "Renderer") child.gameObject.SetActive(false);
@@ -462,7 +459,7 @@ public class PlayerMovement : AttributesSync {
         lastFrameMovement = movement;
         HandleCameraRotation();
         UpdateMovementVector();
-        characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
+        characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
         wasGrounded = isGrounded;
         SetExtraneousStates(); //needs cleanup
         HandleLaunch();
@@ -489,7 +486,7 @@ public class PlayerMovement : AttributesSync {
         else
             baseSpeed = 8.5f;
 
-        return baseSpeed * upgradeManager.speedMultiplier;
+        return baseSpeed * upgradeManager.Local.speedMultiplier;
     }
 
 private void UpdateMovementVector()
@@ -502,7 +499,7 @@ private void UpdateMovementVector()
     forward.y = 0f;
     right.y = 0f;
     float targetSpeed = SetTargetSpeed();
-    float baseSpeed = targetSpeed / upgradeManager.speedMultiplier;
+    float baseSpeed = targetSpeed / upgradeManager.Local.speedMultiplier;
     Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
     if (moveDirection.magnitude > 1f) moveDirection.Normalize();
     if (isGrounded) {
@@ -559,9 +556,9 @@ private void UpdateMovementVector()
             if (currDimension == "Maze")
                 newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
             else if (currDimension == "Space")
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + 1.5f * jumpForce * upgradeManager.jumpMultiplier, 0, Mathf.Infinity);
+                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + 1.5f * jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
             else
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce * upgradeManager.jumpMultiplier, 0, Mathf.Infinity);
+                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
             jumpedLast = true;
             resetPrev = false;
             if (isSprinting) fastAir = true;
@@ -755,7 +752,7 @@ private void UpdateMovementVector()
         float elapsedTime = 0;
         if (dashes < 3) {
             resettingDashes = true;
-            float total = 10 * (1.0f / upgradeManager.dashRegenMultiplier);
+            float total = 10 * (1.0f / upgradeManager.Local.dashRegenMultiplier);
             if (currDimension == "Space")
             {
                 total *= 0.25f;
@@ -765,7 +762,7 @@ private void UpdateMovementVector()
                 float percent = elapsedTime / total;
                 dashIcon.sizeDelta = new Vector2(75, percent * 72);
                 float totalPrev = total;
-                total = 10 * (1.0f / upgradeManager.dashRegenMultiplier);
+                total = 10 * (1.0f / upgradeManager.Local.dashRegenMultiplier);
                 if (currDimension == "Space")
                 {
                     total *= 0.25f;
@@ -960,7 +957,7 @@ private void UpdateMovementVector()
             StartCoroutine(maskController.StartFirstKillScene());
         }
         if (avatarRef == shooter) {
-            upgradeManager.killPoints++;
+            upgradeManager.Local.killPoints++;
             killCount++;
             healthWidth = 180.0f;
             HealthController.updateHealth();
@@ -1086,7 +1083,7 @@ private void UpdateMovementVector()
 
     IEnumerator stationaryHealing() {
         elapsedHealTime = 0f;
-        while (elapsedHealTime < 3f / upgradeManager.regenSpeedMultiplier) {
+        while (elapsedHealTime < 3f / upgradeManager.Local.regenSpeedMultiplier) {
             healParticles.healing = true;
             if (!(Input.GetKey(KeyCode.Q) && !CameraZoom.moving && !Shaker.shooting
                   && healthWidth < 180.0f && isGrounded && !Shooting.reloading)) {
@@ -1260,7 +1257,7 @@ private void UpdateMovementVector()
         isDashing = true;
         Vector3 dashVectorRef = dashVector;
         float elapsedTime = 0f;
-        float duration = 2f * (1 + (upgradeManager.dashForceMultiplier - 1) * 0.5f);
+        float duration = 2f * (1 + (upgradeManager.Local.dashForceMultiplier - 1) * 0.5f);
         while (elapsedTime < duration && !isGround() && dashVector.magnitude > 0) {
             if (!(_dash && dashes > 0 && !isGround())) {
                 dashVector = Vector3.Lerp(dashVectorRef, Vector3.zero, elapsedTime / duration);

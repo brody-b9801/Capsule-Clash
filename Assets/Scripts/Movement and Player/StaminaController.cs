@@ -38,7 +38,7 @@ public class StaminaController : MonoBehaviour
         }
       } else if (currentStamina < maxStamina)
       {
-          currentStamina += staminaRegenRate * upgradeManager.staminaRegenMultiplier * Time.deltaTime;
+          currentStamina += staminaRegenRate * upgradeManager.Local.staminaRegenMultiplier * Time.deltaTime;
           currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
           UpdateStaminaBar();
 	        zoomOut = false;

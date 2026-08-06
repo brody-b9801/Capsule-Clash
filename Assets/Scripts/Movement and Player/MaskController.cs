@@ -208,8 +208,8 @@ public class MaskController : MonoBehaviour {
     }
 
     private void Feed(ref bool keyAcquired, IEnumerator cutscene) {
-        if (upgradeManager.killPoints >= 5) {
-            upgradeManager.killPoints -= 5;
+        if (upgradeManager.Local.killPoints >= 5) {
+            upgradeManager.Local.killPoints -= 5;
             keyAcquired = true;
             keyCount++;
             ResetMaskState();
@@ -427,7 +427,7 @@ public class MaskController : MonoBehaviour {
         StartMaskSpeak("For your efforts, I reward you with upgrade tokens");
         while (MaskSpeaking) yield return null;
         yield return StartCoroutine(GiveKey(GameObject.Find("MaskMaze").transform.position));
-        upgradeManager.upgradePoints += 12;
+        upgradeManager.Local.upgradePoints += 12;
         SaveSystem.SavePlayerData();
         if (!AllKeysAcquired) {
             StartMaskSpeak("Press T to open the upgrade menu and spend your tokens, and I to view your inventory");
@@ -468,7 +468,7 @@ public class MaskController : MonoBehaviour {
         StartMaskSpeak("For your efforts, I reward you with upgrade tokens");
         while (MaskSpeaking) yield return null;
         yield return StartCoroutine(GiveKey(GameObject.Find("MaskSpace").transform.position));
-        upgradeManager.upgradePoints += 12;
+        upgradeManager.Local.upgradePoints += 12;
         SaveSystem.SavePlayerData();
         if (!AllKeysAcquired) {
             StartMaskSpeak("Press T to open the upgrade menu and spend your tokens and Press I to view your keys");
@@ -511,7 +511,7 @@ public class MaskController : MonoBehaviour {
         StartMaskSpeak("For your efforts, I reward you with a key and upgrade tokens");
         while (MaskSpeaking) yield return null;
         yield return StartCoroutine(GiveKey(GameObject.Find("MaskIce").transform.position));
-        upgradeManager.upgradePoints += 12;
+        upgradeManager.Local.upgradePoints += 12;
         SaveSystem.SavePlayerData();
         if (!AllKeysAcquired) {
             StartMaskSpeak("Press T to open the upgrade menu and spend your tokens and Press I to view your keys");

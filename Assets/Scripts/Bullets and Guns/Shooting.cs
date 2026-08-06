@@ -8,6 +8,7 @@ using NUnit.Framework;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using NUnit.Framework.Internal;
+using Unity.VisualScripting;
 
 public class ObjectPool<T> where T : Component
 {
@@ -243,7 +244,7 @@ public class Shooting : AttributesSync
                 else        RetroDither.shotFired    = true;
                 ReloadAnimation.PlayAnim();
                 StartCoroutine(EnableDisable());
-                nextFireTime = Time.time + 1f / fireRate * upgradeManager.fireRateMultiplier;
+                nextFireTime = Time.time + 1f / fireRate * upgradeManager.Local.fireRateMultiplier;
                 ammo--;
             }
             else if (!(inputCheck && ammo > 0 && !reloading))
@@ -499,7 +500,7 @@ public class Shooting : AttributesSync
     IEnumerator waitReload()
     {
         reloading = true;
-        yield return new WaitForSeconds((shotgun && shottieNum == 1) ? 1.31f : 2.01f / upgradeManager.reloadSpeedMultiplier);
+        yield return new WaitForSeconds((shotgun && shottieNum == 1) ? 1.31f : 2.01f / upgradeManager.Local.reloadSpeedMultiplier);
 
         if (shotgun) shottieNum = 2;
         else         reloadNum  = 30;
