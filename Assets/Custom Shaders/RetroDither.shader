@@ -25,9 +25,6 @@ Shader "Hidden/RetroDither"
         _SubpixelBrightness ("Subpixel Brightness", Range(1, 4)) = 3
         _MinHW ("Min Half-Width", Float) = 0.1
         _MaxHW ("Max Half-Width", Float) = 0.5
-
-        // Set from RetroDither.cs each frame; declared here so the material
-        // inspector reflects the full uniform set.
         _Resolution ("Source Resolution", Vector) = (1920, 1080, 0, 0)
         _DitherRes ("Dither Buffer Resolution", Vector) = (1920, 1080, 0, 0)
         _ContentRes ("Content Buffer Resolution", Vector) = (1920, 1080, 0, 0)
@@ -88,14 +85,10 @@ Shader "Hidden/RetroDither"
         return o;
     }
 
-    // 8x8 Bayer threshold via bit interleaving. Equivalent to the classic
-    // 64-entry lookup table but stays in registers instead of spilling the
-    // array to scratch memory under a dynamic index.
     float bayer8(int x, int y)
     {
         int xc = x ^ y;
 
-        // Interleave: bit pairs from (x^y) and y, most significant first.
         int v = ((y >> 2) & 1)
           | (((xc >> 2) & 1) << 1)
           | (((y  >> 1) & 1) << 2)
@@ -113,8 +106,6 @@ Shader "Hidden/RetroDither"
         return bayer8(x, y);
     }
 
-    // Barrel distortion shared by the image sample, the scanlines, the
-    // subpixel mask and the edge vignette so they all warp together.
     float2 curveUV(float2 uv, float curveAmount)
     {
         float2 c = uv * 2.0 - 1.0;
@@ -168,16 +159,9 @@ Shader "Hidden/RetroDither"
             {
                 float levels = max(1.0, floor(_ColorAmount + 0.5) - 1.0);
 
-                // One posterization step is 1/levels wide. Scaling the bias by
-                // levels keeps the dither strength constant in step-units, so
-                // _Bias behaves the same at any _ColorAmount.
                 float threshold = bayerThreshold(cellPx) - 0.5;
                 color += threshold * _Bias / levels;
 
-                // fwidth is meaningless here: this pass runs at dither
-                // resolution where adjacent fragments are unrelated content,
-                // so the 2x2 quad derivative is noise. Use a fixed transition
-                // width in level-units instead.
                 float3 w = (float3)clamp(_MinHW, 0.0, _MaxHW);
 
                 return posterize3(color, w, levels);
@@ -210,14 +194,8 @@ Shader "Hidden/RetroDither"
                 float cell = max(1.0, _CellSize);
                 float aspect = res.x / max(1.0, res.y);
 
-                // Computed once and reused by the image sample, scanlines,
-                // subpixel mask and vignette.
                 float2 sampleUV = curveUV(uv, _Curve);
 
-                // Advance the noise coordinate with time rather than scaling
-                // it: multiplying by sin() drives the sample point through
-                // zero twice per cycle, collapsing every row onto the same
-                // noise value and killing the per-row jitter.
                 float rowV = (floor(uv.y * res.y / cell) + 0.5) * cell / res.y;
                 float shake = (noise(float2(rowV * _ShakeFrequency, _Time.y * 40.0)) - 0.5) * 0.0025;
 
@@ -226,10 +204,6 @@ Shader "Hidden/RetroDither"
                 float2 shakenUV = imagePx / res;
                 float2 dUV = (floor(imagePx / cell) + 0.5) / _DitherRes;
 
-                // Chromatic aberration belongs here, on the full-res present
-                // pass, not baked into the pixelated buffer before
-                // quantization. Radial and aspect-corrected so it grows
-                // toward the edges like a real lens.
                 float2 fromCenter = shakenUV * 2.0 - 1.0;
                 float2 caOffset = float2(fromCenter.x * aspect, fromCenter.y) * _ChromaticAberration;
 
@@ -239,29 +213,18 @@ Shader "Hidden/RetroDither"
                 col.b = tex2D(_MainTex, dUV - caOffset).b;
                 col.a = 1.0;
 
-                // Scanlines ride the curved surface and scroll with
-                // _ScanlineSpeed, so they stay attached to the tube instead
-                // of floating flat over a warped image.
-                // Normalizing by _RefHeight keeps the scanline pitch fixed in
-                // reference-pixel terms, so the count tracks resolution
-                // instead of aliasing against the pixel grid.
                 float scanV = sampleUV.y * (res.y / max(1.0, _RefHeight));
-                // _ScanlineSpeed is authored in the same units as the old
-                // (unused) value; 0.001 turns it into a slow vertical roll.
-                float banding = abs(sin(scanV * _ScanlineFrequency - _Time.y * _ScanlineSpeed * 0.001));
+
+                float banding = abs(sin(scanV * _ScanlineFrequency - _Time.y * _ScanlineSpeed));
                 float effect = lerp(1.0, banding, _ScanlineDarkness);
 
                 col.rgb *= effect;
 
-                // Sample bloom with the shaken UV so the glow stays locked to
-                // the objects producing it during a shot shake.
                 float3 bloom = tex2D(_BloomTex, shakenUV).rgb;
                 col.rgb += bloom * (_BloomStrength + _GlowStrength);
 
                 if (_SubpixelEnabled > 0.5)
                 {
-                    // Phosphor stripes follow the curved glass, matching the
-                    // scanlines and vignette.
                     float subX = (sampleUV.x * res.x) / max(1.0, _SubpixelMaskSize) * 3.0;
                     float idx = fmod(subX, 3.0);
                     float3 mask = float3(
@@ -278,8 +241,6 @@ Shader "Hidden/RetroDither"
                 float2 edge = smoothstep(0., 0.02, sampleUV)*(1.-smoothstep(1.-0.02, 1., sampleUV));
                 col.rgb *= edge.x * edge.y;
 
-                // Bloom addition and up-to-4x subpixel brightness can push
-                // past 1; clamp so an HDR camera target does not blow out.
                 col.rgb = saturate(col.rgb);
 
                 return col;
@@ -311,9 +272,6 @@ Shader "Hidden/RetroDither"
 
             fixed4 fragBlur(v2f i) : SV_Target
             {
-                // _MainTex_TexelSize tracks whatever Blit bound as the source,
-                // so the ping-pong stays correct even if the two bloom RTs
-                // ever differ in size.
                 float2 step = _BlurDir * _MainTex_TexelSize.xy;
                 float3 col = tex2D(_MainTex, i.uv).rgb * 0.227027;
                 col += tex2D(_MainTex, i.uv + step * 1.384615).rgb * 0.316216;
