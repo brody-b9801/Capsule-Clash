@@ -17,7 +17,9 @@ public class RetroDither : MonoBehaviour
     [Range(0, 5)] public float shakeIntensity = 0.5f;
     [Range(0, 500)] public float shakeFrequency = 50f;
     [Range(0, 0.02f)] public float chromaticAberration = 0.002f;
+    [Tooltip("Posterization edge softness, in level-units. 0 = hard steps.")]
     [Range(0, 1)] public float minHW = 0.1f;
+    [Tooltip("Upper clamp on posterization edge softness.")]
     [Range(0, 1)] public float maxHW = 0.5f;
 
     [Header("Bloom / Phosphor Glow")]

@@ -164,7 +164,7 @@ Material:
     - _OcclusionStrength: 1
     - _Offset: 0
     - _OutlineDepthWeight: 4
-    - _OutlineDistanceScale: 0.5
+    - _OutlineDistanceScale: 1
     - _OutlineLightModulation: 0
     - _OutlineNormalWeight: 1.5
     - _OutlineScaleDistance: 0.1
