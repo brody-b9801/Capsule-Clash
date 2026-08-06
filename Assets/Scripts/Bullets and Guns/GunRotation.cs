@@ -37,7 +37,7 @@ public class GunRotation : AttributesSync
         if (g1 != null && IsValidVector3(g1.transform.position) && IsValidQuaternion(g1.transform.rotation))
             gunPosition(g1.transform.position - new Vector3(0, 0.35f, 0), g1.transform.rotation, "gun", true);
         if (gm1 != null && IsValidVector3(gm1.transform.localPosition))
-            gunPosition(gm1.transform.localPosition, Quaternion.identity, "magazine", true);
+            gunPosition(gm1.transform.localPosition, Quaternion.identity, "magazine", gm1.gameObject.activeSelf);
         if (c1 != null && IsValidVector3(c1.transform.position))
             gunPosition(c1.transform.localPosition, Quaternion.identity, "casing", c1.GetComponent<MeshRenderer>().enabled);
         Debug.Log(c1.transform.localPosition);
@@ -67,7 +67,7 @@ public class GunRotation : AttributesSync
                 thingToPosition.transform.rotation = rot;
             }
             //thingToPosition.transform.localEulerAngles = thingToPosition.transform.localEulerAngles - new Vector3(0, 0, 0); 
-            if (type == "casing") thingToPosition.GetComponent<MeshRenderer>().enabled = enabled;
+            if (type == "casing" || type == "magazine") thingToPosition.GetComponent<MeshRenderer>().enabled = enabled;
             if (type == "magazine" || type == "casing")
                 thingToPosition.transform.localPosition = pos;
             else
