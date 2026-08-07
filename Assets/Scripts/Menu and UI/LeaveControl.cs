@@ -20,7 +20,7 @@ public class LeaveControl : MonoBehaviour
             Vector3 topLeft = corners[1];      
             Vector3 bottomRight = corners[3];
             if (mousePos.x > topLeft.x && mousePos.x < bottomRight.x && mousePos.y < topLeft.y && mousePos.y > bottomRight.y) {
-                Shooting.canShoot = false;
+                Shooting.Local.canShoot = false;
                 Shooting.lockCursor = false;
             }
         }

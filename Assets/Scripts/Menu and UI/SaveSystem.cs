@@ -42,8 +42,6 @@ public class SaveSystem : MonoBehaviour
 {
     static bool loaded;
 
-    // LoadPlayerData runs BeforeSceneLoad, when no upgradeManager exists yet, so
-    // upgrade state is buffered here and applied by upgradeManager.Awake().
     static int pendingKillPoints = 100;
     static int pendingUpgradePoints = 0;
     static int[] pendingUpgradesPurchased;
@@ -54,6 +52,17 @@ public class SaveSystem : MonoBehaviour
         manager.upgradePoints = pendingUpgradePoints;
         if (pendingUpgradesPurchased != null)
             manager.upgradesPurchased = pendingUpgradesPurchased;
+    }
+
+    static bool pendingMazeKeyAcquired;
+    static bool pendingSpaceKeyAcquired;
+    static bool pendingIceKeyAcquired;
+
+    public static void ApplyPendingMaskData(MaskController mask)
+    {
+        mask.mazeKeyAcquired = pendingMazeKeyAcquired;
+        mask.spaceKeyAcquired = pendingSpaceKeyAcquired;
+        mask.iceKeyAcquired = pendingIceKeyAcquired;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -94,9 +103,9 @@ public class SaveSystem : MonoBehaviour
 
         SettingsController.volumePercent = playerData.volume;
         SettingsController.rs = playerData.rotationSpeed;
-        MaskController.mazeKeyAcquired = playerData.mazeKeyAcquired;
-        MaskController.spaceKeyAcquired = playerData.spaceKeyAcquired;
-        MaskController.iceKeyAcquired = playerData.iceKeyAcquired;
+        pendingMazeKeyAcquired = playerData.mazeKeyAcquired;
+        pendingSpaceKeyAcquired = playerData.spaceKeyAcquired;
+        pendingIceKeyAcquired = playerData.iceKeyAcquired;
         pendingKillPoints = playerData.capsuleEssence;
         pendingUpgradePoints = playerData.killPoints;
         SettingsController.buildKeys = new SettingsController.Keys
@@ -110,26 +119,30 @@ public class SaveSystem : MonoBehaviour
             pendingUpgradesPurchased = playerData.upgradeLevels;
         PlayerMovement.killCount = playerData.lifetimeKills;
 
-        // A manager may already exist if load is re-run after scene load.
         if (upgradeManager.Local != null)
             ApplyPendingUpgradeData(upgradeManager.Local);
+        if (MaskController.Local != null)
+            ApplyPendingMaskData(MaskController.Local);
     }
     public static void SavePlayerData()
     {
         return;
-        // Fall back to the buffered values when saving outside a scene that has
-        // an upgradeManager, so a save can't wipe loaded upgrade progress.
         upgradeManager manager = upgradeManager.Local;
         int savedKillPoints = manager != null ? manager.killPoints : pendingKillPoints;
         int savedUpgradePoints = manager != null ? manager.upgradePoints : pendingUpgradePoints;
         int[] savedUpgradesPurchased = manager != null ? manager.upgradesPurchased : pendingUpgradesPurchased;
 
+        MaskController mask = MaskController.Local;
+        bool savedMazeKey = mask != null ? mask.mazeKeyAcquired : pendingMazeKeyAcquired;
+        bool savedSpaceKey = mask != null ? mask.spaceKeyAcquired : pendingSpaceKeyAcquired;
+        bool savedIceKey = mask != null ? mask.iceKeyAcquired : pendingIceKeyAcquired;
+
         PlayerData playerData = new PlayerData(
             SettingsController.volumePercent,
             SettingsController.rs,
-            MaskController.mazeKeyAcquired,
-            MaskController.spaceKeyAcquired,
-            MaskController.iceKeyAcquired,
+            savedMazeKey,
+            savedSpaceKey,
+            savedIceKey,
             savedKillPoints,
             savedUpgradePoints,
             new PlayerData.BuildKeys

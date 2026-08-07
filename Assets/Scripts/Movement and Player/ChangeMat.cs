@@ -44,16 +44,26 @@ public class ChangeMat : AttributesSync
     private Renderer player;
     private PlayerMovement movement;
     [SerializeField] private Alteruna.Avatar avatar;
-    public static string avatarRef;
-    public static string shooterRef;
-    public static bool healed = false;
+
+    public static ChangeMat Local { get; private set; }
+
+    public string avatarRef;
+    public string shooterRef;
+    public bool healed = false;
 
     private void Awake()
     {
+        Local = this;
         player = GetComponent<Renderer>();
         movement = GetComponent<PlayerMovement>();
         avatarRef = avatar.ToString();
         dimensionMaterialChange("Desert");
+    }
+
+    private new void OnDestroy()
+    {
+        if (Local == this) Local = null;
+        base.OnDestroy();
     }
 
     public void dimensionMaterialChange(string materialDimension)

@@ -88,15 +88,17 @@ public class Shooting : AttributesSync
     public float fireRate;
     public float nextFireTime = 0.0f;
 
-    public static int  reloadNum  = 30;
-    public static int shottieNum = 2;
-    public static bool reloading  = false;
+    public static Shooting Local { get; private set; }
 
-    public static bool playerShot;
-    public static bool isShooting;
-    public static bool canShoot   = true;
+    public int  reloadNum  = 30;
+    public int shottieNum = 2;
+    public bool reloading  = false;
+
+    public bool playerShot;
+    public bool isShooting;
+    public bool canShoot   = true;
     public static bool lockCursor = false;
-    public static bool shotgun    = false;
+    public bool shotgun    = false;
     public static float distance;
     public static Vector3 deltaPosition;
     public static float spread;
@@ -137,6 +139,17 @@ public class Shooting : AttributesSync
     public  GameObject playerMag;
 
     public float trailFadeDuration = 0.5f;
+
+    void Awake()
+    {
+        Local = this;
+    }
+
+    private new void OnDestroy()
+    {
+        if (Local == this) Local = null;
+        base.OnDestroy();
+    }
 
     void Start()
     {

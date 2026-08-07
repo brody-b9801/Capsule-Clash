@@ -30,10 +30,10 @@ public class BuildUI : AttributesSync
             return;
         }
 
-        if (ObjectSpawner.buildNum < 25 && !lerpingBuild)
+        if (objectSpawner.buildNum < 25 && !lerpingBuild)
             StartCoroutine(lerpBuild());
 
-        builds.text = ObjectSpawner.buildNum.ToString();
+        builds.text = objectSpawner.buildNum.ToString();
         timer.fillAmount = (buildResetTime / 100);
         arrow.localEulerAngles = new Vector3(0, 0, 360 * (buildResetTime / 100));
 
@@ -92,7 +92,7 @@ public class BuildUI : AttributesSync
         }   
 
         lerpingBuild = false;
-        ObjectSpawner.buildNum++;
+        objectSpawner.buildNum++;
         yield break;
 
     }

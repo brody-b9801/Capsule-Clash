@@ -10,8 +10,8 @@ public class Username : AttributesSync
 {
     [SerializeField] private TMP_Text usernameDisplay;
     [SerializeField] private Alteruna.Avatar avatar;
-    public static float killCount;
-    public static string username;
+    public float killCount;
+    public string username;
 
     void Update()
     {

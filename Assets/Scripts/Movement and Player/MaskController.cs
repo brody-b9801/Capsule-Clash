@@ -5,7 +5,9 @@ using TMPro;
 public class MaskController : MonoBehaviour {
     private const string FeedPrompt = "Press Space to Feed Me 5 Capsules, I MUST GROW";
 
-    public static int keyCount = 0;
+    public static MaskController Local { get; private set; }
+
+    public int keyCount = 0;
     [SerializeField] private GameObject keyPrefab;
 
     private Camera playerCamera;
@@ -28,9 +30,9 @@ public class MaskController : MonoBehaviour {
     private bool seenSpaceMask = false;
     private bool seenIceMask = false;
 
-    public static bool mazeKeyAcquired = false;
-    public static bool spaceKeyAcquired = false;
-    public static bool iceKeyAcquired = false;
+    public bool mazeKeyAcquired = false;
+    public bool spaceKeyAcquired = false;
+    public bool iceKeyAcquired = false;
     public static bool maskAnimationPlaying = false;
 
     private bool desertEntered = false;
@@ -45,6 +47,15 @@ public class MaskController : MonoBehaviour {
 
     public bool LookingAtMask => seeingMazeMask || seeingSpaceMask || seeingIceMask;
     private bool AllKeysAcquired => mazeKeyAcquired && spaceKeyAcquired && iceKeyAcquired;
+
+    private void Awake() {
+        Local = this;
+        SaveSystem.ApplyPendingMaskData(this);
+    }
+
+    private void OnDestroy() {
+        if (Local == this) Local = null;
+    }
 
     public void Initialize(Camera camera) {
         playerCamera = camera;
@@ -557,7 +568,7 @@ public class MaskController : MonoBehaviour {
         ui.disableUI();
         gun.disableGun();
         maskAnimationPlaying = true;
-        Shooting.canShoot = false;
+        Shooting.Local.canShoot = false;
 
         float lerpTime = 1f;
         float timeAcc = 0f;
@@ -587,7 +598,7 @@ public class MaskController : MonoBehaviour {
             yield return null;
         }
         maskAnimationPlaying = false;
-        Shooting.canShoot = true;
+        Shooting.Local.canShoot = true;
         gun.enableGun();
         ui.enableUI();
         yield break;

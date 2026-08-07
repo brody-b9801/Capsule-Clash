@@ -11,16 +11,22 @@ public class ObjectSpawner : AttributesSync
     [SerializeField] private Alteruna.Avatar avatar;
     private static Spawner _spawner;
     [SerializeField] private Transform player;
-    public static List<GameObject> playerSpawnedObjects;
+    // Note: despite the name, this is repopulated from scene-wide
+    // FindGameObjectsWithTag in checkSupport(), so it holds every player's
+    // builds, not just this one's. Instance-scoped now; ownership is Phase 5.
+    public List<GameObject> playerSpawnedObjects;
     private float gridSize = 5f;
 
-    public static float buildNum = 25;
+    public float buildNum = 25;
     public static GameObject breakParticles;
     public GameObject breakParticlesRef;
     public GameObject ground;
     public static bool checkSupportBool = true;
     public static List<GameObject> unsupportedObjects;
-    private static ObjectSpawner Instance;
+
+    // The local player's ObjectSpawner. Phase 1 accessor: valid on a client,
+    // meaningless on a dedicated server (which has no local player).
+    public static ObjectSpawner Local { get; private set; }
     private static HashSet<Vector3> instantiatedParticles = new HashSet<Vector3>();
 
 
@@ -31,7 +37,15 @@ public class ObjectSpawner : AttributesSync
         playerSpawnedObjects = new List<GameObject>();
         breakParticles = breakParticlesRef;
         BuildUI.objectSpawner = this;
-        Instance = this;
+        Local = this;
+    }
+
+    // AttributesSync declares its own OnDestroy; hide it explicitly and chain to
+    // the base so Alteruna's cleanup still runs.
+    private new void OnDestroy()
+    {
+        if (Local == this) Local = null;
+        base.OnDestroy();
     }
 
     private void OnDrawGizmos()

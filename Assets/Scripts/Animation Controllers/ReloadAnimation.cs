@@ -69,16 +69,16 @@ public class ReloadAnimation : MonoBehaviour
 
     public void enable()
     {
-        if (Shooting.shotgun)
+        if (Shooting.Local.shotgun)
             SetCasingVisible(true);
     }
 
     public void enable2()
     {
-        Debug.Log(Shooting.shottieNum);
-        if (Shooting.shotgun && Shooting.shottieNum == 0) 
+        Debug.Log(Shooting.Local.shottieNum);
+        if (Shooting.Local.shotgun && Shooting.Local.shottieNum == 0) 
             SetCasingVisible(true);
-        else if (Shooting.shotgun)
+        else if (Shooting.Local.shotgun)
             pendingSkip = true;
     }
 

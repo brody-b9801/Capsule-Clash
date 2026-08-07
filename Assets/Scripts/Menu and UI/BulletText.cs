@@ -15,15 +15,15 @@ public class BulletText : MonoBehaviour
 
     void Update()
     {
-    if (!Shooting.shotgun)
+    if (!Shooting.Local.shotgun)
     {
-      text.text = Shooting.reloadNum.ToString();
+      text.text = Shooting.Local.reloadNum.ToString();
       bullet.SetActive(true);
       shotgun.SetActive(false);
     }
     else
     {
-      text.text = Shooting.shottieNum.ToString();
+      text.text = Shooting.Local.shottieNum.ToString();
       shotgun.SetActive(true);
       bullet.SetActive(false);
     }

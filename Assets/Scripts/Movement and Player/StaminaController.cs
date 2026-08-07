@@ -9,13 +9,25 @@ public class StaminaController : MonoBehaviour
     [SerializeField] private float maxStamina = 100f;
     [SerializeField] private float staminaRegenRate = 10f;
     [SerializeField] private float staminaDepletionRate = 20f;
-    public static bool canSprint = true;
+    public static StaminaController Local { get; private set; }
+
+    public bool canSprint = true;
     public static bool zoomOut = false;
     [SerializeField] private RectTransform staminaBlack;
     private float currentStamina;
     private Color yellow;
     private Color red;
     private bool lowStaminaWarningPlayed = false;
+
+    private void Awake()
+    {
+        Local = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (Local == this) Local = null;
+    }
 
     private void Start()
     {

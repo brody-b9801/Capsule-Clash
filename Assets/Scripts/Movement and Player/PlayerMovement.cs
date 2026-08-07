@@ -332,7 +332,7 @@ public class PlayerMovement : AttributesSync {
             iceSpawnPosContainer = GameObject.Find("IceSpawnContainer").transform;
             spaceSpawnPosContainer = GameObject.Find("VoidSpawnContainer").transform;
             mazeSpawnPosContainer = GameObject.Find("MazeSpawnContainer").transform;
-            Shooting.canShoot = true;
+            Shooting.Local.canShoot = true;
             Shooting.lockCursor = true;
             usernameText = GameObject.Find("UsernameInput").GetComponent<TextMeshProUGUI>();
             dt = GameObject.Find("DashText").GetComponent<TextMeshProUGUI>();
@@ -380,10 +380,10 @@ public class PlayerMovement : AttributesSync {
             healthWidth = 180.0f;
             canTakeDamage = false;
             HealthController.updateHealth();
-            Shooting.reloadNum = 30;
+            Shooting.Local.reloadNum = 30;
             GunThingAnim.movingState = false;
             dashes = 0;
-            ObjectSpawner.buildNum = 25;
+            ObjectSpawner.Local.buildNum = 25;
             lastGroundedHeight = -13;
             currentCameraRotationX = 0;
             currentCameraRotationY = 0;
@@ -678,14 +678,14 @@ private void UpdateMovementVector()
 
         // Healing
 
-        if (Input.GetKey(KeyCode.Q) && !Shooting.reloading && !CameraZoom.moving && !Shaker.shooting
+        if (Input.GetKey(KeyCode.Q) && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
             && isGrounded && !healParticles.healing && healthWidth < 180.0f)
             StartCoroutine(stationaryHealing());
         
         // Sprint
 
         if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            && isGrounded && StaminaController.canSprint && !isAiming) {
+            && isGrounded && StaminaController.Local.canSprint && !isAiming) {
             isSprinting = true;
         } else {
             if (!fastAir) isSprinting = false;
@@ -705,7 +705,7 @@ private void UpdateMovementVector()
     }
 
     private void ManageSprintState() {
-        if (!StaminaController.canSprint) fastAir = false;
+        if (!StaminaController.Local.canSprint) fastAir = false;
 
         if (sprintingPrev && groundedPrev && !isGrounded) {
             fastAir = true;
@@ -804,7 +804,7 @@ private void UpdateMovementVector()
             else if (hitObject == portal2B) HandleTeleportation(portal2A, spaceInfo);
             else if (hitObject == portal3A) HandleTeleportation(portal3B, desertInfo);
             else if (hitObject == portal3B) HandleTeleportation(portal3A, iceInfo);
-            else if (hitObject == portal4 && MaskController.keyCount == 3) {
+            else if (hitObject == portal4 && MaskController.Local.keyCount == 3) {
                 //Start boss fight scene, to be implemented
             }
         }
@@ -907,16 +907,16 @@ private void UpdateMovementVector()
         healthWidth = 180.0f;
         canTakeDamage = false;
         HealthController.updateHealth();
-        Shooting.reloadNum = 30;
+        Shooting.Local.reloadNum = 30;
         GunThingAnim.movingState = false;
         dashes = 0;
-        ObjectSpawner.buildNum = 25;
+        ObjectSpawner.Local.buildNum = 25;
         transform.localEulerAngles = Vector3.zero;
         newVelocity = Vector3.zero;
         characterController.enabled = false;
         dead = false;
         lastGroundedHeight = -13;
-        ChangeMat.healed = false;
+        GetComponent<ChangeMat>().healed = false;
         movement = Vector3.zero;
             
         // Select appropriate spawn list based on current dimension
@@ -937,7 +937,7 @@ private void UpdateMovementVector()
         currentCameraRotationY = targetRotation.eulerAngles.y;
 
         characterController.enabled = true;
-        Shooting.canShoot = true;
+        Shooting.Local.canShoot = true;
 
         lastPosition = playerTransform.position;
         velocityTransform = Vector3.zero;
@@ -1086,7 +1086,7 @@ private void UpdateMovementVector()
         while (elapsedHealTime < 3f / upgradeManager.Local.regenSpeedMultiplier) {
             healParticles.healing = true;
             if (!(Input.GetKey(KeyCode.Q) && !CameraZoom.moving && !Shaker.shooting
-                  && healthWidth < 180.0f && isGrounded && !Shooting.reloading)) {
+                  && healthWidth < 180.0f && isGrounded && !Shooting.Local.reloading)) {
                 healParticles.healing = false;
                 yield break;
             }
@@ -1109,7 +1109,7 @@ private void UpdateMovementVector()
 
         while (elapsedTime < duration) {
             if (CameraZoom.isAiming) {
-                targetY = (Shooting.shotgun) ? 0 : 0.085f;
+                targetY = (Shooting.Local.shotgun) ? 0 : 0.085f;
                 aimVectorPos = Vector3.Lerp(startAimVectorPos, new Vector3(targetAimXPos, targetY, targetAimZPos), elapsedTime / duration);
                 aimVectorRot = Vector3.Lerp(startAimVectorRot, new Vector3(targetAimXRot, targetAimYRot, 0), elapsedTime / duration);
                 elapsedTime += Time.deltaTime;
@@ -1136,7 +1136,7 @@ private void UpdateMovementVector()
         float elapsedTime = 0f;
 
         while (elapsedTime < duration) {
-            if (isSprinting && !Shaker.shooting && !Shooting.reloading && CameraZoom.moving) {
+            if (isSprinting && !Shaker.shooting && !Shooting.Local.reloading && CameraZoom.moving) {
                 walkVectorPos = Vector3.Lerp(walkVectorPosStart, new Vector3(targetWalkXPos, targetWalkYPos, targetWalkZPos), elapsedTime / duration);
                 walkVectorRot = Vector3.Lerp(walkVectorRotStart, new Vector3(targetWalkXRot, targetWalkYRot, targetWalkZRot), elapsedTime / duration);
                 elapsedTime += Time.deltaTime;
@@ -1188,7 +1188,7 @@ private void UpdateMovementVector()
         float elapsedTime = 0f;
 
         while (elapsedTime < duration) {
-            if (!isSprinting || Shaker.shooting || Shooting.reloading || !CameraZoom.moving) {
+            if (!isSprinting || Shaker.shooting || Shooting.Local.reloading || !CameraZoom.moving) {
                 walkVectorPos = Vector3.Lerp(walkVectorPosStart, Vector3.zero, elapsedTime / duration);
                 walkVectorRot = Vector3.Lerp(walkVectorRotStart, Vector3.zero, elapsedTime / duration);
                 elapsedTime += Time.deltaTime;
@@ -1314,14 +1314,14 @@ private void UpdateMovementVector()
     }
     private void LateUpdate() {
         if (!_avatar.IsOwner || MaskController.maskAnimationPlaying) return;
-        if (!Shooting.reloading) {
+        if (!Shooting.Local.reloading) {
             akm.localPosition = akmBaseLocalPos;
             akm.localEulerAngles = akmBaseLocalRot;
         }
         if (!dead && !MaskController.maskAnimationPlaying) {
             //playerCamera.gameObject.transform.position = transform.position + new Vector3(.5f * Mathf.Sin(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad), .75f, .5f * Mathf.Cos(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad)) + landingCameraOffset;
             playerCamera.gameObject.transform.position = transform.position + new Vector3(0, .75f, 0) + landingCameraOffset + 0.4f * transform.forward;
-            if (!Shooting.reloading) {
+            if (!Shooting.Local.reloading) {
                 Vector3 shootOffset = new Vector3((-Shaker.yRot - Shaker.zRot) / 500, Shaker.easedRotationChange / 125, -Shaker.easedRotationChange / 250) * shootAnimTune;
                 akm.localPosition += akm.parent.InverseTransformVector(shootOffset);
             }
@@ -1344,9 +1344,9 @@ private void UpdateMovementVector()
                     shootAnimTune * Shaker.zRot + -1.2f * gunYRot * turnAnimTune + 2.1f * sideTilt * sidewaysAnimTune);
         }
 
-        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && isSprinting && !Shaker.shooting && !Shooting.reloading && !lerpingWalk && !lerpingWalkDone && CameraZoom.moving)
+        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && isSprinting && !Shaker.shooting && !Shooting.Local.reloading && !lerpingWalk && !lerpingWalkDone && CameraZoom.moving)
             StartCoroutine(lerpWalkStart());
-        else if (isSprinting && (Shaker.shooting || Shooting.reloading) && !lerpingWalkEnd && !lerpingWalkDoneEnd)
+        else if (isSprinting && (Shaker.shooting || Shooting.Local.reloading) && !lerpingWalkEnd && !lerpingWalkDoneEnd)
             StartCoroutine(lerpWalkEnd(0.05f));
         else if (!lerpingWalkEnd && !lerpingWalkDoneEnd && (!CameraZoom.moving || !isSprinting || !(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))))
             StartCoroutine(lerpWalkEnd(0.25f));
