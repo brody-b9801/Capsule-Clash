@@ -96,7 +96,7 @@ public class CameraZoom : MonoBehaviour
         }
 
         float desiredZoom;
-        if ((Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && PlayerMovement.isGrounded)
+        if ((Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && PlayerMovement.Local.isGrounded)
         {
             isAiming = true;
             if (!moving) {
@@ -111,7 +111,7 @@ public class CameraZoom : MonoBehaviour
         else if (StaminaController.zoomOut)
         {
             isAiming = false;
-            if (PlayerMovement.isGrounded) {
+            if (PlayerMovement.Local.isGrounded) {
                 crosshairDelta = outCHFov * factor;
             } else {
                 Shooting.spread = 1.8f * outSpread;
@@ -124,7 +124,7 @@ public class CameraZoom : MonoBehaviour
         else
         {
             isAiming = false;
-            if (!PlayerMovement.isGrounded) {
+            if (!PlayerMovement.Local.isGrounded) {
                 Shooting.spread = 1.8f * regSpread;
                 crosshairDelta = regCHFov * 1.5f * factor;
             } else if (moving) {
@@ -143,7 +143,7 @@ public class CameraZoom : MonoBehaviour
         RaycastHit hit;
 
         float airFOVTarget = 0f;
-        if (!PlayerMovement.isGrounded && !PlayerMovement.isTeleporting)
+        if (!PlayerMovement.Local.isGrounded && !PlayerMovement.Local.isTeleporting)
             airFOVTarget = StaminaController.zoomOut ? targetZoomMod * 2 : targetZoomMod;
         airFOVOffset = Mathf.SmoothDamp(airFOVOffset, airFOVTarget, ref airFOVVelocity, 0.12f);
         targetZoom += airFOVOffset;

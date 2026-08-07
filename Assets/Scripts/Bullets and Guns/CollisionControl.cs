@@ -164,7 +164,7 @@ public class CollisionControl : AttributesSync
             // Handle test target
             if (hitObject.CompareTag("tester"))
             {
-                PlayerMovement.hitCount++;
+                PlayerMovement.Local.hitCount++;
             }
 
             // Mark as hit and broadcast impact

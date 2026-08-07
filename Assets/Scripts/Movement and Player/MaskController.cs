@@ -148,12 +148,12 @@ public class MaskController : MonoBehaviour {
         seeingSpaceMask = false;
         seeingIceMask = false;
 
-        if (PlayerMovement.currDimension == "Desert") return;
+        if (PlayerMovement.Local.currDimension == "Desert") return;
 
         GameObject maskToDetect = null;
         ref bool seeing = ref seeingMazeMask;
         ref bool keyAcquired = ref mazeKeyAcquired;
-        switch (PlayerMovement.currDimension)
+        switch (PlayerMovement.Local.currDimension)
         {
             case "Maze": maskToDetect = mazeMaskTransform.gameObject;  break;
             case "Space": maskToDetect = spaceMaskTransform.gameObject; seeing = ref seeingSpaceMask; keyAcquired = ref spaceKeyAcquired; break;
@@ -172,7 +172,7 @@ public class MaskController : MonoBehaviour {
             } else if (!MaskSpeaking) {
                 maskText.text = FeedPrompt;
             }
-        } else if (PlayerMovement.currDimension == "Maze" && maskText.text == FeedPrompt) {
+        } else if (PlayerMovement.Local.currDimension == "Maze" && maskText.text == FeedPrompt) {
             maskText.text = "";
         }
 
@@ -183,7 +183,7 @@ public class MaskController : MonoBehaviour {
             } else if (!MaskSpeaking) {
                 maskText.text = FeedPrompt;
             }
-        } else if (PlayerMovement.currDimension == "Space" && maskText.text == FeedPrompt) {
+        } else if (PlayerMovement.Local.currDimension == "Space" && maskText.text == FeedPrompt) {
             maskText.text = "";
         }
 
@@ -194,7 +194,7 @@ public class MaskController : MonoBehaviour {
             } else if (!MaskSpeaking) {
                 maskText.text = FeedPrompt;
             }
-        } else if (PlayerMovement.currDimension == "Ice" && maskText.text == FeedPrompt) {
+        } else if (PlayerMovement.Local.currDimension == "Ice" && maskText.text == FeedPrompt) {
             maskText.text = "";
         }
     }
@@ -233,7 +233,7 @@ public class MaskController : MonoBehaviour {
 
     private void RotateMask() {
         Transform mask = null;
-        switch (PlayerMovement.currDimension) {
+        switch (PlayerMovement.Local.currDimension) {
             case "Maze": mask = mazeMaskTransform; break;
             case "Space": mask = spaceMaskTransform; break;
             case "Ice": mask = iceMaskTransform; break;
@@ -254,7 +254,7 @@ public class MaskController : MonoBehaviour {
     /// </summary>
     public void DisplayDimension() {
         ResetMaskState();
-        activeSceneCoroutine = StartCoroutine(DisplayDimensionAfterPixelize(PlayerMovement.currDimension));
+        activeSceneCoroutine = StartCoroutine(DisplayDimensionAfterPixelize(PlayerMovement.Local.currDimension));
     }
 
     private IEnumerator DisplayDimensionAfterPixelize(string dimension) {
@@ -624,7 +624,7 @@ public class MaskController : MonoBehaviour {
     private Transform getMaskTransform()
     {
         Transform mask;
-        switch (PlayerMovement.currDimension)
+        switch (PlayerMovement.Local.currDimension)
         {
             case "Ice":
                 mask = GameObject.Find("MaskIce").transform;

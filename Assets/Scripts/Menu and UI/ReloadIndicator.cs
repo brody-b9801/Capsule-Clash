@@ -46,9 +46,9 @@ public class ReloadIndicator : MonoBehaviour
         float total = 3f / upgradeManager.Local.regenSpeedMultiplier;
 
         HealBar.rectTransform.sizeDelta = new Vector2(0.0f, HealBar.rectTransform.sizeDelta.y);
-        while (PlayerMovement.elapsedHealTime < total && healParticles.healing)
+        while (PlayerMovement.Local.elapsedHealTime < total && healParticles.healing)
         {
-            float percent = PlayerMovement.elapsedHealTime / total;
+            float percent = PlayerMovement.Local.elapsedHealTime / total;
             float newWidth = Mathf.Lerp(0.0f, 66.0f, percent);
             HealBar.rectTransform.sizeDelta = new Vector2(newWidth, HealBar.rectTransform.sizeDelta.y);
             total = 3f / upgradeManager.Local.regenSpeedMultiplier;

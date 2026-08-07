@@ -118,7 +118,7 @@ namespace Alteruna
 
 		private void FixedUpdate()
 		{
-			if (Input.GetKeyDown(KeyCode.Escape) && PlayerMovement.dead) {
+			if (Input.GetKeyDown(KeyCode.Escape) && PlayerMovement.Local.dead) {
 				Quit.staticQuit();				
 			}
             BuildUI.isHost = Multiplayer.GetUser().IsHost;

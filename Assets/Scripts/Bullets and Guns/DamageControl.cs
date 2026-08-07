@@ -28,7 +28,7 @@ public class DamageControl : AttributesSync
     }
 
     void OnCollisionEnter(Collision collision) {
-       if (collision.gameObject.CompareTag("bullet") && !avatar.IsOwner && PlayerMovement.canTakeDamage) {
+       if (collision.gameObject.CompareTag("bullet") && !avatar.IsOwner && PlayerMovement.Local.canTakeDamage) {
           Destroy(collision.gameObject);
           health -= damage;
           HealthController.updateHealth();

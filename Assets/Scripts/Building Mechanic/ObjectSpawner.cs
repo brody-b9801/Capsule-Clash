@@ -65,7 +65,7 @@ public class ObjectSpawner : AttributesSync
 
     private void Update()
     {
-        if (avatar.IsOwner && PlayerMovement.currDimension != "Maze")
+        if (avatar.IsOwner && PlayerMovement.Local.currDimension != "Maze")
         {
             var spawned = playerSpawnedObjects;
 

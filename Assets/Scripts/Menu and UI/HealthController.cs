@@ -6,7 +6,7 @@ public class HealthController : MonoBehaviour
 {
     public static RectTransform healthBar;
     [SerializeField] private RectTransform h1;
-    public static float h = PlayerMovement.healthWidth;
+    public static float h = 180.0f;
     public static RectTransform healthBlack;
     [SerializeField] private RectTransform healthBlackRef;
     public static bool damageAnim;
@@ -19,22 +19,22 @@ public class HealthController : MonoBehaviour
     private void Start() {
         healthBar = h1;
         healthBlack = healthBlackRef;
-        health = healthPrev = PlayerMovement.healthWidth;
+        health = healthPrev = PlayerMovement.Local.healthWidth;
     }
 
     void Update() {
-        if (!PlayerMovement.canTakeDamage) {
+        if (!PlayerMovement.Local.canTakeDamage) {
             health = 180;
         } else {
-            health = PlayerMovement.healthWidth;
+            health = PlayerMovement.Local.healthWidth;
         }
         if (health<healthPrev)
             damageAnim = true;
-        healthPrev = PlayerMovement.healthWidth;
+        healthPrev = PlayerMovement.Local.healthWidth;
     }
 
     public static void updateHealth() {
-	    h = PlayerMovement.healthWidth;
+	    h = PlayerMovement.Local.healthWidth;
       	healthBar.sizeDelta = new Vector2(h, healthBar.sizeDelta.y);
     }
 }

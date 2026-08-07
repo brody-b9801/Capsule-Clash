@@ -45,6 +45,12 @@ public class SaveSystem : MonoBehaviour
     static int pendingKillPoints = 100;
     static int pendingUpgradePoints = 0;
     static int[] pendingUpgradesPurchased;
+    static int pendingLifetimeKills = 0;
+
+    public static void ApplyPendingKillData(PlayerMovement player)
+    {
+        player.killCount = pendingLifetimeKills;
+    }
 
     public static void ApplyPendingUpgradeData(upgradeManager manager)
     {
@@ -117,12 +123,14 @@ public class SaveSystem : MonoBehaviour
         };
         if (playerData.upgradeLevels != null)
             pendingUpgradesPurchased = playerData.upgradeLevels;
-        PlayerMovement.killCount = playerData.lifetimeKills;
+        pendingLifetimeKills = playerData.lifetimeKills;
 
         if (upgradeManager.Local != null)
             ApplyPendingUpgradeData(upgradeManager.Local);
         if (MaskController.Local != null)
             ApplyPendingMaskData(MaskController.Local);
+        if (PlayerMovement.Local != null)
+            ApplyPendingKillData(PlayerMovement.Local);
     }
     public static void SavePlayerData()
     {
@@ -153,7 +161,7 @@ public class SaveSystem : MonoBehaviour
                 breakKey = SettingsController.buildKeys.breakKey
             },
             savedUpgradesPurchased,
-            PlayerMovement.killCount
+            PlayerMovement.Local != null ? PlayerMovement.Local.killCount : pendingLifetimeKills
         );
         string json = JsonConvert.SerializeObject(playerData);
         string path = Application.persistentDataPath + "/playerdata.json";

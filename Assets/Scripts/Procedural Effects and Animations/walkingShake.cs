@@ -53,14 +53,14 @@ public class walkingShake : MonoBehaviour
         float amplitudeUpgrade = 1f + ((upgradeManager.Local.speedMultiplier - 1f) * 0.05f);
         float frequencyUpgrade = 1f + ((upgradeManager.Local.speedMultiplier - 1f) * 0.1f);
 
-        if (PlayerMovement.isSprinting && amplitude != sprintAmplitude)
+        if (PlayerMovement.Local.isSprinting && amplitude != sprintAmplitude)
         {
             amplitude = sprintAmplitude;
             frequency = sprintFrequency;
             time = time * oldFreq / sprintFrequency;
             rampUpTime = rampUpTime * walkFrequency / sprintFrequency;
         }
-        else if (!PlayerMovement.isSprinting && amplitude != walkAmplitude && !CameraZoom.isAiming)
+        else if (!PlayerMovement.Local.isSprinting && amplitude != walkAmplitude && !CameraZoom.isAiming)
         {
             amplitude = walkAmplitude;
             frequency = walkFrequency;
@@ -82,7 +82,7 @@ public class walkingShake : MonoBehaviour
         finalAmplitude = amplitude * amplitudeUpgrade * PlayerMovement.percentAccelerated;
         finalFrequency = frequency * frequencyUpgrade;
 
-        if (PlayerMovement.isGrounded)
+        if (PlayerMovement.Local.isGrounded)
             groundedTime += Time.deltaTime;
         else
             groundedTime = 0f;
@@ -174,7 +174,7 @@ public class walkingShake : MonoBehaviour
         float safeFrequency = Mathf.Max(finalFrequency, 0.01f);
         float easeAmplitude = Mathf.Max(Mathf.Abs(newX), Mathf.Abs(finalAmplitude));
 
-        if (easeAmplitude < 0.0001f || !((xPrev > newX && newX > 0) || (xPrev < newX && newX < 0)) && walkStarted || !PlayerMovement.isGrounded)
+        if (easeAmplitude < 0.0001f || !((xPrev > newX && newX > 0) || (xPrev < newX && newX < 0)) && walkStarted || !PlayerMovement.Local.isGrounded)
         {
             float duration = (1f / safeFrequency) / 2f;
             float elapsedTime = 0f;

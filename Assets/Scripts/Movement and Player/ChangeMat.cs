@@ -122,19 +122,19 @@ public class ChangeMat : AttributesSync
         if (avatarSame) 
         {
             if (!shotgun) {
-                PlayerMovement.healthWidth -= 18 * upgradeManager.Local.damageMultiplier;
+                PlayerMovement.Local.healthWidth -= 18 * upgradeManager.Local.damageMultiplier;
             } else {
                 if (dist < 3) {
-                    PlayerMovement.healthWidth -= 17 * upgradeManager.Local.damageMultiplier;
+                    PlayerMovement.Local.healthWidth -= 17 * upgradeManager.Local.damageMultiplier;
                 } else {
-                    PlayerMovement.healthWidth -= Mathf.Clamp((17 * upgradeManager.Local.damageMultiplier - ((dist-3)*0.6f)), 1, 15 * upgradeManager.Local.damageMultiplier);
+                    PlayerMovement.Local.healthWidth -= Mathf.Clamp((17 * upgradeManager.Local.damageMultiplier - ((dist-3)*0.6f)), 1, 15 * upgradeManager.Local.damageMultiplier);
                 }
 
             }
 
             HealthController.updateHealth();
         } 
-        if (PlayerMovement.healthWidth <= 0 && !healed) {
+        if (PlayerMovement.Local.healthWidth <= 0 && !healed) {
             healed = true;
             GetComponent<PlayerMovement>().Die();
             PlayerMovement playerMovementInstance = GetComponent<PlayerMovement>();

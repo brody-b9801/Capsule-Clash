@@ -21,16 +21,16 @@ public class PlayerMovement : AttributesSync {
     private Camera playerCamera;
     [SerializeField] private Transform gun;
     public static Vector3 gunRotation;
-    public static float healthWidth = 180.0f; 
+    public float healthWidth = 180.0f;
     [SerializeField] private Renderer playerRenderer;
-    public static bool isGrounded = false;
-    public static bool fastAir = false;
+    public bool isGrounded = false;
+    public bool fastAir = false;
     public static float currentCameraRotationX = 0.0f;
     private float currentCameraRotationY = 0.0f;
-    public static bool isAiming = false;
-    public static bool isSprinting = false;
-    public static Vector3 newPosition;
-    public static Vector3 movement;
+    public bool isAiming = false;
+    public bool isSprinting = false;
+    public Vector3 newPosition;
+    public Vector3 movement;
     private Alteruna.Avatar _avatar;
     private SyncedAxis _horizontal;
     private SyncedAxis _vertical;
@@ -40,12 +40,12 @@ public class PlayerMovement : AttributesSync {
     [SerializeField] private GameObject capsuleCollider;
     [SerializeField] private Transform playerTransform;
     private Vector3 lastPosition;
-    private static Vector3 velocityTransform;
+    private Vector3 velocityTransform;
     private InputSynchronizable _input;
     [SerializeField] private Transform bulletHole;
     private float newAlpha = 0.0f;
     private float newAlpha1 = 0.0f;
-    private static Vector3 spawn;
+    private Vector3 spawn;
     [SerializeField] private GameObject borderPrefab;
     private Transform borderInstance;
     private float rotationX;
@@ -56,7 +56,7 @@ public class PlayerMovement : AttributesSync {
     private Vector3 akmBaseLocalRot;
     [SerializeField] private float forceMod;
     private CapsuleCollider meshCollider;
-    public static bool onSlope;
+    public bool onSlope;
     private GameObject portal1A;
     private GameObject portal1B;
     private GameObject portal2A;
@@ -67,17 +67,17 @@ public class PlayerMovement : AttributesSync {
     private bool canTeleport = true;
     private bool checkTele = true;
     [SerializeField] private float launchForce;
-    public static string avatarString;
+    public string avatarString;
     private Vector3 remainingMovement;
     private float speedMod;
     [SerializeField] private float dashForce = 10.0f;
-    private static int dashes = 0;
+    private int dashes = 0;
     private bool resettingDashes = false;
     private Vector3 hitPoint;
-    public static bool jumpedLast = false;
-    public static bool isTeleporting = false;
-    public static bool isDashing = false;
-    public static Vector3 newVelocity;
+    public bool jumpedLast = false;
+    public bool isTeleporting = false;
+    public bool isDashing = false;
+    public Vector3 newVelocity;
     private bool groundedPrev;
     private bool groundBeneath;
     private bool sprintingPrev;
@@ -128,12 +128,12 @@ public class PlayerMovement : AttributesSync {
     private Vector3 aimVectorRot = Vector3.zero;
     private Vector3 walkVectorPos = Vector3.zero;
     private Vector3 walkVectorRot = Vector3.zero;
-    public static Vector3 dashVector;
+    public Vector3 dashVector;
     public static float dashFOV = 0;
     private TextMeshProUGUI dt;
     private bool lerpingDash = false;
     private RectTransform dashIcon;
-    public static bool canTakeDamage = true;
+    public bool canTakeDamage = true;
     [SerializeField] private LayerMask collisionMask;
     [SerializeField] private LayerMask collisionMask2;
     public float unstuckDistance = 0.1f;
@@ -151,11 +151,11 @@ public class PlayerMovement : AttributesSync {
     private List<Vector3> mazeSpawnVectors = new List<Vector3>();
     private List<Vector3> spaceSpawnVectors = new List<Vector3>();
     private List<Vector3> iceSpawnVectors = new List<Vector3>();
-    private static string avatarRef;
-    public static int hitCount = 0;
+    private string avatarRef;
+    public int hitCount = 0;
     public GameObject respawnScreen;
     private GameObject respawnInit;
-    public static bool dead = false;
+    public bool dead = false;
     private List<Collider> NoColPlayerBuilds;
     private bool unstuckFail = false;
     private float lastGroundedHeight;
@@ -163,7 +163,7 @@ public class PlayerMovement : AttributesSync {
     private float targetSideTilt;
     private TextMeshProUGUI usernameText;
     public string username;
-    public static int killCount = 0;
+    public int killCount = 0;
     private GameObject sceneLight;
     [SerializeField] private float walkAnimTuneGun = 1f;
     [SerializeField] private float walkAnimTune = 1f;
@@ -173,7 +173,7 @@ public class PlayerMovement : AttributesSync {
     [SerializeField] private float sidewaysAnimTune = 1f;
     [SerializeField] private float breatheAnimTune = 1f;
     [SerializeField] private Material selfMaterial;
-    public static float elapsedHealTime;
+    public float elapsedHealTime;
 
     // Controllers
     private SettingsController settingsControl;
@@ -211,7 +211,7 @@ public class PlayerMovement : AttributesSync {
     // Collision velocity tracking
     private Vector3 lastFrameMovement = Vector3.zero;
 
-    public static string currDimension = "Desert";
+    public string currDimension = "Desert";
     private float gravity = 9.81f;
     private MaskController maskController;
 
@@ -219,12 +219,14 @@ public class PlayerMovement : AttributesSync {
     private Material desertSky;
     public Material spaceSky;
     public Material iceSky;
-    public static Vector3 shotBoost;
+    public Vector3 shotBoost;
     private bool wasGrounded;
     private GunThingAnim gunRenderer;
     // -------------------------------------------------------------------------
     // Input
     // -------------------------------------------------------------------------
+
+    public static PlayerMovement Local {get; private set;}
     private void InitializeInput() {
         _input = GetComponent<InputSynchronizable>();
         _horizontal = new SyncedAxis(_input, "Horizontal");
@@ -233,7 +235,7 @@ public class PlayerMovement : AttributesSync {
         _dash = new SyncedKey(_input, KeyCode.Space, SyncedKey.KeyMode.KeyDown);
     }
 
-    public static Vector3 getVelocity() { return velocityTransform; }
+    public static Vector3 getVelocity() { return Local != null ? Local.velocityTransform : Vector3.zero; }
     public int getKills() { return killCount; }
     public string getUsername() { return username; }
     private struct DimensionInfo {
@@ -317,6 +319,11 @@ public class PlayerMovement : AttributesSync {
     // -------------------------------------------------------------------------
     // Unity lifecycle
     // -------------------------------------------------------------------------
+
+    private void Awake() {
+        Local = this;
+        SaveSystem.ApplyPendingKillData(this);
+    }
 
     private void Start() {
         Application.targetFrameRate = -1;
@@ -414,7 +421,7 @@ public class PlayerMovement : AttributesSync {
     }
 
     public static bool getAvatarBool(string avatar1) {
-        return avatar1.Equals(avatarString) && canTakeDamage;
+        return Local != null && avatar1.Equals(Local.avatarString) && Local.canTakeDamage;
     }
 
     private void FixedUpdate() {
@@ -422,6 +429,13 @@ public class PlayerMovement : AttributesSync {
         velocityTransform = (currentPosition - lastPosition) / Time.deltaTime;
         lastPosition = currentPosition;
     }
+
+    private new void OnDestroy()
+    {
+        if (Local == this) Local = null;
+        base.OnDestroy();
+    }
+    
     public bool isGround() {
         Vector3 origin = transform.position + characterController.center;
         float castDist = characterController.height * 0.5f - characterController.radius

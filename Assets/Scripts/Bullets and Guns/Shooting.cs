@@ -230,7 +230,7 @@ public class Shooting : AttributesSync
 
             bool inputCheck = shotgun ? Input.GetMouseButtonDown(0) : Input.GetMouseButton(0);
             if (inputCheck && Time.time >= nextFireTime &&
-                ammo > 0 && !reloading && canShoot && !PlayerMovement.dead && !HoverCheck.isHovering)
+                ammo > 0 && !reloading && canShoot && !PlayerMovement.Local.dead && !HoverCheck.isHovering)
             {
                 Vector3 useCameraPos = IsValidVector3(cameraPosition) ? cameraPosition : posSave;
                 posSave = useCameraPos;
@@ -381,20 +381,20 @@ public class Shooting : AttributesSync
         targetPoint += spreadVector * distanceFromCamera;
 
         Vector3 fireDirection = (targetPoint - origin).normalized;
-        PlayerMovement.shotBoost = new Vector3(fireDirection.x, 0, fireDirection.z);
+        PlayerMovement.Local.shotBoost = new Vector3(fireDirection.x, 0, fireDirection.z);
 
         Vector3 velocity      = fireDirection * bulletSpeed;
 
-        if (IsValidVector3(PlayerMovement.newVelocity))
+        if (IsValidVector3(PlayerMovement.Local.newVelocity))
         {
-            velocity += PlayerMovement.isGrounded
-                ? new Vector3(PlayerMovement.newVelocity.x, 0f, PlayerMovement.newVelocity.z)
-                  + PlayerMovement.dashVector
-                : PlayerMovement.newVelocity + PlayerMovement.dashVector;
+            velocity += PlayerMovement.Local.isGrounded
+                ? new Vector3(PlayerMovement.Local.newVelocity.x, 0f, PlayerMovement.Local.newVelocity.z)
+                  + PlayerMovement.Local.dashVector
+                : PlayerMovement.Local.newVelocity + PlayerMovement.Local.dashVector;
         }
         else
         {
-            velocity += PlayerMovement.dashVector;
+            velocity += PlayerMovement.Local.dashVector;
         }
 
         bulletRb.linearVelocity = velocity;

@@ -26,7 +26,7 @@ public class MotionBlurToggle : MonoBehaviour
         float val;
         if (RetroDither.isTeleporting) {
             val = 0;
-        } else if (!PlayerMovement.isGrounded) {
+        } else if (!PlayerMovement.Local.isGrounded) {
             val = Mathf.Clamp(0.125f * (Mathf.Abs(ParticleTweaker.yVelo) - 6), 0, 0.4f);
         }
         else {

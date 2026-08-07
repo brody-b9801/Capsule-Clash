@@ -9,7 +9,7 @@ public class BreathingAnim : MonoBehaviour
 
     void Update()
     {
-        if (!CameraZoom.moving && !breathing && PlayerMovement.isGrounded && !Shaker.shooting) {
+        if (!CameraZoom.moving && !breathing && PlayerMovement.Local.isGrounded && !Shaker.shooting) {
             StartCoroutine(BreathingControl());
         } 
     }
@@ -20,7 +20,7 @@ public class BreathingAnim : MonoBehaviour
         float sinVal = 0;
         yVal = 0;
         yield return new WaitForSeconds(0.75f);
-        while (!CameraZoom.moving && PlayerMovement.isGrounded && !Shaker.shooting) {
+        while (!CameraZoom.moving && PlayerMovement.Local.isGrounded && !Shaker.shooting) {
             while (time < (Mathf.PI/1.8f)) {
                 time += Time.deltaTime;
                 sinVal = Mathf.Sin(0.9f * time);
