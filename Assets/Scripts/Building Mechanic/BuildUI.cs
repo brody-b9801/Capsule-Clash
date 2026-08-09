@@ -4,11 +4,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using FishNet;
-using FishNet.Object;
-using FishNet.Object.Synchronizing;
 using System.Linq;
 
-public class BuildUI : NetworkBehaviour
+// Plain MonoBehaviour: this is HUD and lives on a Canvas prefab. The networked
+// build clock lives on BuildTimer (a NetworkBehaviour on a scene object) so
+// that Fish-Net does not force a NetworkObject onto the UI Canvas.
+public class BuildUI : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI builds;
     [SerializeField] private Image timer;
@@ -20,10 +21,6 @@ public class BuildUI : NetworkBehaviour
     private bool lerpingBuild = false;
     public static ObjectSpawner objectSpawner;
     [SerializeField] private Transform arrow;
-
-    // Genuinely server-authoritative: only the server advances the build clock,
-    // every client reads it. Left at the default ServerOnly write permission.
-    private readonly SyncVar<float> syncedBuildTime = new SyncVar<float>(0f);
 
     private List<bool> activePrevious = new List<bool>();
 
@@ -46,15 +43,12 @@ public class BuildUI : NetworkBehaviour
         timer.fillAmount = (buildResetTime / 100);
         arrow.localEulerAngles = new Vector3(0, 0, 360 * (buildResetTime / 100));
 
-        if (isHost)
-        {
+        // BuildTimer owns the SyncVar; it advances the clock on the server and
+        // returns the replicated value on clients.
+        if (BuildTimer.Instance != null)
+            totalBuildTime = BuildTimer.Instance.Tick(totalBuildTime, Time.deltaTime);
+        else if (isHost)
             totalBuildTime += Time.deltaTime;
-            syncedBuildTime.Value = totalBuildTime;
-        }
-        else
-        {
-            totalBuildTime = syncedBuildTime.Value;
-        }
 
         buildResetTime = 100 - (totalBuildTime % 100);
         if (isHost && buildResetTime > buildResetTimePrev) {

@@ -10,7 +10,6 @@
   <Project Path="BlockadeLabsSDK.Runtime.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Unity.FishNet.Codegen.csproj" />
-  <Project Path="FishNet.Demos.csproj" />
   <Project Path="BigRookGames.csproj" />
   <Project Path="Boxophobic.SkyboxCubemapExtended.Editor.csproj" />
 </Solution>

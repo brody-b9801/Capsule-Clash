@@ -156,7 +156,6 @@ public class PlayerMovement : NetworkBehaviour {
     private float lastGroundedHeight;
     private float sideTilt;
     private float targetSideTilt;
-    private TextMeshProUGUI usernameText;
     public string username;
     public int killCount = 0;
     private GameObject sceneLight;
@@ -340,7 +339,6 @@ public class PlayerMovement : NetworkBehaviour {
             mazeSpawnPosContainer = GameObject.Find("MazeSpawnContainer").transform;
             Shooting.Local.canShoot = true;
             Shooting.lockCursor = true;
-            usernameText = GameObject.Find("UsernameInput").GetComponent<TextMeshProUGUI>();
             dt = GameObject.Find("DashText").GetComponent<TextMeshProUGUI>();
             sceneLight = GameObject.Find("DynamicLight");
             meshCollider = GetComponent<CapsuleCollider>();
@@ -349,8 +347,8 @@ public class PlayerMovement : NetworkBehaviour {
             baseFOV = playerCamera.fieldOfView;
             currentFOV = baseFOV;
             cam2 = GameObject.Find("CameraTwo").transform;
-            gunThing = GameObject.Find("gunThing").transform;
-            akm = GameObject.Find("CamAKM").transform;
+            gunThing = SceneLookup.FindInactive("gunThing").transform;
+            akm = SceneLookup.FindInactive("CamAKM").transform;
             akmBaseLocalPos = akm.localPosition;
             akmBaseLocalRot = akm.localEulerAngles;
             portal1A = GameObject.Find("portal1B");
@@ -393,9 +391,9 @@ public class PlayerMovement : NetworkBehaviour {
             playerCamera.transform.localEulerAngles = Vector3.zero;
             rotationSpeed = SettingsController.rs;
 
-            string result = usernameText.text.Replace(" ", "");
-            string finalResult = result.Replace("​", "");
-            username = (finalResult.Length > 0) ? usernameText.text : "Player";
+            // RoomMenu captures this while the input field is still active;
+            // GameObject.Find cannot see it by the time the player spawns.
+            username = RoomMenu.TypedUsername;
 
             // Kick off the opening scene
             RetroDither.isTeleporting = true;

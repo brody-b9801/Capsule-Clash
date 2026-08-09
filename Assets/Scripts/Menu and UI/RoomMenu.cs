@@ -67,7 +67,13 @@ public class RoomMenu : MonoBehaviour
             GetComponent<Canvas>().enabled = false;
 
             // Replaces Multiplayer.JoinOnDemandRoom().
-            if (hostLocally && InstanceFinder.ServerManager != null)
+            //
+            // hostLocally is a [SerializeField] on a SCENE object, so every
+            // ParrelSync clone reads the SAME value -- either both try to host
+            // (second one fails, port 7770 already bound) or neither does.
+            // Instead: whoever can bind the port becomes the host, everyone
+            // else joins it as a pure client.
+            if (hostLocally && InstanceFinder.ServerManager != null && !IsPortInUse(serverPort))
                 InstanceFinder.ServerManager.StartConnection();
 
             InstanceFinder.ClientManager.StartConnection(serverAddress, serverPort);
@@ -135,10 +141,58 @@ public class RoomMenu : MonoBehaviour
         Shooting.playerJoin = true;
         BulletText.roomName = serverAddress;
         BuildUI.started = true;
+
+        // Capture the typed username BEFORE hiding the field. PlayerMovement
+        // used to GameObject.Find("UsernameInput") in its own startup, but
+        // GameObject.Find ignores inactive objects -- and under Fish-Net the
+        // player spawns AFTER this runs, so the field is already hidden by then.
+        CaptureUsername();
+
         usernameInput.SetActive(false);
         UICanvas.enabled = true;
 
         if (TitleText != null) TitleText.text = "In Game";
+    }
+
+    /// <summary>
+    /// True if something is already listening on this UDP port -- i.e. another
+    /// instance (a ParrelSync clone) is already hosting. Lets the first instance
+    /// host and later ones join automatically, without a per-instance setting.
+    /// </summary>
+    private static bool IsPortInUse(ushort port)
+    {
+        try
+        {
+            var props = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
+            foreach (var ep in props.GetActiveUdpListeners())
+            {
+                if (ep.Port == port) return true;
+            }
+        }
+        catch
+        {
+            // If the check is unavailable, assume free and let StartConnection decide.
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Username typed at the menu, captured while the input field is still
+    /// active. PlayerMovement reads this instead of searching the scene.
+    /// </summary>
+    public static string TypedUsername { get; private set; } = "Player";
+
+    private void CaptureUsername()
+    {
+        if (usernameInput == null) return;
+
+        TMPro.TextMeshProUGUI t = usernameInput.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+        if (t == null) return;
+
+        // Strip spaces and the zero-width space TMP puts in empty input fields.
+        string result = t.text.Replace(" ", "").Replace("​", "");
+        TypedUsername = result.Length > 0 ? t.text : "Player";
     }
 
     private void LeftRoom()

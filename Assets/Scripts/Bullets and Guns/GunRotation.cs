@@ -14,9 +14,9 @@ public class GunRotation : NetworkBehaviour
     [SerializeField] private Transform gunMag;
 
     void Start() {
-        g1 = GameObject.Find("CamAKM").transform;
-        gm1 = GameObject.Find("MC.Magazine").transform;
-        c1 = GameObject.Find("CamCasing").transform;
+        g1 = SceneLookup.FindInactive("CamAKM").transform;
+        gm1 = SceneLookup.FindInactive("MC.Magazine").transform;
+        c1 = SceneLookup.FindInactive("CamCasing").transform;
     }
 
     // IsOwner cannot be read in Start() -- Unity may run it before Fish-Net has

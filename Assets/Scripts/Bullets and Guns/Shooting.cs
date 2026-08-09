@@ -172,14 +172,14 @@ public class Shooting : NetworkBehaviour
             muzzleFlashCamera.color.g,
             muzzleFlashCamera.color.b, alphaVal);
 
-        bulletHole  = GameObject.Find("MCBH").transform;
+        bulletHole  = SceneLookup.FindInactive("MCBH").transform;
         bulletSpawn = GameObject.Find("bulletSpawn");
         casingSpawn = GameObject.Find("casingSpawn").transform;
-        gunMesh     = GameObject.Find("CamAKM").GetComponent<MeshFilter>();
-        CamAKM      = GameObject.Find("CamAKM");
-        mag         = GameObject.Find("MC.Magazine");
-        camCasing   = GameObject.Find("CamCasing");
-        gunThing_g1 = GameObject.Find("CamAKM").transform;
+        gunMesh     = SceneLookup.FindInactive("CamAKM").GetComponent<MeshFilter>();
+        CamAKM      = SceneLookup.FindInactive("CamAKM");
+        mag         = SceneLookup.FindInactive("MC.Magazine");
+        camCasing   = SceneLookup.FindInactive("CamCasing");
+        gunThing_g1 = SceneLookup.FindInactive("CamAKM").transform;
 
         previousPosition = transform.position;
         lockCursor       = false;
