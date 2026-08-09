@@ -3,23 +3,32 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
-using Alteruna;
+using FishNet.Object;
 using TMPro;
 
-public class UsernameControl : AttributesSync
+public class UsernameControl : NetworkBehaviour
 {
     [SerializeField] private TMP_Text usernameDisplay;
-    [SerializeField] private Alteruna.Avatar avatar;
     public float killCount;
     public string username;
 
-    [SynchronizableMethod]
-    public void getName(string usernameRef) {
-        username = usernameRef;   
+    // Alteruna's [SynchronizableMethod] had no direction -- BroadcastRemoteMethod
+    // sent to everyone. FishNet splits that into two explicit hops:
+    // owner -> server ([ServerRpc]), then server -> all clients ([ObserversRpc]).
+    // BufferLast = true replays the latest value to players who join later.
+    [ServerRpc]
+    public void ServerSetName(string usernameRef) => RpcSetName(usernameRef);
+
+    [ObserversRpc(BufferLast = true)]
+    private void RpcSetName(string usernameRef) {
+        username = usernameRef;
     }
 
-    [SynchronizableMethod]
-    public void getKills(float killRef) {
-        killCount = killRef;   
+    [ServerRpc]
+    public void ServerSetKills(float killRef) => RpcSetKills(killRef);
+
+    [ObserversRpc(BufferLast = true)]
+    private void RpcSetKills(float killRef) {
+        killCount = killRef;
     }
 }

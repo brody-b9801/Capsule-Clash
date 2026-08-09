@@ -687,7 +687,7 @@ private void UpdateMovementVector()
         // Healing
 
         if (Input.GetKey(KeyCode.Q) && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
-            && isGrounded && !healParticles.healing && DamageControl.Local.health < 180.0f)
+            && isGrounded && !healParticles.healing && DamageControl.Local.health.Value < 180.0f)
             StartCoroutine(stationaryHealing());
         
         // Sprint
@@ -835,9 +835,9 @@ private void UpdateMovementVector()
                 if (heightChange > 0) {
                     float shakeMagnitude = Mathf.Min(heightChange / 20f, 1f);
                     StartCoroutine(ApplyLandingShake(shakeMagnitude));
-                    DamageControl.Local.health -= ((int)(heightChange / 4)) * 12;
+                    DamageControl.Local.health.Value -= ((int)(heightChange / 4)) * 12;
                 }
-                if (DamageControl.Local.health <= 0) Die();
+                if (DamageControl.Local.health.Value <= 0) Die();
                 HealthController.updateHealth();
             }
     }
@@ -912,7 +912,7 @@ private void UpdateMovementVector()
         RenderSettings.skybox = desertSky;
     }
     public void Respawn() {
-        DamageControl.Local.health = 180;
+        DamageControl.Local.health.Value = 180;
         canTakeDamage = false;
         HealthController.updateHealth();
         Shooting.Local.reloadNum = 30;
@@ -967,7 +967,7 @@ private void UpdateMovementVector()
         if (ChangeMat.Local.avatar == shooter) {
             upgradeManager.Local.killPoints++;
             killCount++;
-            DamageControl.Local.health = 180;
+            DamageControl.Local.health.Value = 180;
             HealthController.updateHealth();
             HealthController.healAnim = true;
             SaveSystem.SavePlayerData();
@@ -1094,7 +1094,7 @@ private void UpdateMovementVector()
         while (elapsedHealTime < 3f / upgradeManager.Local.regenSpeedMultiplier) {
             healParticles.healing = true;
             if (!(Input.GetKey(KeyCode.Q) && !CameraZoom.moving && !Shaker.shooting
-                  && DamageControl.Local.health < 180.0f && isGrounded && !Shooting.Local.reloading)) {
+                  && DamageControl.Local.health.Value < 180.0f && isGrounded && !Shooting.Local.reloading)) {
                 healParticles.healing = false;
                 yield break;
             }
@@ -1102,7 +1102,7 @@ private void UpdateMovementVector()
             yield return null;
         }
         healParticles.healing = false;
-        DamageControl.Local.health = Mathf.Clamp(DamageControl.Local.health + 45.0f, 0.0f, 180.0f);
+        DamageControl.Local.health.Value = Mathf.Clamp(DamageControl.Local.health.Value + 45.0f, 0.0f, 180.0f);
         HealthController.updateHealth();
         HealthController.healAnim = true;
     }

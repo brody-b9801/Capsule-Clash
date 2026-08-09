@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
-using Alteruna;
+using FishNet.Object;
 using TMPro;
 using NUnit.Framework;
 using UnityEngine.UI;
@@ -53,7 +53,7 @@ public class ObjectPool<T> where T : Component
         _pool.Enqueue(instance);
     }
 }
-public class Shooting : AttributesSync
+public class Shooting : NetworkBehaviour
 {
     [SerializeField] private GameObject     bulletPrefab;
     [SerializeField] private Transform      gun;
@@ -111,7 +111,6 @@ public class Shooting : AttributesSync
     public static bool  leaveHover = false;
 
     private static Spawner _spawner;
-    private Alteruna.Avatar avatar;
 
     private Transform bulletHole;
     private Transform casingSpawn;
@@ -145,16 +144,15 @@ public class Shooting : AttributesSync
         Local = this;
     }
 
-    private new void OnDestroy()
+    public override void OnStopClient()
     {
         if (Local == this) Local = null;
-        base.OnDestroy();
+        base.OnStopClient();
     }
 
     void Start()
     {
-        avatar = GetComponent<Alteruna.Avatar>();
-        if (!avatar.IsOwner) return;
+        if (!IsOwner) return;
 
         alphaVal = 0;
 
@@ -211,7 +209,7 @@ public class Shooting : AttributesSync
 
     void Update()
     {
-        if (!avatar.IsOwner) return;
+        if (!IsOwner) return;
 
         isShooting = false;
 
@@ -289,21 +287,21 @@ public class Shooting : AttributesSync
         float randomX, float randomY, float randomZ,
         bool doMuzzleFlash)
     {
-        bool isOwner = avatar.IsOwner;
+        bool isOwner = IsOwner;
         lockCursor = true;
 
-        Vector3 spawnMuzzlePosition = avatar.IsOwner ? bulletOrigin : bHPos;
+        Vector3 spawnMuzzlePosition = IsOwner ? bulletOrigin : bHPos;
         Vector3 spawnPosition       = bS;
 
         Rigidbody bulletRb = _bulletPool.Get(spawnPosition, Quaternion.identity);
         GameObject bulletGO = bulletRb.gameObject;
-        bulletGO.layer = avatar.IsOwner ? 7 : 6;
+        bulletGO.layer = IsOwner ? 7 : 6;
 
         CollisionControl cc = bulletGO.GetComponent<CollisionControl>();
         cc.OnSpawn();
         if (isOwner)
         {
-            cc.shooter        = avatar;
+            cc.shooter        = NetworkObject;
             cc.shottieBool    = shotgun;
             lastShotDirection = direction;
         }
@@ -316,7 +314,7 @@ public class Shooting : AttributesSync
         if (doMuzzleFlash)
         {
             float randomAngle = Random.Range(-45f, 45f);
-            Transform bulletHoleRef = avatar.IsOwner ? bulletHole : bH.transform;
+            Transform bulletHoleRef = IsOwner ? bulletHole : bH.transform;
 
                 if (IsValidQuaternion(bulletHoleRef.rotation))
                 {
@@ -332,7 +330,7 @@ public class Shooting : AttributesSync
                     StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bulletHoleRef));
 
                     // ── Casing ────────────────────────────────────────────
-                    if (avatar.IsOwner) {
+                    if (IsOwner) {
                         Transform casing = _casingPool.Get(
                             casingSpawn.position, bulletCasingPrefab.transform.rotation, casingSpawn);
                         casing.gameObject.layer = 5;
@@ -345,7 +343,7 @@ public class Shooting : AttributesSync
                     Transform nonCameraCasing = _casingPool.Get(
                         casingHolder.position, bulletCasingPrefab.transform.rotation, casingHolder);
                     nonCameraCasing.gameObject.layer = 11;
-                    if (avatar.IsOwner) nonCameraCasing.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+                    if (IsOwner) nonCameraCasing.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
                     BulletCasingAnim casingAnimNonCam = nonCameraCasing.GetComponent<BulletCasingAnim>();
                     if (casingAnimNonCam != null)
                         casingAnimNonCam.OnReturnToPool = () => _casingPool.Return(nonCameraCasing, _casingPoolRoot);
@@ -459,7 +457,7 @@ public class Shooting : AttributesSync
             bH.transform.localPosition         = new Vector3(bH.transform.localPosition.x, bH.transform.localPosition.y, 0.6f);
         }
 
-        BroadcastRemoteMethod(1, shotgun,
+        ServerGunSkin(shotgun,
             gunThing_g1.transform.position - new Vector3(0f, 0.35f, 0f),
             gunThing_g1.transform.rotation, false);
 
@@ -475,12 +473,6 @@ public class Shooting : AttributesSync
         canChangeGun    = true;
         changeOffset    = 0f;
         changeRotOffset = 0f;
-    }
-
-    [SynchronizableMethod]
-    private void BulletSync()
-    {
-        // Placeholder method
     }
 
     IEnumerator EnableDisable()
@@ -525,7 +517,16 @@ public class Shooting : AttributesSync
             Cursor.lockState = CursorLockMode.Locked;
     }
 
-    [SynchronizableMethod]
+    // Cosmetic gun model swap -- client-owned per the authority map.
+    // BufferLast replays the latest skin to players who join after the swap.
+    [ServerRpc]
+    private void ServerGunSkin(bool sg, Vector3 pos, Quaternion rot, bool networkedCall)
+        => RpcGunSkin(sg, pos, rot, networkedCall);
+
+    [ObserversRpc(BufferLast = true)]
+    private void RpcGunSkin(bool sg, Vector3 pos, Quaternion rot, bool networkedCall)
+        => gunSkinSync(sg, pos, rot, networkedCall);
+
     public void gunSkinSync(bool sg, Vector3 pos, Quaternion rot, bool networkedCall)
     {
         if (!networkedCall)

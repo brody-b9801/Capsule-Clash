@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
-using Alteruna;
+using FishNet.Object;
 using TMPro;
 
-public class Username : AttributesSync
+public class Username : NetworkBehaviour
 {
     [SerializeField] private TMP_Text usernameDisplay;
-    [SerializeField] private Alteruna.Avatar avatar;
     public float killCount;
     public string username;
 
@@ -19,20 +18,28 @@ public class Username : AttributesSync
     }
 
     /*public void GetInfo() {
-        if (avatar.IsOwner && PlayerMovement.username != null && PlayerMovement.killCount != null) {
-            BroadcastRemoteMethod(0, PlayerMovement.username);
-            BroadcastRemoteMethod(1, PlayerMovement.killCount);
+        if (IsOwner && PlayerMovement.username != null) {
+            ServerSetName(PlayerMovement.username);
+            ServerSetKills(PlayerMovement.killCount);
         }
     }
 
-    [SynchronizableMethod]
-    public void getName(string usernameRef) {
-        username = usernameRef;   
+    // Client tells the server; server relays to everyone.
+    // BufferLast = true so late joiners receive the current value on spawn.
+    [ServerRpc]
+    private void ServerSetName(string usernameRef) => RpcSetName(usernameRef);
+
+    [ObserversRpc(BufferLast = true)]
+    private void RpcSetName(string usernameRef) {
+        username = usernameRef;
     }
 
-    [SynchronizableMethod]
-    public void getKills(float killRef) {
-        killCount = killRef;   
+    [ServerRpc]
+    private void ServerSetKills(float killRef) => RpcSetKills(killRef);
+
+    [ObserversRpc(BufferLast = true)]
+    private void RpcSetKills(float killRef) {
+        killCount = killRef;
     }*/
     public void setRotation()
     {

@@ -2,9 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
-using Alteruna;
+using FishNet.Object;
 
-public class CollisionControl : AttributesSync
+public class CollisionControl : NetworkBehaviour
 {
     [SerializeField] private Material normal;
     [SerializeField] private Material damaged;
@@ -21,10 +21,9 @@ public class CollisionControl : AttributesSync
     public static bool impactBool;
     public GameObject bulletOne;
     public GameObject Visual;
-    public Alteruna.Avatar shooter;
+    public NetworkObject shooter;
     public bool shottieBool;
     public System.Action OnReturnToPool;
-    [SynchronizableField] private bool playerDead = false;
     private Vector3 bulletStartPos;
     private float bulletDist;
     private float bulletDist2;
@@ -92,7 +91,7 @@ public class CollisionControl : AttributesSync
                 rb.linearVelocity = Vector3.zero;
             }
             if (trail != null) { trail.emitting = false; trail.enabled = false; trail.Clear(); }
-            BroadcastRemoteMethod(1);
+            DestroyObject();
             bulletOne.SetActive(false);
         }
 
@@ -111,7 +110,7 @@ public class CollisionControl : AttributesSync
         }
     }
     
-    void HandleRaycastHit(Vector3 previousPos, Vector3 currentPos, Alteruna.Avatar shooter)
+    void HandleRaycastHit(Vector3 previousPos, Vector3 currentPos, NetworkObject shooter)
     {
         if (hitPrev) return;
 
@@ -134,7 +133,7 @@ public class CollisionControl : AttributesSync
             if (hitObject.CompareTag("DamageCollider"))
             {
                 GameObject parentObject = hitObject.transform.parent.gameObject;
-                Alteruna.Avatar parentAvatar = parentObject.GetComponent<Alteruna.Avatar>();
+                NetworkObject parentAvatar = parentObject.GetComponent<NetworkObject>();
                 // Ensure we're not hitting ourselves
                 if (parentAvatar != shooter)
                 {
@@ -165,23 +164,17 @@ public class CollisionControl : AttributesSync
 
             // Mark as hit and broadcast impact
             hitPrev = true;
-            BroadcastRemoteMethod(2, hit.point, hit.normal);
+            impactPrefabInstance(hit.point, hit.normal);
 
             if (trail != null) { trail.emitting = false; trail.enabled = false; trail.Clear(); }
 
             // Move bullet to hit point and destroy
             transform.position = hit.point;
-            BroadcastRemoteMethod(1);
+            DestroyObject();
             bulletOne.SetActive(false);
         }
     }
     
-    [SynchronizableMethod]
-    private void damageSync()
-    {
-        //Placeholder method
-    }
-
     // Called by Shooting every time the bullet is rented from the pool.
     // Replicates everything Start() did so reused bullets are clean.
     public void OnSpawn()
@@ -223,10 +216,9 @@ public class CollisionControl : AttributesSync
     {
         yield return new WaitForSeconds(7.5f);
         if (gameObject.activeInHierarchy)
-            BroadcastRemoteMethod(1);
+            DestroyObject();
     }
 
-    [SynchronizableMethod]
     public void DestroyObject()
     {
         if (trail != null) { trail.emitting = false; trail.enabled = false; trail.Clear(); }
@@ -255,7 +247,6 @@ public class CollisionControl : AttributesSync
         }
     }
 
-    [SynchronizableMethod]
     public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
     {
         Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;

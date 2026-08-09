@@ -1,13 +1,12 @@
-using Alteruna;
+using FishNet.Object;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class LeaderboardControl : AttributesSync
+public class LeaderboardControl : NetworkBehaviour
 {
-    public Alteruna.Avatar _avatar;
     public GameObject LBPrefab;
     public static Dictionary<float, List<string>> data;
     private GameObject[] taggedObjects;
@@ -38,14 +37,7 @@ public class LeaderboardControl : AttributesSync
         lbEntries[1] = LB2;
         lbEntries[2] = LB3;
         
-        // Initialize avatar if not set in inspector
-        if (_avatar == null)
-        {
-            _avatar = GetComponent<Alteruna.Avatar>();
-        }
-        
         UpdateLB();
-        //BroadcastRemoteMethod(0);
         //lbContainer = GameObject.Find("Leaderboard").GetComponent<RectTransform>();
     }
     
@@ -138,7 +130,7 @@ public class LeaderboardControl : AttributesSync
                     if (child.name == "leftText")
                     {
                         child.GetComponent<TextMeshProUGUI>().text = "#" + (displayedCount + 1).ToString() + " - " + u;
-                        if (_avatar.IsOwner && !playerYellowedName)
+                        if (IsOwner && !playerYellowedName)
                         {
                             playerYellowedName = true;
                             child.GetComponentInParent<Image>().color = new Color32(255, 220, 105, 255);
@@ -156,7 +148,7 @@ public class LeaderboardControl : AttributesSync
                     else if (child.name == "rightText")
                     {
                         child.GetComponent<TextMeshProUGUI>().text = ((int)k).ToString();
-                        if (_avatar.IsOwner && !playerYellowedKC) {
+                        if (IsOwner && !playerYellowedKC) {
                             playerYellowedKC = true;
                             //child.GetComponent<TextMeshProUGUI>().color = new Color(1.0f, 0.8f, 0f, 1.0f);
                         } else {

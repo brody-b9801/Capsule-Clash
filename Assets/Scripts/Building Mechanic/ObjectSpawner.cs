@@ -3,13 +3,25 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using Alteruna;
+using FishNet;
+using FishNet.Object;
 using Unity.VisualScripting;
 
-public class ObjectSpawner : AttributesSync
+public class ObjectSpawner : NetworkBehaviour
 {
-    [SerializeField] private Alteruna.Avatar avatar;
-    private static Spawner _spawner;
+    // TODO(Phase 4b): Alteruna's Spawner used an index into a scene-configured
+    // prefab list (_spawner.Spawn(3, ...) == floor, 2 == wall, 0 == ramp).
+    // FishNet has no equivalent -- it spawns a NetworkObject instance:
+    //     GameObject go = Instantiate(prefab, pos, rot);
+    //     InstanceFinder.ServerManager.Spawn(go);
+    // and despawns via InstanceFinder.ServerManager.Despawn(go).
+    // Both are SERVER-ONLY calls, so build placement must route through a
+    // [ServerRpc] -- which is exactly the Phase 5 authority work.
+    // Wire these three [SerializeField]s in the Inspector to replace the indices.
+    [SerializeField] private GameObject rampPrefab;   // was Spawn(0, ...)
+    [SerializeField] private GameObject wallPrefab;   // was Spawn(2, ...)
+    [SerializeField] private GameObject floorPrefab;  // was Spawn(3, ...)
+
     [SerializeField] private Transform player;
     // Note: despite the name, this is repopulated from scene-wide
     // FindGameObjectsWithTag in checkSupport(), so it holds every player's
@@ -33,19 +45,47 @@ public class ObjectSpawner : AttributesSync
     private void Awake()
     {
         StartCoroutine(checkSupport());
-        _spawner = GameObject.FindGameObjectWithTag("NetworkManager").GetComponent<Spawner>();
         playerSpawnedObjects = new List<GameObject>();
         breakParticles = breakParticlesRef;
         BuildUI.objectSpawner = this;
         Local = this;
     }
 
-    // AttributesSync declares its own OnDestroy; hide it explicitly and chain to
-    // the base so Alteruna's cleanup still runs.
-    private new void OnDestroy()
+    // NetworkBehaviour has real virtual lifecycle hooks, so the
+    // 'private new void OnDestroy()' hiding workaround is no longer needed.
+    public override void OnStopClient()
     {
         if (Local == this) Local = null;
-        base.OnDestroy();
+        base.OnStopClient();
+    }
+
+    // Replaces Alteruna's _spawner.Spawn(index, ...). Server-only in FishNet.
+    // Until build placement is routed through a [ServerRpc] (Phase 5), this
+    // only produces a networked object when called on the server; on a pure
+    // client it falls back to a local-only Instantiate, matching today's
+    // client-side-placement behavior.
+    private GameObject SpawnBuild(GameObject prefab, Vector3 pos, Quaternion rot, Vector3 scale)
+    {
+        if (prefab == null) return null;
+
+        GameObject go = Instantiate(prefab, pos, rot);
+        go.transform.localScale = scale;
+
+        if (InstanceFinder.IsServerStarted && go.GetComponent<NetworkObject>() != null)
+            InstanceFinder.ServerManager.Spawn(go);
+
+        return go;
+    }
+
+    // Replaces Alteruna's _spawner.Despawn(obj).
+    private static void DespawnBuild(GameObject obj)
+    {
+        if (obj == null) return;
+
+        if (InstanceFinder.IsServerStarted && obj.GetComponent<NetworkObject>() != null)
+            InstanceFinder.ServerManager.Despawn(obj);
+        else
+            Destroy(obj);
     }
 
     private void OnDrawGizmos()
@@ -65,7 +105,7 @@ public class ObjectSpawner : AttributesSync
 
     private void Update()
     {
-        if (avatar.IsOwner && PlayerMovement.Local.currDimension != "Maze")
+        if (IsOwner && PlayerMovement.Local.currDimension != "Maze")
         {
             var spawned = playerSpawnedObjects;
 
@@ -110,11 +150,6 @@ public class ObjectSpawner : AttributesSync
                 _spawner.Despawn(spawned.ElementAt(0).Item1);
                 spawned.RemoveAt(0);
             }*/
-    }
-
-    [SynchronizableMethod]
-    public void spawnedSync(string json) {
-
     }
 
 public string SerializeGameObject(GameObject gameObject)
@@ -163,7 +198,7 @@ public GameObjectState DeserializeGameObjectState(string json)
 
 void SpawnFloor()
 {
-    if (avatar.IsOwner)
+    if (IsOwner)
     {
         var spawned = playerSpawnedObjects;
         RaycastHit hit;
@@ -189,7 +224,7 @@ void SpawnFloor()
             Quaternion spawnRotation =  Quaternion.LookRotation(Camera.main.transform.forward);
             spawnRotation.eulerAngles = spawnOffset;
 
-            GameObject floor = _spawner.Spawn(3, spawnPosition, spawnRotation, new Vector3(gridSize, gridSize, gridSize));
+            GameObject floor = SpawnBuild(floorPrefab, spawnPosition, spawnRotation, new Vector3(gridSize, gridSize, gridSize));
             //CollisionControl.addScript(floor);
             floor.tag = "Floor";
             spawned.Add(floor);
@@ -202,7 +237,7 @@ void SpawnFloor()
 
 void SpawnWall()
 {
-    if (avatar.IsOwner)
+    if (IsOwner)
     {
         var spawned = playerSpawnedObjects;
         RaycastHit hit;
@@ -231,7 +266,7 @@ void SpawnWall()
         if (!IsPositionOccupied(spawnPosition, "Wall", spawnOffset) && IsValidPlacement(finalPosition, new Vector3(gridSize, gridSize, 0.2f), spawnRotation, "Wall"))
         {
             buildNum--;
-            GameObject wall = _spawner.Spawn(2, finalPosition, spawnRotation, new Vector3(gridSize, gridSize, gridSize));
+            GameObject wall = SpawnBuild(wallPrefab, finalPosition, spawnRotation, new Vector3(gridSize, gridSize, gridSize));
             //CollisionControl.addScript(wall);
             wall.tag = "Wall";
             spawned.Add(wall);
@@ -243,7 +278,7 @@ void SpawnWall()
 
 void SpawnRamp()
 {
-    if (avatar.IsOwner)
+    if (IsOwner)
     {
         var spawned = playerSpawnedObjects;
         RaycastHit hit;
@@ -273,7 +308,7 @@ void SpawnRamp()
         if (!IsPositionOccupied(spawnPosition, "Ramp") && IsValidPlacement(spawnPosition, new Vector3(gridSize, gridSize * Mathf.Sqrt(2), 0.2f), spawnRotation, "Ramp"))
         {
             buildNum--;
-            GameObject ramp = _spawner.Spawn(0, spawnPosition, spawnRotation, new Vector3(gridSize, gridSize * Mathf.Sqrt(2), gridSize));
+            GameObject ramp = SpawnBuild(rampPrefab, spawnPosition, spawnRotation, new Vector3(gridSize, gridSize * Mathf.Sqrt(2), gridSize));
             ramp.tag = "Ramp";
             //CollisionControl.addScript(ramp);
             spawned.Add(ramp);
@@ -425,7 +460,7 @@ public void DestroyAllBuilds()
     foreach (var obj in playerSpawnedObjectsCopy)
     {
         if (obj != null) {
-            _spawner.Despawn(playerSpawnedObjects[0]);
+            DespawnBuild(playerSpawnedObjects[0]);
             breakParticlesSync(obj.transform.position, obj.transform.rotation);
             playerSpawnedObjects.RemoveAt(0);
         }
@@ -445,7 +480,7 @@ IEnumerator DestroyObjectsSequentially(List<GameObject> unsupportedObjects, List
 
 public static void DespawnObject(GameObject obj) {
     if (obj != null) {
-        _spawner.Despawn(obj);
+        DespawnBuild(obj);
         Vector3 position = obj.transform.position;
         Quaternion rotation = obj.transform.rotation;
         breakParticlesSync(obj.transform.position, obj.transform.rotation);

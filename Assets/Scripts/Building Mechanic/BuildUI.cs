@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using Alteruna;
+using FishNet;
+using FishNet.Object;
+using FishNet.Object.Synchronizing;
 using System.Linq;
 
-public class BuildUI : AttributesSync
+public class BuildUI : NetworkBehaviour
 {
     [SerializeField] private TextMeshProUGUI builds;
     [SerializeField] private Image timer;
@@ -17,10 +19,17 @@ public class BuildUI : AttributesSync
     public static bool started = false;
     private bool lerpingBuild = false;
     public static ObjectSpawner objectSpawner;
-    public static bool isHost;
     [SerializeField] private Transform arrow;
-    [SynchronizableField] private float syncedBuildTime; 
+
+    // Genuinely server-authoritative: only the server advances the build clock,
+    // every client reads it. Left at the default ServerOnly write permission.
+    private readonly SyncVar<float> syncedBuildTime = new SyncVar<float>(0f);
+
     private List<bool> activePrevious = new List<bool>();
+
+    // Replaces the old client-set 'isHost' bool. IsServerStarted is authoritative
+    // and cannot be spoofed by a client, unlike the previous flag.
+    public static bool isHost => InstanceFinder.IsServerStarted;
 
     void Update()
     {
@@ -40,11 +49,11 @@ public class BuildUI : AttributesSync
         if (isHost)
         {
             totalBuildTime += Time.deltaTime;
-            syncedBuildTime = totalBuildTime;
+            syncedBuildTime.Value = totalBuildTime;
         }
         else
         {
-            totalBuildTime = syncedBuildTime; 
+            totalBuildTime = syncedBuildTime.Value;
         }
 
         buildResetTime = 100 - (totalBuildTime % 100);
