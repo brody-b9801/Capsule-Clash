@@ -21,7 +21,6 @@ public class PlayerMovement : AttributesSync {
     private Camera playerCamera;
     [SerializeField] private Transform gun;
     public static Vector3 gunRotation;
-    public float healthWidth = 180.0f;
     [SerializeField] private Renderer playerRenderer;
     public bool isGrounded = false;
     public bool fastAir = false;
@@ -67,7 +66,6 @@ public class PlayerMovement : AttributesSync {
     private bool canTeleport = true;
     private bool checkTele = true;
     [SerializeField] private float launchForce;
-    public string avatarString;
     private Vector3 remainingMovement;
     private float speedMod;
     [SerializeField] private float dashForce = 10.0f;
@@ -151,7 +149,6 @@ public class PlayerMovement : AttributesSync {
     private List<Vector3> mazeSpawnVectors = new List<Vector3>();
     private List<Vector3> spaceSpawnVectors = new List<Vector3>();
     private List<Vector3> iceSpawnVectors = new List<Vector3>();
-    private string avatarRef;
     public int hitCount = 0;
     public GameObject respawnScreen;
     private GameObject respawnInit;
@@ -345,7 +342,6 @@ public class PlayerMovement : AttributesSync {
             dt = GameObject.Find("DashText").GetComponent<TextMeshProUGUI>();
             sceneLight = GameObject.Find("DynamicLight");
             meshCollider = GetComponent<CapsuleCollider>();
-            avatarString = _avatar.ToString();
             started = true;
             playerCamera = Camera.main;
             baseFOV = playerCamera.fieldOfView;
@@ -383,8 +379,6 @@ public class PlayerMovement : AttributesSync {
                 spaceSpawnVectors.Add(new Vector3(s.position.x, s.position.y + 5.0f, s.position.z));
             foreach (Transform s in iceSpawnPosContainer)
                     iceSpawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
-            avatarRef = _avatar.ToString();
-            healthWidth = 180.0f;
             canTakeDamage = false;
             HealthController.updateHealth();
             Shooting.Local.reloadNum = 30;
@@ -420,8 +414,8 @@ public class PlayerMovement : AttributesSync {
 
     }
 
-    public static bool getAvatarBool(string avatar1) {
-        return Local != null && avatar1.Equals(Local.avatarString) && Local.canTakeDamage;
+    public static bool getAvatarBool(Alteruna.Avatar avatar1) {
+        return Local != null && avatar1.Equals(Local._avatar) && Local.canTakeDamage;
     }
 
     private void FixedUpdate() {
@@ -693,7 +687,7 @@ private void UpdateMovementVector()
         // Healing
 
         if (Input.GetKey(KeyCode.Q) && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
-            && isGrounded && !healParticles.healing && healthWidth < 180.0f)
+            && isGrounded && !healParticles.healing && DamageControl.Local.health < 180.0f)
             StartCoroutine(stationaryHealing());
         
         // Sprint
@@ -841,9 +835,9 @@ private void UpdateMovementVector()
                 if (heightChange > 0) {
                     float shakeMagnitude = Mathf.Min(heightChange / 20f, 1f);
                     StartCoroutine(ApplyLandingShake(shakeMagnitude));
-                    healthWidth -= ((int)(heightChange / 4)) * 12;
+                    DamageControl.Local.health -= ((int)(heightChange / 4)) * 12;
                 }
-                if (healthWidth <= 0) Die();
+                if (DamageControl.Local.health <= 0) Die();
                 HealthController.updateHealth();
             }
     }
@@ -918,7 +912,7 @@ private void UpdateMovementVector()
         RenderSettings.skybox = desertSky;
     }
     public void Respawn() {
-        healthWidth = 180.0f;
+        DamageControl.Local.health = 180;
         canTakeDamage = false;
         HealthController.updateHealth();
         Shooting.Local.reloadNum = 30;
@@ -962,18 +956,18 @@ private void UpdateMovementVector()
         Cursor.lockState = CursorLockMode.Locked;
     }
 
-    public void killHeal(string shooter) { BroadcastRemoteMethod(0, shooter); }
+    public void killHeal(Alteruna.Avatar shooter) { BroadcastRemoteMethod(0, shooter); }
 
     [SynchronizableMethod]
-    public void killHealSync(string shooter) {
+    public void killHealSync(Alteruna.Avatar shooter) {
         if (SettingsController.lifetimeKills == 0)
         {
             StartCoroutine(maskController.StartFirstKillScene());
         }
-        if (avatarRef == shooter) {
+        if (ChangeMat.Local.avatar == shooter) {
             upgradeManager.Local.killPoints++;
             killCount++;
-            healthWidth = 180.0f;
+            DamageControl.Local.health = 180;
             HealthController.updateHealth();
             HealthController.healAnim = true;
             SaveSystem.SavePlayerData();
@@ -1100,7 +1094,7 @@ private void UpdateMovementVector()
         while (elapsedHealTime < 3f / upgradeManager.Local.regenSpeedMultiplier) {
             healParticles.healing = true;
             if (!(Input.GetKey(KeyCode.Q) && !CameraZoom.moving && !Shaker.shooting
-                  && healthWidth < 180.0f && isGrounded && !Shooting.Local.reloading)) {
+                  && DamageControl.Local.health < 180.0f && isGrounded && !Shooting.Local.reloading)) {
                 healParticles.healing = false;
                 yield break;
             }
@@ -1108,7 +1102,7 @@ private void UpdateMovementVector()
             yield return null;
         }
         healParticles.healing = false;
-        healthWidth = Mathf.Clamp(healthWidth + 45.0f, 0.0f, 180.0f);
+        DamageControl.Local.health = Mathf.Clamp(DamageControl.Local.health + 45.0f, 0.0f, 180.0f);
         HealthController.updateHealth();
         HealthController.healAnim = true;
     }

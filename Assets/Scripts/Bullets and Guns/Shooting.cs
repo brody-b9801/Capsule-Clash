@@ -303,7 +303,7 @@ public class Shooting : AttributesSync
         cc.OnSpawn();
         if (isOwner)
         {
-            cc.shooter        = avatar.ToString();
+            cc.shooter        = avatar;
             cc.shottieBool    = shotgun;
             lastShotDirection = direction;
         }
@@ -312,8 +312,6 @@ public class Shooting : AttributesSync
 
         cc.OnReturnToPool = () => _bulletPool.Return(bulletRb, _bulletPoolRoot);
         cc.InitBullet(this);
-
-        CollisionControl.playerFire = gameObject;
 
         if (doMuzzleFlash)
         {

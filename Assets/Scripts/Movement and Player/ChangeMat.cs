@@ -43,12 +43,10 @@ public class ChangeMat : AttributesSync
 
     private Renderer player;
     private PlayerMovement movement;
-    [SerializeField] private Alteruna.Avatar avatar;
+    [SerializeField] public Alteruna.Avatar avatar;
 
     public static ChangeMat Local { get; private set; }
 
-    public string avatarRef;
-    public string shooterRef;
     public bool healed = false;
 
     private void Awake()
@@ -56,7 +54,6 @@ public class ChangeMat : AttributesSync
         Local = this;
         player = GetComponent<Renderer>();
         movement = GetComponent<PlayerMovement>();
-        avatarRef = avatar.ToString();
         dimensionMaterialChange("Desert");
     }
 
@@ -98,9 +95,9 @@ public class ChangeMat : AttributesSync
         if (mat.HasProperty(HardEdgeLightColorID)) mat.SetColor(HardEdgeLightColorID, hardEdgeLight);
     }
 
-    public void TakeDamage(string shot, string shoot, bool shotgun, float dist)
+    public void TakeDamage(Alteruna.Avatar shot, Alteruna.Avatar shooter, bool shotgun, float dist)
     {
-        StartCoroutine(endDamaged(shot, shoot, shotgun, dist));
+        StartCoroutine(endDamaged(shot, shooter, shotgun, dist));
     }
 
     [SynchronizableMethod]
@@ -115,43 +112,42 @@ public class ChangeMat : AttributesSync
     }
 
     [SynchronizableMethod]
-    public void ControlDamage(string shotAvatar, string shooter, bool shotgun, float dist)
+    public void ControlDamage(Alteruna.Avatar shotAvatar, Alteruna.Avatar shooter, bool shotgun, float dist)
     {
         bool avatarSame = PlayerMovement.getAvatarBool(shotAvatar);
 
-        if (avatarSame) 
+        // ControlDamage runs on the victim's object, so 'this' is already the
+        // player being shot -- read health off this object, not the local player.
+        DamageControl damageControl = GetComponent<DamageControl>();
+        if (damageControl == null) return;
+
+        if (avatarSame)
         {
             if (!shotgun) {
-                PlayerMovement.Local.healthWidth -= 18 * upgradeManager.Local.damageMultiplier;
+                damageControl.health -= 18 * upgradeManager.Local.damageMultiplier;
             } else {
                 if (dist < 3) {
-                    PlayerMovement.Local.healthWidth -= 17 * upgradeManager.Local.damageMultiplier;
+                    damageControl.health -= 17 * upgradeManager.Local.damageMultiplier;
                 } else {
-                    PlayerMovement.Local.healthWidth -= Mathf.Clamp((17 * upgradeManager.Local.damageMultiplier - ((dist-3)*0.6f)), 1, 15 * upgradeManager.Local.damageMultiplier);
+                    damageControl.health -= Mathf.Clamp((17 * upgradeManager.Local.damageMultiplier - ((dist-3)*0.6f)), 1, 15 * upgradeManager.Local.damageMultiplier);
                 }
 
             }
 
             HealthController.updateHealth();
-        } 
-        if (PlayerMovement.Local.healthWidth <= 0 && !healed) {
-            healed = true;
-            GetComponent<PlayerMovement>().Die();
-            PlayerMovement playerMovementInstance = GetComponent<PlayerMovement>();
-            playerMovementInstance.killHeal(shooter); // Use instance reference here
+
+            if (damageControl.health <= 0 && !healed) {
+                healed = true;
+                PlayerMovement playerMovementInstance = GetComponent<PlayerMovement>();
+                playerMovementInstance.Die();
+                playerMovementInstance.killHeal(shooter);
+            }
         }
     }
 
-    IEnumerator endDamaged(string shot, string shoot, bool shotgun, float dist) {
-        BroadcastRemoteMethod(2, shot, shoot, shotgun, dist);
+    IEnumerator endDamaged(Alteruna.Avatar shot, Alteruna.Avatar shooter, bool shotgun, float dist) {
+        BroadcastRemoteMethod(1, shot, shooter, shotgun, dist);
         yield return new WaitForSeconds(0.05f);
-        BroadcastRemoteMethod(0, shot, shoot, shotgun, dist);
-    }
-
-    [SynchronizableMethod]
-    private void idk(string av, string shoot, bool shotgun, float dist)
-    {
-        if (avatar.IsOwner)
-            BroadcastRemoteMethod(1, av, shoot, shotgun, dist);
+        BroadcastRemoteMethod(0, shot, shooter, shotgun, dist);
     }
 }

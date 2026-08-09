@@ -16,13 +16,12 @@ public class CollisionControl : AttributesSync
     private bool hitPrev = false;
     [SerializeField] public Vector3 bulletEndPos;
     [SerializeField] private Material trailMaterial;
-    public static GameObject playerFire;
     [SerializeField] private GameObject impact;
     [SerializeField] private float impactOffset = 0.01f;
     public static bool impactBool;
     public GameObject bulletOne;
     public GameObject Visual;
-    public string shooter;
+    public Alteruna.Avatar shooter;
     public bool shottieBool;
     public System.Action OnReturnToPool;
     [SynchronizableField] private bool playerDead = false;
@@ -69,8 +68,6 @@ public class CollisionControl : AttributesSync
 
     void Update()
     {
-        if (!avatar) return;
-
         Vector3 currentPosition = transform.position;
 
         // Draw debug ray
@@ -114,10 +111,10 @@ public class CollisionControl : AttributesSync
         }
     }
     
-    void HandleRaycastHit(Vector3 previousPos, Vector3 currentPos, string shooter)
+    void HandleRaycastHit(Vector3 previousPos, Vector3 currentPos, Alteruna.Avatar shooter)
     {
-        if (!avatar || hitPrev) return;
-        
+        if (hitPrev) return;
+
         Vector3 direction = currentPos - previousPos;
         float rayDistance = direction.magnitude;
         
@@ -137,9 +134,9 @@ public class CollisionControl : AttributesSync
             if (hitObject.CompareTag("DamageCollider"))
             {
                 GameObject parentObject = hitObject.transform.parent.gameObject;
-                
+                Alteruna.Avatar parentAvatar = parentObject.GetComponent<Alteruna.Avatar>();
                 // Ensure we're not hitting ourselves
-                if (parentObject != playerFire && avatar)
+                if (parentAvatar != shooter)
                 {
                     Renderer renderer = parentObject.GetComponent<Renderer>();
                     if (renderer != null)
@@ -150,10 +147,9 @@ public class CollisionControl : AttributesSync
                     ChangeMat changeMat = parentObject.GetComponent<ChangeMat>();
                     if (changeMat != null)
                     {
-                        Alteruna.Avatar targetAvatar = parentObject.GetComponent<Alteruna.Avatar>();
-                        if (targetAvatar != null)
+                        if (parentAvatar != null)
                         {
-                            changeMat.TakeDamage(targetAvatar.ToString(), shooter, shottieBool, bulletDist);
+                            changeMat.TakeDamage(parentAvatar, shooter, shottieBool, bulletDist);
                         }
                     }
                     
