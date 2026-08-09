@@ -210,6 +210,11 @@ public class PlayerMovement : NetworkBehaviour {
     private GunThingAnim gunRenderer;
 
     public static PlayerMovement Local {get; private set;}
+
+    // Sibling components on this same player object. Cached in OnStartClient so
+    // local access never depends on another component's static being assigned first.
+    private Shooting localShooting;
+    private ObjectSpawner localSpawner;
     private void InitializeInput() {
         _horizontal = new SyncedAxis("Horizontal");
         _vertical = new SyncedAxis("Vertical");
@@ -299,7 +304,6 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void Awake() {
-        Local = this;
         SaveSystem.ApplyPendingKillData(this);
     }
 
@@ -310,6 +314,10 @@ public class PlayerMovement : NetworkBehaviour {
         InitializeInput();
 
         if (IsOwner) {
+            // Must be owner-gated: Awake ran on every player instance, so in a
+            // multiplayer session the last one to spawn claimed Local and every
+            // consumer silently read the wrong player's state.
+            Local = this;
             gunRenderer = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
             gunRenderer.enableGun();
             settingsControl = GameObject.Find("Room Menu (1)").GetComponent<SettingsController>();
@@ -318,12 +326,16 @@ public class PlayerMovement : NetworkBehaviour {
             iceSpawnPosContainer = GameObject.Find("IceSpawnContainer").transform;
             spaceSpawnPosContainer = GameObject.Find("VoidSpawnContainer").transform;
             mazeSpawnPosContainer = GameObject.Find("MazeSpawnContainer").transform;
-            Shooting.Local.canShoot = true;
+            // Resolve siblings via GetComponent rather than their Local statics:
+            // each sets its static in its own OnStartClient and FishNet does not
+            // guarantee callback order, so those statics may still be null here.
+            localShooting = GetComponent<Shooting>();
+            localSpawner = GetComponent<ObjectSpawner>();
+            if (localShooting != null) localShooting.canShoot = true;
             Shooting.lockCursor = true;
             dt = GameObject.Find("DashText").GetComponent<TextMeshProUGUI>();
             sceneLight = GameObject.Find("DynamicLight");
             meshCollider = GetComponent<CapsuleCollider>();
-            started = true;
             playerCamera = Camera.main;
             baseFOV = playerCamera.fieldOfView;
             currentFOV = baseFOV;
@@ -360,10 +372,13 @@ public class PlayerMovement : NetworkBehaviour {
                     iceSpawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
             canTakeDamage = false;
             HealthController.updateHealth();
-            Shooting.Local.reloadNum = 30;
+            // Sibling components set their Local statics in their own
+            // OnStartClient, which FishNet may invoke after this one — resolve
+            // them off this GameObject instead of through the statics.
+            if (localShooting != null) localShooting.reloadNum = 30;
             GunThingAnim.movingState = false;
             dashes = 0;
-            ObjectSpawner.Local.buildNum = 25;
+            if (localSpawner != null) localSpawner.buildNum = 25;
             lastGroundedHeight = -13;
             currentCameraRotationX = 0;
             currentCameraRotationY = 0;
@@ -382,6 +397,10 @@ public class PlayerMovement : NetworkBehaviour {
             SetActiveDimension(desertInfo);
             GetComponent<MeshRenderer>().enabled = false;
             //characterController.enableOverlapRecovery = false;
+
+            // Set last: Update() and BuildUI treat this as "owner setup complete",
+            // so it must not go true partway through the block above.
+            started = true;
         } else {
             foreach (Transform child in transform) {
                 if (child.name == "Renderer") child.gameObject.SetActive(false);
@@ -432,6 +451,10 @@ public class PlayerMovement : NetworkBehaviour {
 
     private void Update() {
         if (!IsOwner || MaskController.maskAnimationPlaying) return;
+        // OnStartClient performs the owner-only setup this method depends on
+        // (dt, characterController, Shooting.Local, MaskController.Local, ...).
+        // It can run after the first Update tick, so idle until it has finished.
+        if (!started) return;
         IsOnSlope();
         CheckIfStuckAndMoveUp();
         dt.text = dashes.ToString();
@@ -881,10 +904,11 @@ private void UpdateMovementVector()
         DamageControl.Local.health.Value = 180;
         canTakeDamage = false;
         HealthController.updateHealth();
-        Shooting.Local.reloadNum = 30;
+        // Own siblings, not the statics — these resets apply to this player.
+        if (localShooting != null) localShooting.reloadNum = 30;
         GunThingAnim.movingState = false;
         dashes = 0;
-        ObjectSpawner.Local.buildNum = 25;
+        if (localSpawner != null) localSpawner.buildNum = 25;
         transform.localEulerAngles = Vector3.zero;
         newVelocity = Vector3.zero;
         characterController.enabled = false;
@@ -910,7 +934,7 @@ private void UpdateMovementVector()
         currentCameraRotationY = targetRotation.eulerAngles.y;
 
         characterController.enabled = true;
-        Shooting.Local.canShoot = true;
+        if (localShooting != null) localShooting.canShoot = true;
 
         lastPosition = playerTransform.position;
         velocityTransform = Vector3.zero;

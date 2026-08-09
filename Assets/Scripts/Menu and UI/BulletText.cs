@@ -15,6 +15,7 @@ public class BulletText : MonoBehaviour
 
     void Update()
     {
+    if (Shooting.Local == null) return;
     if (!Shooting.Local.shotgun)
     {
       text.text = Shooting.Local.reloadNum.ToString();

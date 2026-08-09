@@ -138,11 +138,6 @@ public class Shooting : NetworkBehaviour
 
     public float trailFadeDuration = 0.5f;
 
-    void Awake()
-    {
-        Local = this;
-    }
-
     public override void OnStopClient()
     {
         if (Local == this) Local = null;
@@ -154,6 +149,12 @@ public class Shooting : NetworkBehaviour
         base.OnStartClient();
 
         if (!IsOwner) return;
+
+        // Must be owner-gated: Awake ran on every player instance, so the last
+        // one to spawn claimed Local. Callers such as PlayerMovement then wrote
+        // to a remote player's Shooting, whose fields were never initialized
+        // because this method returns early for non-owners.
+        Local = this;
 
         alphaVal = 0;
 
@@ -208,6 +209,9 @@ public class Shooting : NetworkBehaviour
     void Update()
     {
         if (!IsOwner) return;
+        // OnStartClient does the scene lookups that populate these; it can run
+        // after the first Update tick, so idle until initialization completed.
+        if (muzzleFlashCamera == null || mainCameraTransform == null) return;
 
         isShooting = false;
 
@@ -223,7 +227,7 @@ public class Shooting : NetworkBehaviour
         ref int ammo = ref shotgun ? ref shottieNum : ref reloadNum;
 
             bool inputCheck = shotgun ? Input.GetMouseButtonDown(0) : Input.GetMouseButton(0);
-            if (inputCheck && Time.time >= nextFireTime &&
+            if (inputCheck && Time.time >= nextFireTime && PlayerMovement.Local != null &&
                 ammo > 0 && !reloading && canShoot && !PlayerMovement.Local.dead && !HoverCheck.isHovering)
             {
                 Vector3 useCameraPos = IsValidVector3(cameraPosition) ? cameraPosition : posSave;

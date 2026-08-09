@@ -40,6 +40,9 @@ public class StaminaController : MonoBehaviour
 
     private void Update()
     {
+      // The local player is spawned by FishNet after this component starts.
+      if (PlayerMovement.Local == null) return;
+
       if ((PlayerMovement.Local.isSprinting && (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.D))) || PlayerMovement.Local.fastAir)
       {
         if (currentStamina > 0f)

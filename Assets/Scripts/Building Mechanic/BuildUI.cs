@@ -31,6 +31,11 @@ public class BuildUI : MonoBehaviour
             return;
         }
 
+        // started is set by RoomMenu when the room UI opens, which is independent
+        // of player spawn — under FishNet the player arrives later, so the spawner
+        // reference can still be null here.
+        if (objectSpawner == null) return;
+
         if (objectSpawner.buildNum < 25 && !lerpingBuild)
             StartCoroutine(lerpBuild());
 
@@ -88,7 +93,8 @@ public class BuildUI : MonoBehaviour
         }   
 
         lerpingBuild = false;
-        objectSpawner.buildNum++;
+        // The spawner can despawn while this coroutine is mid-wait.
+        if (objectSpawner != null) objectSpawner.buildNum++;
         yield break;
 
     }

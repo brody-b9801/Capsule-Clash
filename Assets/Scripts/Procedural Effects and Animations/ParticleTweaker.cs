@@ -46,22 +46,40 @@ public class ParticleTweaker : MonoBehaviour
         {
             FitRadiusToView();
         }
-        float deltaY = rb.linearVelocity.y;
-        
-        if (PlayerMovement.Local.isGrounded && !PlayerMovement.Local.onSlope)
+
+        // FishNet spawns the player after this component starts, so Local is null
+        // for the first frames of a session and again after the player despawns.
+        PlayerMovement player = PlayerMovement.Local;
+        if (player == null || rb == null)
         {
-            velocityVec = new UnityEngine.Vector3(PlayerMovement.Local.newVelocity.x + PlayerMovement.Local.dashVector.x, deltaY, PlayerMovement.Local.newVelocity.z + PlayerMovement.Local.dashVector.z);
+            velocityVec = UnityEngine.Vector3.zero;
+            yVelo = 0f;
+            emission.rateOverTime = 0f;
+            return;
+        }
+
+        if (_camTransform == null)
+        {
+            if (Camera.main == null) return;
+            _camTransform = Camera.main.transform;
+        }
+
+        float deltaY = rb.linearVelocity.y;
+
+        if (player.isGrounded && !player.onSlope)
+        {
+            velocityVec = new UnityEngine.Vector3(player.newVelocity.x + player.dashVector.x, deltaY, player.newVelocity.z + player.dashVector.z);
         }
         else
         {
-            velocityVec = new UnityEngine.Vector3(8.5f/7.5f*PlayerMovement.Local.newVelocity.x + PlayerMovement.Local.dashVector.x, 0, 8.5f/7.5f*PlayerMovement.Local.newVelocity.z + PlayerMovement.Local.dashVector.z);
+            velocityVec = new UnityEngine.Vector3(8.5f/7.5f*player.newVelocity.x + player.dashVector.x, 0, 8.5f/7.5f*player.newVelocity.z + player.dashVector.z);
         }
 
         velocity = velocityVec.magnitude;
         vec1 = new UnityEngine.Vector3(velocityVec.x, 0, velocityVec.z).normalized;
         vec2 = new UnityEngine.Vector3(_camTransform.forward.x, 0, _camTransform.forward.z).normalized;
-        yVelo = PlayerMovement.Local.newVelocity.y + PlayerMovement.Local.dashVector.y;
-        
+        yVelo = player.newVelocity.y + player.dashVector.y;
+
         float theta = Mathf.Clamp(Mathf.Cos(UnityEngine.Vector3.SignedAngle(vec1, vec2, new UnityEngine.Vector3(0, 1, 0))), 0, 1);
         float val = Mathf.Clamp(15 * (velocity - 9f), 0, 50);
         targetIntensity = val;

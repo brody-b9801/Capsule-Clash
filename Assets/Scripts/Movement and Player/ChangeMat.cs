@@ -50,10 +50,17 @@ public class ChangeMat : NetworkBehaviour
 
     private void Awake()
     {
-        Local = this;
         player = GetComponent<Renderer>();
         movement = GetComponent<PlayerMovement>();
         dimensionMaterialChange("Desert");
+    }
+
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+        // Owner-gated: Awake claimed Local on every player instance, so the last
+        // to spawn won and callers read a remote player's material state.
+        if (IsOwner) Local = this;
     }
 
     public override void OnStopClient()
