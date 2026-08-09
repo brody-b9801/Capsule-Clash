@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
-using Alteruna;
+using FishNet.Object;
 using TMPro;
 using NUnit.Framework;
 using Unity.VisualScripting;
 using Cinemachine.Utility;
 
 [RequireComponent(typeof(MaskController))]
-public class PlayerMovement : AttributesSync {
+public class PlayerMovement : NetworkBehaviour {
     public static float moveSpeed = 4.0f;
     [SerializeField] private float jumpForce = 8.0f;
     public static float rotationSpeed = 10.0f;
@@ -30,7 +30,6 @@ public class PlayerMovement : AttributesSync {
     public bool isSprinting = false;
     public Vector3 newPosition;
     public Vector3 movement;
-    private Alteruna.Avatar _avatar;
     private SyncedAxis _horizontal;
     private SyncedAxis _vertical;
     private SyncedKey _jump;
@@ -40,7 +39,6 @@ public class PlayerMovement : AttributesSync {
     [SerializeField] private Transform playerTransform;
     private Vector3 lastPosition;
     private Vector3 velocityTransform;
-    private InputSynchronizable _input;
     [SerializeField] private Transform bulletHole;
     private float newAlpha = 0.0f;
     private float newAlpha1 = 0.0f;
@@ -225,11 +223,10 @@ public class PlayerMovement : AttributesSync {
 
     public static PlayerMovement Local {get; private set;}
     private void InitializeInput() {
-        _input = GetComponent<InputSynchronizable>();
-        _horizontal = new SyncedAxis(_input, "Horizontal");
-        _vertical = new SyncedAxis(_input, "Vertical");
-        _jump = new SyncedKey(_input, KeyCode.Space);
-        _dash = new SyncedKey(_input, KeyCode.Space, SyncedKey.KeyMode.KeyDown);
+        _horizontal = new SyncedAxis("Horizontal");
+        _vertical = new SyncedAxis("Vertical");
+        _jump = new SyncedKey(KeyCode.Space);
+        _dash = new SyncedKey(KeyCode.Space, SyncedKey.KeyMode.KeyDown);
     }
 
     public static Vector3 getVelocity() { return Local != null ? Local.velocityTransform : Vector3.zero; }
@@ -322,12 +319,17 @@ public class PlayerMovement : AttributesSync {
         SaveSystem.ApplyPendingKillData(this);
     }
 
-    private void Start() {
+    // Was Start(). Unity's Start() can run BEFORE Fish-Net assigns ownership,
+    // which would make the IsOwner gate below silently false and skip all of
+    // this setup. OnStartClient only fires once the object is network-spawned
+    // and ownership is known.
+    public override void OnStartClient() {
+        base.OnStartClient();
+
         Application.targetFrameRate = -1;
         InitializeInput();
-        _avatar = GetComponent<Alteruna.Avatar>();
 
-        if (_avatar.IsOwner) {
+        if (IsOwner) {
             gunRenderer = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
             gunRenderer.enableGun();
             settingsControl = GameObject.Find("Room Menu (1)").GetComponent<SettingsController>();
@@ -414,8 +416,8 @@ public class PlayerMovement : AttributesSync {
 
     }
 
-    public static bool getAvatarBool(Alteruna.Avatar avatar1) {
-        return Local != null && avatar1.Equals(Local._avatar) && Local.canTakeDamage;
+    public static bool getAvatarBool(NetworkObject avatar1) {
+        return Local != null && avatar1 == Local.NetworkObject && Local.canTakeDamage;
     }
 
     private void FixedUpdate() {
@@ -424,10 +426,10 @@ public class PlayerMovement : AttributesSync {
         lastPosition = currentPosition;
     }
 
-    private new void OnDestroy()
+    public override void OnStopClient()
     {
         if (Local == this) Local = null;
-        base.OnDestroy();
+        base.OnStopClient();
     }
     
     public bool isGround() {
@@ -455,7 +457,7 @@ public class PlayerMovement : AttributesSync {
     private bool CanJump() { return isGrounded; }
 
     private void Update() {
-        if (!_avatar.IsOwner || MaskController.maskAnimationPlaying) return;
+        if (!IsOwner || MaskController.maskAnimationPlaying) return;
         IsOnSlope();
         CheckIfStuckAndMoveUp();
         dt.text = dashes.ToString();
@@ -789,7 +791,7 @@ private void UpdateMovementVector()
     }
 
     void OnControllerColliderHit(ControllerColliderHit hit) {
-        if (!_avatar.IsOwner) return;
+        if (!IsOwner) return;
         
         string hitTag = hit.transform.gameObject.tag;
         if (isGrounded) {
@@ -905,7 +907,7 @@ private void UpdateMovementVector()
     public void Die() {             
         characterController.enabled = false;
         dead = true;
-        if (_avatar.IsOwner) respawnInit = Instantiate(respawnScreen);
+        if (IsOwner) respawnInit = Instantiate(respawnScreen);
         Cursor.lockState = CursorLockMode.None;
         Shooting.lockCursor = false;
         transform.position = new Vector3(0, -30, 0);
@@ -956,15 +958,24 @@ private void UpdateMovementVector()
         Cursor.lockState = CursorLockMode.Locked;
     }
 
-    public void killHeal(Alteruna.Avatar shooter) { BroadcastRemoteMethod(0, shooter); }
+    // Called on the VICTIM's object (from ChangeMat.ControlDamage) but the
+    // reward applies to the shooter, so this must reach every client and each
+    // one checks "am I the shooter?". RequireOwnership = false because the
+    // victim's object is not owned by whoever triggered the kill.
+    public void killHeal(NetworkObject shooter) { ServerKillHeal(shooter); }
 
-    [SynchronizableMethod]
-    public void killHealSync(Alteruna.Avatar shooter) {
+    [ServerRpc(RequireOwnership = false)]
+    private void ServerKillHeal(NetworkObject shooter) => killHealSync(shooter);
+
+    [ObserversRpc]
+    public void killHealSync(NetworkObject shooter) {
         if (SettingsController.lifetimeKills == 0)
         {
             StartCoroutine(maskController.StartFirstKillScene());
         }
-        if (ChangeMat.Local.avatar == shooter) {
+        // Was 'ChangeMat.Local.avatar == shooter' -- the local player's avatar
+        // reference. Same meaning, now via real network identity.
+        if (Local != null && Local.NetworkObject == shooter) {
             upgradeManager.Local.killPoints++;
             killCount++;
             DamageControl.Local.health.Value = 180;
@@ -1321,7 +1332,7 @@ private void UpdateMovementVector()
         sideTilt = Mathf.Lerp(sideTilt, targetSideTilt, Time.deltaTime * lerpSpeed);
     }
     private void LateUpdate() {
-        if (!_avatar.IsOwner || MaskController.maskAnimationPlaying) return;
+        if (!IsOwner || MaskController.maskAnimationPlaying) return;
         if (!Shooting.Local.reloading) {
             akm.localPosition = akmBaseLocalPos;
             akm.localEulerAngles = akmBaseLocalRot;
