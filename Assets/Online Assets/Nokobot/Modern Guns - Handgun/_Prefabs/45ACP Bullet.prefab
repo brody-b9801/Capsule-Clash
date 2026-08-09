@@ -47,10 +47,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 076fe48f90c59264b828ccd02bdf1549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 24bfe0f5-ce87-418b-9bab-373fedc74e07
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   normal: {fileID: 2100000, guid: b67ecb75ff79943459ef6057421c626e, type: 2}
   damaged: {fileID: 2100000, guid: 53b9e9f3c9c81324fb5884a244a84926, type: 2}
   previousPosition: {x: 0, y: 0, z: 0}
@@ -60,7 +59,7 @@ MonoBehaviour:
   impactOffset: 0.01
   bulletOne: {fileID: 7908568636026974177}
   Visual: {fileID: 7908568636026974177}
-  shooter: 
+  shooter: {fileID: 0}
   shottieBool: 0
   showDistance: 0.25
 --- !u!54 &2432923963459860620

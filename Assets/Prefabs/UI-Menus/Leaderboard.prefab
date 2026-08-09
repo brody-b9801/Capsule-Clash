@@ -48,10 +48,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa323452aa42ca34ebdaf30e3ada8e4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 01098d6f-b083-45b7-b224-494d5cdae14f
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   LBPrefab: {fileID: 2787597828728937327, guid: 23486dbc85521df42b2965aa3dce62a3, type: 3}
-  parent: {fileID: 3968641253089263027}
+  killCount: 0
+  username: 
   lbContainer: {fileID: 0}

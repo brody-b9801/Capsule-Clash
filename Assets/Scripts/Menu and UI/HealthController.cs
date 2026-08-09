@@ -19,22 +19,22 @@ public class HealthController : MonoBehaviour
     private void Start() {
         healthBar = h1;
         healthBlack = healthBlackRef;
-        health = healthPrev = DamageControl.Local.health;
+        health = healthPrev = DamageControl.Local.health.Value;
     }
 
     void Update() {
         if (!PlayerMovement.Local.canTakeDamage) {
             health = 180;
         } else {
-            health = DamageControl.Local.health;
+            health = DamageControl.Local.health.Value;
         }
         if (health<healthPrev)
             damageAnim = true;
-        healthPrev = DamageControl.Local.health;
+        healthPrev = DamageControl.Local.health.Value;
     }
 
     public static void updateHealth() {
-	    h = DamageControl.Local.health;
+	    h = DamageControl.Local.health.Value;
       	healthBar.sizeDelta = new Vector2(h, healthBar.sizeDelta.y);
     }
 }

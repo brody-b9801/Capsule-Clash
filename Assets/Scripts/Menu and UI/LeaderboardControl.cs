@@ -1,11 +1,12 @@
-using FishNet.Object;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class LeaderboardControl : NetworkBehaviour
+// Plain MonoBehaviour: this is local HUD, listed as Local-only in the
+// authority map. It has no RPCs and no synced state.
+public class LeaderboardControl : MonoBehaviour
 {
     public GameObject LBPrefab;
     public static Dictionary<float, List<string>> data;
@@ -41,6 +42,14 @@ public class LeaderboardControl : NetworkBehaviour
         //lbContainer = GameObject.Find("Leaderboard").GetComponent<RectTransform>();
     }
     
+    // Was 'IsOwner' on this component, which described the leaderboard object,
+    // not the row being drawn. The intent is "highlight my own entry".
+    private static bool isLocalPlayerRow(string rowUsername)
+    {
+        return PlayerMovement.Local != null
+            && PlayerMovement.Local.getUsername() == rowUsername;
+    }
+
     private GameObject FindObjectByName(string name)
     {
         // First try GameObject.Find (for root-level objects)
@@ -130,7 +139,7 @@ public class LeaderboardControl : NetworkBehaviour
                     if (child.name == "leftText")
                     {
                         child.GetComponent<TextMeshProUGUI>().text = "#" + (displayedCount + 1).ToString() + " - " + u;
-                        if (IsOwner && !playerYellowedName)
+                        if (isLocalPlayerRow(u) && !playerYellowedName)
                         {
                             playerYellowedName = true;
                             child.GetComponentInParent<Image>().color = new Color32(255, 220, 105, 255);
@@ -148,7 +157,7 @@ public class LeaderboardControl : NetworkBehaviour
                     else if (child.name == "rightText")
                     {
                         child.GetComponent<TextMeshProUGUI>().text = ((int)k).ToString();
-                        if (IsOwner && !playerYellowedKC) {
+                        if (isLocalPlayerRow(u) && !playerYellowedKC) {
                             playerYellowedKC = true;
                             //child.GetComponent<TextMeshProUGUI>().color = new Color(1.0f, 0.8f, 0f, 1.0f);
                         } else {

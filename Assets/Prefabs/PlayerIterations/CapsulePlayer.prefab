@@ -143,8 +143,9 @@ GameObject:
   - component: {fileID: 2790694819776592840}
   - component: {fileID: 3371361198319244119}
   - component: {fileID: 7752035424641388494}
+  - component: {fileID: 1447310636841987035}
   m_Layer: 3
-  m_Name: GameObject 1
+  m_Name: CapsulePlayer
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -181,10 +182,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7b2d3d7334953a439fea3a4468ca911, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 5be6e7cf-4ec4-4ee6-a032-99ba63bf4f6c
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 1447310636841987035}
+  _networkObjectCache: {fileID: 0}
   jumpForce: 6.5
   maxLookUpAngle: 88
   maxLookDownAngle: 88
@@ -192,13 +192,24 @@ MonoBehaviour:
   sprintSpeed: 8
   gun: {fileID: 5678431955460453153}
   playerRenderer: {fileID: 1075840244914371417}
+  isGrounded: 0
+  fastAir: 0
+  isAiming: 0
+  isSprinting: 0
+  newPosition: {x: 0, y: 0, z: 0}
+  movement: {x: 0, y: 0, z: 0}
   capsuleCollider: {fileID: 4563841083353979690}
   playerTransform: {fileID: 5279564779932534022}
   bulletHole: {fileID: 2239517731234380739}
   borderPrefab: {fileID: 5615193209519933, guid: 2523692685631ff43a79f422e59d6d57, type: 3}
   forceMod: 100000000
+  onSlope: 0
   launchForce: 20
   dashForce: 20
+  jumpedLast: 0
+  isTeleporting: 0
+  isDashing: 0
+  newVelocity: {x: 0, y: 0, z: 0}
   targetWalkXPos: -0.1
   targetWalkYPos: -0.1
   targetWalkZPos: 0.05
@@ -209,6 +220,8 @@ MonoBehaviour:
   targetAimZPos: 0.05
   targetAimXRot: -3
   targetAimYRot: 0
+  dashVector: {x: 0, y: 0, z: 0}
+  canTakeDamage: 1
   collisionMask:
     serializedVersion: 2
     m_Bits: 1
@@ -217,9 +230,11 @@ MonoBehaviour:
     m_Bits: 2561
   unstuckDistance: 0.1
   spawnPosContainer: {fileID: 2334021776229870361, guid: e4846e6604ac0e5429579ce6c6593fdf, type: 3}
-  desertSpawnPosContainer: {fileID: 0}
+  hitCount: 0
   respawnScreen: {fileID: 6625595095732336869, guid: 2ab7af6ff7030084dadb50e37add15b7, type: 3}
+  dead: 0
   username: 
+  killCount: 0
   walkAnimTuneGun: 1
   walkAnimTune: 1.1
   jumpAnimTune: 1.025
@@ -228,6 +243,7 @@ MonoBehaviour:
   sidewaysAnimTune: 1.2
   breatheAnimTune: 1.05
   selfMaterial: {fileID: 2100000, guid: 9966650909bd6de4387f2c689f1d6822, type: 2}
+  elapsedHealTime: 0
   usernameDisplay: {fileID: 1054499837766755018}
   groundAcceleration: 1000
   groundDeceleration: 1000
@@ -241,8 +257,10 @@ MonoBehaviour:
   landingCameraShake: 1
   velocityBasedTilt: 2
   momentumCameraSway: 0.5
+  currDimension: Desert
   spaceSky: {fileID: 2100000, guid: 1cf6f4c6e6e0518419839d3f5448dd99, type: 2}
   iceSky: {fileID: 2100000, guid: 2bd8959f5fbd3644aa33af1a155fc147, type: 2}
+  shotBoost: {x: 0, y: 0, z: 0}
 --- !u!33 &6811795265293790440
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -331,10 +349,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0524c641505199498d3bf2b49473c8f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 464578b0-6672-46ef-972c-a1670ffe684e
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 1447310636841987035}
+  _networkObjectCache: {fileID: 0}
   bulletPrefab: {fileID: 1122964723992546, guid: 674adf642abf5614aae2995443c8250f, type: 3}
   gun: {fileID: 297485254485252709}
   player: {fileID: 4563841083353979690}
@@ -357,6 +374,13 @@ MonoBehaviour:
   snipeSpeed: 150
   fireRate: 11
   nextFireTime: 0
+  reloadNum: 30
+  shottieNum: 2
+  reloading: 0
+  playerShot: 0
+  isShooting: 0
+  canShoot: 1
+  shotgun: 0
   end: {x: 0, y: 0, z: 0}
   playerMag: {fileID: 6428558820523471758}
   trailFadeDuration: 0.5
@@ -372,10 +396,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33ddfec7688c67b40b94c95d8cc95576, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 41abcd76-cd28-4063-b706-abb01099c889
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 1447310636841987035}
+  _networkObjectCache: {fileID: 0}
   damaged: {fileID: 2100000, guid: 53b9e9f3c9c81324fb5884a244a84926, type: 2}
   normal: {fileID: 2100000, guid: b67ecb75ff79943459ef6057421c626e, type: 2}
   self: {fileID: 2100000, guid: 9966650909bd6de4387f2c689f1d6822, type: 2}
@@ -399,7 +422,7 @@ MonoBehaviour:
   iceUnlitColor: {r: 0.7058824, g: 0.7058824, b: 1, a: 1}
   iceHardEdgeLightColor: {r: 0, g: 0, b: 0.19607843, a: 1}
   icePlayerUnlitColor: {r: 0.60784316, g: 0.60784316, b: 1, a: 1}
-  avatar: {fileID: 5668613052439384710}
+  healed: 0
 --- !u!114 &4555525927683178864
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -412,12 +435,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c6fcd857ecfd2f4da84e2530911c177, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 014f38c2-c649-4e6a-9d3b-bb2b6d4b9202
-  Reliability: 1
-  LocalMethodBehavior: 1
-  avatar: {fileID: 5668613052439384710}
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 1447310636841987035}
+  _networkObjectCache: {fileID: 0}
+  rampPrefab: {fileID: 0}
+  wallPrefab: {fileID: 0}
+  floorPrefab: {fileID: 0}
   player: {fileID: 5279564779932534022}
+  playerSpawnedObjects: []
+  buildNum: 25
   breakParticlesRef: {fileID: 1250507045210962, guid: 3fe0df07025a3e747855b1bb671fc04e, type: 3}
   ground: {fileID: 5007660329891815841, guid: edb0989258826e94ba1fa00d2141c485, type: 3}
 --- !u!114 &1129547919659083733
@@ -513,11 +539,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa323452aa42ca34ebdaf30e3ada8e4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 0b2daf8e-43f7-4f22-b321-62343140ef62
-  Reliability: 1
-  LocalMethodBehavior: 1
-  _avatar: {fileID: 5668613052439384710}
   LBPrefab: {fileID: 2787597828728937327, guid: 23486dbc85521df42b2965aa3dce62a3, type: 3}
   killCount: 0
   username: 
@@ -534,7 +555,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0c2601bdafc4d7897967dd95229819e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  keyCount: 0
   keyPrefab: {fileID: 9013368919789758579, guid: 3035bfc68b8689c40ba61bee7907f51a, type: 3}
+  mazeKeyAcquired: 0
+  spaceKeyAcquired: 0
+  iceKeyAcquired: 0
 --- !u!54 &7752035424641388494
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -562,6 +587,63 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &1447310636841987035
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4563841083353979690}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26b716c41e9b56b4baafaf13a523ba2e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Object.NetworkObject
+  _localLevelOfDetailCalculationType: 0
+  _useLevelOfDetail: 0
+  _useRootLevelOfDetail: 1
+  NetworkObserver: {fileID: 0}
+  _enablePrediction: 0
+  _predictionType: 0
+  _localReconcileCorrectionType: 2
+  _graphicalObject: {fileID: 0}
+  _detachGraphicalObject: 0
+  _enableStateForwarding: 1
+  _networkTransform: {fileID: 0}
+  _ownerInterpolation: 1
+  _ownerSmoothedProperties: 255
+  _adaptiveInterpolation: 3
+  _spectatorSmoothedProperties: 255
+  _spectatorInterpolation: 2
+  _enableTeleport: 0
+  _teleportThreshold: 1
+  <PrefabId>k__BackingField: 65535
+  <SpawnableCollectionId>k__BackingField: 0
+  <AssetPathHash>k__BackingField: 12571575387717151666
+  SceneId: 0
+  SerializedTransformProperties:
+    Position: {x: 0, y: 0, z: 0}
+    Rotation: {x: 0, y: 0, z: 0, w: 0}
+    Scale: {x: 0, y: 0, z: 0}
+    IsValid: 0
+  <IsNested>k__BackingField: 0
+  WasActiveDuringEdit: 0
+  WasActiveDuringEdit_Set1: 1
+  <ComponentIndex>k__BackingField: 0
+  <PredictedSpawn>k__BackingField: {fileID: 0}
+  <PredictedOwner>k__BackingField: {fileID: 0}
+  NetworkBehaviours: []
+  InitializedParentNetworkBehaviour: {fileID: 0}
+  InitializedNestedNetworkObjects: []
+  RuntimeParentNetworkBehaviour: {fileID: 0}
+  RuntimeChildNetworkBehaviours: []
+  _isNetworked: 1
+  _isSpawnable: 1
+  _isGlobal: 0
+  _initializeOrder: 0
+  _preventDespawnOnDisconnect: 0
+  _defaultDespawnType: 0
+  _initializedTimestamp: 0
 --- !u!1 &7234072614236262368
 GameObject:
   m_ObjectHideFlags: 0
@@ -808,12 +890,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f2a183500ff9b04f8835c67b05849d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 939bd94b-3130-4cc1-9540-57c4834843dd
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 1447310636841987035}
+  _networkObjectCache: {fileID: 0}
   usernameDisplay: {fileID: 1981088015738634965}
-  avatar: {fileID: 5668613052439384710}
+  killCount: 0
+  username: 
 --- !u!114 &4038310910761108685
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -953,6 +1035,10 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 6081214143165384429, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+      propertyPath: _addedNetworkObject
+      value: 
+      objectReference: {fileID: 1447310636841987035}
     - target: {fileID: 8046000523938441231, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       propertyPath: m_LocalPosition.y
       value: -0.0338842
@@ -960,6 +1046,10 @@ PrefabInstance:
     - target: {fileID: 8046000523938441231, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       propertyPath: m_LocalPosition.z
       value: 0.4582993
+      objectReference: {fileID: 0}
+    - target: {fileID: 8678906300695345614, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+      propertyPath: WasActiveDuringEdit
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

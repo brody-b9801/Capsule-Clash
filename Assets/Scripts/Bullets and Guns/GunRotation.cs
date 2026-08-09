@@ -17,7 +17,14 @@ public class GunRotation : NetworkBehaviour
         g1 = GameObject.Find("CamAKM").transform;
         gm1 = GameObject.Find("MC.Magazine").transform;
         c1 = GameObject.Find("CamCasing").transform;
-        Debug.Log(c1.transform.position);
+    }
+
+    // IsOwner cannot be read in Start() -- Unity may run it before Fish-Net has
+    // assigned ownership, so the check would silently be false (error FN0007).
+    // OnStartClient only fires once the object is spawned and ownership is known.
+    public override void OnStartClient() {
+        base.OnStartClient();
+
         if (IsOwner) {
             Transform rendererContainer = transform.GetChild(0);
             for (int i = 0; i < rendererContainer.childCount; i++)

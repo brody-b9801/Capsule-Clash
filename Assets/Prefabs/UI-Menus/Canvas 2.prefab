@@ -181,6 +181,7 @@ MonoBehaviour:
   maxStamina: 100
   staminaRegenRate: 12.5
   staminaDepletionRate: 25
+  canSprint: 1
   staminaBlack: {fileID: 7097476876141520775}
 --- !u!1 &1412315207424257875
 GameObject:
@@ -1023,10 +1024,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3378e553d8bd7043b03af7b0f9ca1cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 9b775305-25f4-42ef-be42-7dd73fe960f3
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   builds: {fileID: 9199620325578566084}
   timer: {fileID: 0}
   totalTime: 1.675
@@ -1179,6 +1179,7 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -4787,6 +4788,7 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -4995,6 +4997,7 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -5131,6 +5134,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0

@@ -9,18 +9,18 @@ using Unity.VisualScripting;
 
 public class ObjectSpawner : NetworkBehaviour
 {
-    // TODO(Phase 4b): Alteruna's Spawner used an index into a scene-configured
-    // prefab list (_spawner.Spawn(3, ...) == floor, 2 == wall, 0 == ramp).
-    // FishNet has no equivalent -- it spawns a NetworkObject instance:
-    //     GameObject go = Instantiate(prefab, pos, rot);
-    //     InstanceFinder.ServerManager.Spawn(go);
-    // and despawns via InstanceFinder.ServerManager.Despawn(go).
-    // Both are SERVER-ONLY calls, so build placement must route through a
-    // [ServerRpc] -- which is exactly the Phase 5 authority work.
-    // Wire these three [SerializeField]s in the Inspector to replace the indices.
-    [SerializeField] private GameObject rampPrefab;   // was Spawn(0, ...)
-    [SerializeField] private GameObject wallPrefab;   // was Spawn(2, ...)
-    [SerializeField] private GameObject floorPrefab;  // was Spawn(3, ...)
+    // Alteruna's Spawner was a scene component (on the "NetworkManager"-tagged
+    // object) holding a prefab list; _spawner.Spawn(index, ...) picked from it.
+    // That object goes away with Alteruna, so the prefab references live here
+    // now -- this is the permanent replacement, not a stopgap.
+    //
+    // Assign in the Inspector (verified against the prefabs' own tags):
+    //   rampPrefab  = Assets/Prefabs/Builds/Cube 1.prefab  (tag Ramp,  was index 0)
+    //   wallPrefab  = Assets/Prefabs/Builds/Cube 2.prefab  (tag Wall,  was index 2)
+    //   floorPrefab = Assets/Prefabs/Builds/Cube 3.prefab  (tag Floor, was index 3)
+    [SerializeField] private GameObject rampPrefab;
+    [SerializeField] private GameObject wallPrefab;
+    [SerializeField] private GameObject floorPrefab;
 
     [SerializeField] private Transform player;
     // Note: despite the name, this is repopulated from scene-wide

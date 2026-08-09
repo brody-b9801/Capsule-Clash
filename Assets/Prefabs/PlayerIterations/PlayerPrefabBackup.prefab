@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 2228811821173346430}
   - component: {fileID: 5068398572155703368}
   - component: {fileID: 3879364991917464140}
+  - component: {fileID: 5977472873253082685}
   m_Layer: 0
   m_Name: PlayerPrefabBackup
   m_TagString: Untagged
@@ -57,25 +58,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7b2d3d7334953a439fea3a4468ca911, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 0b63b2e8-bfa5-4a73-a46e-177fcbd25d4a
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   jumpForce: 6.125
-  rotationSpeed: 10
   maxLookUpAngle: 88
   maxLookDownAngle: 88
   airSpeed: 6
   sprintSpeed: 10
   gun: {fileID: 3395478178897398841}
   playerRenderer: {fileID: 6376778017291334114}
-  collider: {fileID: 3459911472772664652}
+  isGrounded: 0
+  fastAir: 0
+  isAiming: 0
+  isSprinting: 0
+  newPosition: {x: 0, y: 0, z: 0}
+  movement: {x: 0, y: 0, z: 0}
+  capsuleCollider: {fileID: 0}
   playerTransform: {fileID: 3541204859729786582}
   bulletHole: {fileID: 9135168303874868443}
   borderPrefab: {fileID: 5615193209519933, guid: 2523692685631ff43a79f422e59d6d57, type: 3}
   forceMod: 100000000
+  onSlope: 0
   launchForce: 15
   dashForce: 10
+  jumpedLast: 0
+  isTeleporting: 0
+  isDashing: 0
+  newVelocity: {x: 0, y: 0, z: 0}
   targetWalkXPos: -0.1
   targetWalkYPos: -0.1
   targetWalkZPos: 0.05
@@ -86,6 +96,8 @@ MonoBehaviour:
   targetAimZPos: 0.05
   targetAimXRot: -3
   targetAimYRot: -1.3
+  dashVector: {x: 0, y: 0, z: 0}
+  canTakeDamage: 1
   collisionMask:
     serializedVersion: 2
     m_Bits: 1
@@ -94,8 +106,37 @@ MonoBehaviour:
     m_Bits: 2561
   unstuckDistance: 0.1
   spawnPosContainer: {fileID: 2334021776229870361, guid: e4846e6604ac0e5429579ce6c6593fdf, type: 3}
+  hitCount: 0
   respawnScreen: {fileID: 6625595095732336869, guid: 2ab7af6ff7030084dadb50e37add15b7, type: 3}
-  usernameDisplay: {fileID: 8439228910123730717}
+  dead: 0
+  username: 
+  killCount: 0
+  walkAnimTuneGun: 1
+  walkAnimTune: 1
+  jumpAnimTune: 1
+  shootAnimTune: 1
+  turnAnimTune: 1
+  sidewaysAnimTune: 1
+  breatheAnimTune: 1
+  selfMaterial: {fileID: 0}
+  elapsedHealTime: 0
+  usernameDisplay: {fileID: 0}
+  groundAcceleration: 20
+  groundDeceleration: 25
+  airAcceleration: 3
+  airDeceleration: 2
+  friction: 8
+  sprintAccelerationMultiplier: 1.5
+  airControlMultiplier: 0.5
+  speedFOVBoost: 10
+  sprintFOVBoost: 5
+  landingCameraShake: 0.15
+  velocityBasedTilt: 2
+  momentumCameraSway: 0.5
+  currDimension: Desert
+  spaceSky: {fileID: 0}
+  iceSky: {fileID: 0}
+  shotBoost: {x: 0, y: 0, z: 0}
 --- !u!114 &550435485716238090
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -198,6 +239,9 @@ MeshRenderer:
   m_RayTraceProcedural: 0
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -219,9 +263,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!143 &3429593225634551132
 CharacterController:
@@ -238,7 +284,6 @@ CharacterController:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -261,13 +306,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33ddfec7688c67b40b94c95d8cc95576, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 4abcf281-daac-4c23-9070-7715b5221c0d
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   damaged: {fileID: 2100000, guid: 53b9e9f3c9c81324fb5884a244a84926, type: 2}
   normal: {fileID: 2100000, guid: b67ecb75ff79943459ef6057421c626e, type: 2}
-  avatar: {fileID: 550435485716238090}
+  self: {fileID: 0}
+  wood: {fileID: 0}
+  wire: {fileID: 0}
+  nails: {fileID: 0}
+  gun: {fileID: 0}
+  desertLitColor: {r: 1, g: 1, b: 1, a: 1}
+  desertUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  desertHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  desertPlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  voidLitColor: {r: 1, g: 1, b: 1, a: 1}
+  voidUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  voidHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  voidPlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  mazeLitColor: {r: 1, g: 1, b: 1, a: 1}
+  mazeUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  mazeHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  mazePlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  iceLitColor: {r: 1, g: 1, b: 1, a: 1}
+  iceUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  iceHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  icePlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  healed: 0
 --- !u!114 &2228811821173346430
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -280,33 +345,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0524c641505199498d3bf2b49473c8f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: fbc3134c-0c81-4638-bf7c-e364989b86b0
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   bulletPrefab: {fileID: 1122964723992546, guid: 674adf642abf5614aae2995443c8250f, type: 3}
-  bulletSpeed: 150
-  snipeSpeed: 150
-  fireRate: 10
-  nextFireTime: 0
   gun: {fileID: 7345969047146980733}
   player: {fileID: 1331355513012596452}
   normal: {fileID: 2100000, guid: b67ecb75ff79943459ef6057421c626e, type: 2}
   damaged: {fileID: 2100000, guid: 53b9e9f3c9c81324fb5884a244a84926, type: 2}
-  trailFadeDuration: 0.5
   bulletTrailMaterial: {fileID: 2100000, guid: ad23528f247ce424ab9fe0447205b9bc, type: 2}
+  ignoreLayers:
+    serializedVersion: 2
+    m_Bits: 0
   muzzleFlash: {fileID: 3772254514874071443, guid: e47754a19b9baf24e89e17987651313d, type: 3}
   gunRotation: {fileID: 7345969047146980733}
   gunThing: {fileID: 7345969047146980733}
   bH: {fileID: 2219112672014258595}
-  end: {x: 0, y: 0, z: 0}
   muzzlePrefab: {fileID: 198792769130808804, guid: 4543ab5e3d405ec40a8d4e9aa5165030, type: 3}
   bulletCasingPrefab: {fileID: 7536018586199816644, guid: 17e74c0fe7960dc498b5bc55af4f296c, type: 3}
-  flashObject: {fileID: 198792769130808804, guid: 4543ab5e3d405ec40a8d4e9aa5165030, type: 3}
   playerMesh: {fileID: -5754084199372789682, guid: 19b3217a01ed3df42b30c781edabc747, type: 3}
   shotgunMesh: {fileID: 6919841926953838382, guid: ef692815acc00a84abbedf794f71d664, type: 3}
   M4Mesh: {fileID: -8401218714792031518, guid: 19b3217a01ed3df42b30c781edabc747, type: 3}
+  bulletSpeed: 150
+  snipeSpeed: 150
+  fireRate: 10
+  nextFireTime: 0
+  reloadNum: 30
+  shottieNum: 2
+  reloading: 0
+  playerShot: 0
+  isShooting: 0
+  canShoot: 1
+  shotgun: 0
+  end: {x: 0, y: 0, z: 0}
   playerMag: {fileID: 8008598642595491935, guid: 475f7ac98d1f4344a82a99baf2972ea1, type: 3}
+  trailFadeDuration: 0.5
 --- !u!114 &5068398572155703368
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -319,13 +392,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33ddfec7688c67b40b94c95d8cc95576, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 9323cccd-46a8-4195-9555-44f1227d08a4
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   damaged: {fileID: 2100000, guid: 53b9e9f3c9c81324fb5884a244a84926, type: 2}
   normal: {fileID: 2100000, guid: b67ecb75ff79943459ef6057421c626e, type: 2}
-  avatar: {fileID: 550435485716238090}
+  self: {fileID: 0}
+  wood: {fileID: 0}
+  wire: {fileID: 0}
+  nails: {fileID: 0}
+  gun: {fileID: 0}
+  desertLitColor: {r: 1, g: 1, b: 1, a: 1}
+  desertUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  desertHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  desertPlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  voidLitColor: {r: 1, g: 1, b: 1, a: 1}
+  voidUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  voidHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  voidPlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  mazeLitColor: {r: 1, g: 1, b: 1, a: 1}
+  mazeUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  mazeHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  mazePlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  iceLitColor: {r: 1, g: 1, b: 1, a: 1}
+  iceUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  iceHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  icePlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  healed: 0
 --- !u!114 &3879364991917464140
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -338,14 +431,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c6fcd857ecfd2f4da84e2530911c177, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 4230bcbc-b833-4a5a-9b7d-58fda3d96ed8
-  Reliability: 1
-  LocalMethodBehavior: 1
-  avatar: {fileID: 550435485716238090}
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
+  rampPrefab: {fileID: 0}
+  wallPrefab: {fileID: 0}
+  floorPrefab: {fileID: 0}
   player: {fileID: 3541204859729786582}
+  playerSpawnedObjects: []
+  buildNum: 25
   breakParticlesRef: {fileID: 1250507045210962, guid: 3fe0df07025a3e747855b1bb671fc04e, type: 3}
   ground: {fileID: 5007660329891815841, guid: edb0989258826e94ba1fa00d2141c485, type: 3}
+--- !u!114 &5977472873253082685
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1331355513012596452}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0c2601bdafc4d7897967dd95229819e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MaskController
+  keyCount: 0
+  keyPrefab: {fileID: 0}
+  mazeKeyAcquired: 0
+  spaceKeyAcquired: 0
+  iceKeyAcquired: 0
 --- !u!1001 &1213179251181039721
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -412,11 +525,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3725755467015584449, guid: 357730e9fea32ab4b99f0fb41275af3a, type: 3}
   m_PrefabInstance: {fileID: 1213179251181039721}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &3459911472772664652 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2364960720873651493, guid: 357730e9fea32ab4b99f0fb41275af3a, type: 3}
-  m_PrefabInstance: {fileID: 1213179251181039721}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &3833550130950695231
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -469,6 +577,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: GunContainer 1
       objectReference: {fileID: 0}
+    - target: {fileID: 8678906300695345614, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+      propertyPath: <AssetPathHash>k__BackingField
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -502,6 +614,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 3541204859729786582}
     m_Modifications:
+    - target: {fileID: -7495585252423245231, guid: f9ebe0ac56b645c47982ccb6489607a6, type: 3}
+      propertyPath: <AssetPathHash>k__BackingField
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2156591388696579827, guid: f9ebe0ac56b645c47982ccb6489607a6, type: 3}
       propertyPath: m_Name
       value: UsernameDisplay
@@ -604,14 +720,3 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 6468239182368073518, guid: f9ebe0ac56b645c47982ccb6489607a6, type: 3}
   m_PrefabInstance: {fileID: 9020572082461026801}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &8439228910123730717 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 590441588174679788, guid: f9ebe0ac56b645c47982ccb6489607a6, type: 3}
-  m_PrefabInstance: {fileID: 9020572082461026801}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9541d86e2fd84c1d9990edf0852d74ab, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 

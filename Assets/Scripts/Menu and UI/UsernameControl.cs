@@ -3,32 +3,23 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
-using FishNet.Object;
 using TMPro;
 
-public class UsernameControl : NetworkBehaviour
+// Plain MonoBehaviour. Lives on UsernameDisplay.prefab (a UI object) and holds
+// no synced state.
+//
+// This previously carried [ServerRpc]/[ObserversRpc] pairs converted from
+// Alteruna's [SynchronizableMethod]s, but they had ZERO callers -- the only
+// call sites are inside the commented-out block in Username.cs. Keeping them
+// forced a NetworkObject requirement onto a UI prefab for no benefit.
+//
+// If username/kill replication is wired up later, the pattern to restore is:
+//   [ServerRpc] void ServerSetName(string n) => RpcSetName(n);
+//   [ObserversRpc(BufferLast = true)] void RpcSetName(string n) { username = n; }
+// on a component that lives on the PLAYER object, not on UI.
+public class UsernameControl : MonoBehaviour
 {
     [SerializeField] private TMP_Text usernameDisplay;
     public float killCount;
     public string username;
-
-    // Alteruna's [SynchronizableMethod] had no direction -- BroadcastRemoteMethod
-    // sent to everyone. FishNet splits that into two explicit hops:
-    // owner -> server ([ServerRpc]), then server -> all clients ([ObserversRpc]).
-    // BufferLast = true replays the latest value to players who join later.
-    [ServerRpc]
-    public void ServerSetName(string usernameRef) => RpcSetName(usernameRef);
-
-    [ObserversRpc(BufferLast = true)]
-    private void RpcSetName(string usernameRef) {
-        username = usernameRef;
-    }
-
-    [ServerRpc]
-    public void ServerSetKills(float killRef) => RpcSetKills(killRef);
-
-    [ObserversRpc(BufferLast = true)]
-    private void RpcSetKills(float killRef) {
-        killCount = killRef;
-    }
 }

@@ -110,7 +110,6 @@ public class Shooting : NetworkBehaviour
     public static bool  playerJoin;
     public static bool  leaveHover = false;
 
-    private static Spawner _spawner;
 
     private Transform bulletHole;
     private Transform casingSpawn;
@@ -150,8 +149,14 @@ public class Shooting : NetworkBehaviour
         base.OnStopClient();
     }
 
-    void Start()
+    // Was Start(). IsOwner cannot be read there -- Unity may run Start() before
+    // Fish-Net assigns ownership, so the guard would silently be false and none
+    // of this setup would run (error FN0007). OnStartClient fires only once the
+    // object is spawned and ownership is known.
+    public override void OnStartClient()
     {
+        base.OnStartClient();
+
         if (!IsOwner) return;
 
         alphaVal = 0;
@@ -179,7 +184,6 @@ public class Shooting : NetworkBehaviour
         previousPosition = transform.position;
         lockCursor       = false;
 
-        _spawner = GameObject.FindGameObjectWithTag("NetworkManager").GetComponent<Spawner>();
         cam2     = GameObject.Find("CameraTwo").GetComponent<Camera>();
 
         camCasing.GetComponent<MeshRenderer>().enabled = false;

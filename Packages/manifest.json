@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.veriorpies.parrelsync": "https://github.com/VeriorPies/ParrelSync.git?path=/ParrelSync",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.ads": "4.16.4",
     "com.unity.ai.navigation": "2.0.12",

@@ -4,7 +4,11 @@ using UnityEngine;
 using System.Linq;
 using FishNet.Object;
 
-public class CollisionControl : NetworkBehaviour
+// Plain MonoBehaviour: bullets are pooled and locally instantiated, never
+// network-spawned. It still *references* NetworkObject (as the shooter's
+// identity) but inherits no networking behavior, so being a NetworkBehaviour
+// only produced "requires a NetworkObject" warnings on the bullet prefab.
+public class CollisionControl : MonoBehaviour
 {
     [SerializeField] private Material normal;
     [SerializeField] private Material damaged;

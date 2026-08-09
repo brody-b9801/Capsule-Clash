@@ -45,13 +45,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cebdd0f6f5bb564fbad577ec1487cb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 25dbfff5-a315-4ee4-8bab-a6e1e6ea9d7f
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   gr: {fileID: 0}
   gun: {fileID: 0}
-  avatar: {fileID: 0}
+  casing: {fileID: 0}
+  gunMag: {fileID: 0}
 --- !u!1 &1621385009276744604
 GameObject:
   m_ObjectHideFlags: 0
@@ -71,6 +71,7 @@ GameObject:
   - component: {fileID: 1044009294648463848}
   - component: {fileID: 3501329807979764491}
   - component: {fileID: -6414006970095886098}
+  - component: {fileID: 2556914992812021009}
   m_Layer: 0
   m_Name: Capsule
   m_TagString: Untagged
@@ -123,6 +124,9 @@ MeshRenderer:
   m_RayTraceProcedural: 0
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -144,9 +148,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!114 &7205482551516011492
 MonoBehaviour:
@@ -160,10 +166,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7b2d3d7334953a439fea3a4468ca911, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 31607326-a403-421d-9ae7-a75254a473b3
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   jumpForce: 8
   maxLookUpAngle: 80
   maxLookDownAngle: 80
@@ -171,13 +176,24 @@ MonoBehaviour:
   sprintSpeed: 8
   gun: {fileID: 0}
   playerRenderer: {fileID: 0}
-  collider: {fileID: 0}
+  isGrounded: 0
+  fastAir: 0
+  isAiming: 0
+  isSprinting: 0
+  newPosition: {x: 0, y: 0, z: 0}
+  movement: {x: 0, y: 0, z: 0}
+  capsuleCollider: {fileID: 0}
   playerTransform: {fileID: 0}
   bulletHole: {fileID: 0}
   borderPrefab: {fileID: 0}
   forceMod: 0
+  onSlope: 0
   launchForce: 0
   dashForce: 10
+  jumpedLast: 0
+  isTeleporting: 0
+  isDashing: 0
+  newVelocity: {x: 0, y: 0, z: 0}
   targetWalkXPos: 0
   targetWalkYPos: 0
   targetWalkZPos: 0
@@ -188,6 +204,8 @@ MonoBehaviour:
   targetAimZPos: 0
   targetAimXRot: 0
   targetAimYRot: 0
+  dashVector: {x: 0, y: 0, z: 0}
+  canTakeDamage: 1
   collisionMask:
     serializedVersion: 2
     m_Bits: 0
@@ -196,7 +214,9 @@ MonoBehaviour:
     m_Bits: 0
   unstuckDistance: 0.1
   spawnPosContainer: {fileID: 0}
+  hitCount: 0
   respawnScreen: {fileID: 0}
+  dead: 0
   username: 
   killCount: 0
   walkAnimTuneGun: 1
@@ -207,7 +227,24 @@ MonoBehaviour:
   sidewaysAnimTune: 1
   breatheAnimTune: 1
   selfMaterial: {fileID: 0}
+  elapsedHealTime: 0
   usernameDisplay: {fileID: 0}
+  groundAcceleration: 20
+  groundDeceleration: 25
+  airAcceleration: 3
+  airDeceleration: 2
+  friction: 8
+  sprintAccelerationMultiplier: 1.5
+  airControlMultiplier: 0.5
+  speedFOVBoost: 10
+  sprintFOVBoost: 5
+  landingCameraShake: 0.15
+  velocityBasedTilt: 2
+  momentumCameraSway: 0.5
+  currDimension: Desert
+  spaceSky: {fileID: 0}
+  iceSky: {fileID: 0}
+  shotBoost: {x: 0, y: 0, z: 0}
 --- !u!114 &8581526749624063214
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -241,20 +278,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0524c641505199498d3bf2b49473c8f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 571070d2-824e-4383-ad0f-19ea7afd8dda
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   bulletPrefab: {fileID: 0}
-  bulletSpeed: 15
-  snipeSpeed: 150
-  fireRate: 0
-  nextFireTime: 0
   gun: {fileID: 0}
   player: {fileID: 0}
   normal: {fileID: 0}
   damaged: {fileID: 0}
-  trailFadeDuration: 0.5
   bulletTrailMaterial: {fileID: 0}
   ignoreLayers:
     serializedVersion: 2
@@ -263,13 +294,25 @@ MonoBehaviour:
   gunRotation: {fileID: 0}
   gunThing: {fileID: 0}
   bH: {fileID: 0}
-  end: {x: 0, y: 0, z: 0}
   muzzlePrefab: {fileID: 0}
   bulletCasingPrefab: {fileID: 0}
   playerMesh: {fileID: 0}
   shotgunMesh: {fileID: 0}
   M4Mesh: {fileID: 0}
+  bulletSpeed: 15
+  snipeSpeed: 150
+  fireRate: 0
+  nextFireTime: 0
+  reloadNum: 30
+  shottieNum: 2
+  reloading: 0
+  playerShot: 0
+  isShooting: 0
+  canShoot: 1
+  shotgun: 0
+  end: {x: 0, y: 0, z: 0}
   playerMag: {fileID: 0}
+  trailFadeDuration: 0.5
 --- !u!143 &-5918367662829575742
 CharacterController:
   m_ObjectHideFlags: 0
@@ -285,7 +328,6 @@ CharacterController:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -308,12 +350,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c6fcd857ecfd2f4da84e2530911c177, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: d8a81240-663d-4b6d-a1f5-8b6516c330a4
-  Reliability: 1
-  LocalMethodBehavior: 1
-  avatar: {fileID: 0}
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
+  rampPrefab: {fileID: 0}
+  wallPrefab: {fileID: 0}
+  floorPrefab: {fileID: 0}
   player: {fileID: 0}
+  playerSpawnedObjects: []
+  buildNum: 25
   breakParticlesRef: {fileID: 0}
   ground: {fileID: 0}
 --- !u!114 &1044009294648463848
@@ -382,14 +427,50 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33ddfec7688c67b40b94c95d8cc95576, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: a02f1ab7-f3ce-4585-865b-de184b6a308e
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   damaged: {fileID: 0}
   normal: {fileID: 0}
   self: {fileID: 0}
-  avatar: {fileID: 0}
+  wood: {fileID: 0}
+  wire: {fileID: 0}
+  nails: {fileID: 0}
+  gun: {fileID: 0}
+  desertLitColor: {r: 1, g: 1, b: 1, a: 1}
+  desertUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  desertHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  desertPlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  voidLitColor: {r: 1, g: 1, b: 1, a: 1}
+  voidUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  voidHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  voidPlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  mazeLitColor: {r: 1, g: 1, b: 1, a: 1}
+  mazeUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  mazeHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  mazePlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  iceLitColor: {r: 1, g: 1, b: 1, a: 1}
+  iceUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  iceHardEdgeLightColor: {r: 1, g: 1, b: 1, a: 1}
+  icePlayerUnlitColor: {r: 1, g: 1, b: 1, a: 1}
+  healed: 0
+--- !u!114 &2556914992812021009
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1621385009276744604}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0c2601bdafc4d7897967dd95229819e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MaskController
+  keyCount: 0
+  keyPrefab: {fileID: 0}
+  mazeKeyAcquired: 0
+  spaceKeyAcquired: 0
+  iceKeyAcquired: 0
 --- !u!1 &2586718784086261387
 GameObject:
   m_ObjectHideFlags: 0
