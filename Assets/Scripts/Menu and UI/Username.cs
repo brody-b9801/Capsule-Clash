@@ -24,8 +24,6 @@ public class Username : NetworkBehaviour
         }
     }
 
-    // Client tells the server; server relays to everyone.
-    // BufferLast = true so late joiners receive the current value on spawn.
     [ServerRpc]
     private void ServerSetName(string usernameRef) => RpcSetName(usernameRef);
 

@@ -149,10 +149,6 @@ public class Shooting : NetworkBehaviour
         base.OnStopClient();
     }
 
-    // Was Start(). IsOwner cannot be read there -- Unity may run Start() before
-    // Fish-Net assigns ownership, so the guard would silently be false and none
-    // of this setup would run (error FN0007). OnStartClient fires only once the
-    // object is spawned and ownership is known.
     public override void OnStartClient()
     {
         base.OnStartClient();
@@ -161,11 +157,9 @@ public class Shooting : NetworkBehaviour
 
         alphaVal = 0;
 
-        // Cache camera
         mainCamera          = Camera.main;
         mainCameraTransform = mainCamera.transform;
 
-        // Scene references
         muzzleFlashCamera = GameObject.Find("CamQuad").GetComponent<MeshRenderer>().material;
         muzzleFlashCamera.color = new Color(
             muzzleFlashCamera.color.r,
@@ -219,7 +213,6 @@ public class Shooting : NetworkBehaviour
 
         muzzleFlashCamera.color = new Color(muzzleFlashCamera.color.r, muzzleFlashCamera.color.g, muzzleFlashCamera.color.b, alphaVal);
 
-        // Movement delta
         Vector3 currentPosition = transform.position;
         deltaPosition    = currentPosition - previousPosition;
         previousPosition = currentPosition;
@@ -227,7 +220,6 @@ public class Shooting : NetworkBehaviour
         Vector3 cameraPosition = mainCameraTransform.position;
         Vector3 cameraForward  = mainCameraTransform.forward;
 
-        // ── Fire ──────────────────────────────────────────────────────────
         ref int ammo = ref shotgun ? ref shottieNum : ref reloadNum;
 
             bool inputCheck = shotgun ? Input.GetMouseButtonDown(0) : Input.GetMouseButton(0);
@@ -267,7 +259,6 @@ public class Shooting : NetworkBehaviour
                 Shaker.shooting = false;
             }
 
-        // ── Reload ────────────────────────────────────────────────────────
         if (Input.GetKeyDown(KeyCode.R))
         {
             if ((!shotgun && !reloading && reloadNum != 30) || (shotgun && !reloading && shottieNum != 2))
@@ -278,12 +269,10 @@ public class Shooting : NetworkBehaviour
             }
         }
 
-        // ── Switch gun ────────────────────────────────────────────────────
         if (Input.GetKeyDown(KeyCode.E) && !reloading && canChangeGun && !isShooting)
             StartCoroutine(gunChangeAnim());
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     private void FireBullet(
         Vector3 origin, Vector3 direction, Vector3 bS,
         float force, float damage,
@@ -330,10 +319,8 @@ public class Shooting : NetworkBehaviour
                     muzzleInst.transform.localPosition = Vector3.zero;
                     muzzleInst.Play();
 
-                    // Auto-return muzzle particle after it finishes
                     StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bulletHoleRef));
 
-                    // ── Casing ────────────────────────────────────────────
                     if (IsOwner) {
                         Transform casing = _casingPool.Get(
                             casingSpawn.position, bulletCasingPrefab.transform.rotation, casingSpawn);
@@ -355,7 +342,6 @@ public class Shooting : NetworkBehaviour
 
         }
 
-        // ── Trajectory ────────────────────────────────────────────────────
         RaycastHit hit;
         Vector3 targetPoint;
 
@@ -404,22 +390,13 @@ public class Shooting : NetworkBehaviour
         isFiringBullet = true;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Pool return helpers
-    // ─────────────────────────────────────────────────────────────────────
-
     /// <summary>Waits for a ParticleSystem to finish playing then returns it to the pool.</summary>
     private IEnumerator ReturnParticleAfterPlay(ParticleSystem ps, Transform defaultParent)
     {
-        // Guard: if the particle system was destroyed externally, bail out
         yield return new WaitWhile(() => ps != null && ps.IsAlive(true));
         if (ps != null)
             _muzzlePool.Return(ps, _muzzlePoolRoot);
     }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Everything below is unchanged
-    // ─────────────────────────────────────────────────────────────────────
 
     public IEnumerator gunChangeAnim()
     {
@@ -521,8 +498,6 @@ public class Shooting : NetworkBehaviour
             Cursor.lockState = CursorLockMode.Locked;
     }
 
-    // Cosmetic gun model swap -- client-owned per the authority map.
-    // BufferLast replays the latest skin to players who join after the swap.
     [ServerRpc]
     private void ServerGunSkin(bool sg, Vector3 pos, Quaternion rot, bool networkedCall)
         => RpcGunSkin(sg, pos, rot, networkedCall);

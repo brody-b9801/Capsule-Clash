@@ -97,7 +97,6 @@ public class PlayerMovement : NetworkBehaviour {
     private bool lerpingJump = false;
     private bool lerpingJumpTwo = false;
 
-    // Cached masks and reusable collections
     private static int _groundMask = -1;
     private static int GroundMask { get { if (_groundMask == -1) _groundMask = LayerMask.GetMask("Default", "BuildNoColPlayer"); return _groundMask; } }
     private static int _defaultMask = -1;
@@ -138,11 +137,9 @@ public class PlayerMovement : NetworkBehaviour {
     private List<Vector3> spawnVectors = new List<Vector3>();
     public Transform spawnPosContainer;
     
-    // Dimension-specific spawn containers
     private Transform mazeSpawnPosContainer;
     private Transform spaceSpawnPosContainer;
     private Transform iceSpawnPosContainer;    
-    // Dimension-specific spawn vectors
     private List<Vector3> desertSpawnVectors = new List<Vector3>();
     private List<Vector3> mazeSpawnVectors = new List<Vector3>();
     private List<Vector3> spaceSpawnVectors = new List<Vector3>();
@@ -169,11 +166,9 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private Material selfMaterial;
     public float elapsedHealTime;
 
-    // Controllers
     private SettingsController settingsControl;
     private LeaderboardControl leaderboardControl;
     public GameObject usernameDisplay;
-    // Enhanced Acceleration variables
     [Header("Movement Physics")]
     [SerializeField] private float groundAcceleration = 20f;
     [SerializeField] private float groundDeceleration = 25f;
@@ -187,7 +182,6 @@ public class PlayerMovement : NetworkBehaviour {
     private Vector3 wishDir = Vector3.zero;
     public static float percentAccelerated;
 
-    // Enhanced visual effects
     [Header("Visual Effects")]
     [SerializeField] private float speedFOVBoost = 10f;
     [SerializeField] private float sprintFOVBoost = 5f;
@@ -202,23 +196,18 @@ public class PlayerMovement : NetworkBehaviour {
     private float currentSprintFOV = 0f;
     private Vector3 landingCameraOffset = Vector3.zero;
 
-    // Collision velocity tracking
     private Vector3 lastFrameMovement = Vector3.zero;
 
     public string currDimension = "Desert";
     private float gravity = 9.81f;
     private MaskController maskController;
 
-    // ---Skybox Materials ---
     private Material desertSky;
     public Material spaceSky;
     public Material iceSky;
     public Vector3 shotBoost;
     private bool wasGrounded;
     private GunThingAnim gunRenderer;
-    // -------------------------------------------------------------------------
-    // Input
-    // -------------------------------------------------------------------------
 
     public static PlayerMovement Local {get; private set;}
     private void InitializeInput() {
@@ -309,19 +298,11 @@ public class PlayerMovement : NetworkBehaviour {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Unity lifecycle
-    // -------------------------------------------------------------------------
-
     private void Awake() {
         Local = this;
         SaveSystem.ApplyPendingKillData(this);
     }
 
-    // Was Start(). Unity's Start() can run BEFORE Fish-Net assigns ownership,
-    // which would make the IsOwner gate below silently false and skip all of
-    // this setup. OnStartClient only fires once the object is network-spawned
-    // and ownership is known.
     public override void OnStartClient() {
         base.OnStartClient();
 
@@ -368,8 +349,6 @@ public class PlayerMovement : NetworkBehaviour {
             spawn = transform.position;
             dashIcon = GameObject.Find("dashBG").GetComponent<RectTransform>();
             
-            // Initialize dimension-specific spawn vectors
-            // If desertSpawnPosContainer is not set, use the old spawnPosContainer as desert spawns
             Transform desertContainer = spawnPosContainer;
             foreach (Transform s in desertContainer) 
                 desertSpawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
@@ -391,11 +370,8 @@ public class PlayerMovement : NetworkBehaviour {
             playerCamera.transform.localEulerAngles = Vector3.zero;
             rotationSpeed = SettingsController.rs;
 
-            // RoomMenu captures this while the input field is still active;
-            // GameObject.Find cannot see it by the time the player spawns.
             username = RoomMenu.TypedUsername;
 
-            // Kick off the opening scene
             RetroDither.isTeleporting = true;
             maskController.Initialize(playerCamera);
             maskController.BeginOpeningScene();
@@ -669,7 +645,6 @@ private void UpdateMovementVector()
 
     private void HandleLaunch()
     {
-        // Launch pads
         if (launch) {
             newVelocity.y = launchForce;
             jumpedLast = true;
@@ -680,17 +655,12 @@ private void UpdateMovementVector()
     }
     private void KeyEvents()
     {
-        // Respawn
 
         if (Input.GetKey(KeyCode.R) && dead) Respawn();
-
-        // Healing
 
         if (Input.GetKey(KeyCode.Q) && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
             && isGrounded && !healParticles.healing && DamageControl.Local.health.Value < 180.0f)
             StartCoroutine(stationaryHealing());
-        
-        // Sprint
 
         if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
             && isGrounded && StaminaController.Local.canSprint && !isAiming) {
@@ -703,8 +673,6 @@ private void UpdateMovementVector()
             isSprinting = false;
             fastAir = false;
         }
-        
-        // Unlock cursor
         
         if (Input.GetKeyUp(KeyCode.Escape)) {
             Cursor.lockState = CursorLockMode.None;
@@ -813,7 +781,6 @@ private void UpdateMovementVector()
             else if (hitObject == portal3A) HandleTeleportation(portal3B, desertInfo);
             else if (hitObject == portal3B) HandleTeleportation(portal3A, iceInfo);
             else if (hitObject == portal4 && MaskController.Local.keyCount == 3) {
-                //Start boss fight scene, to be implemented
             }
         }
     }
@@ -901,7 +868,6 @@ private void UpdateMovementVector()
             _borderRenderers[i].sharedMaterial.color = borderColor;
     }
 
-    //-----Death/Damage-----//     
     public void Die() {             
         characterController.enabled = false;
         dead = true;
@@ -927,7 +893,6 @@ private void UpdateMovementVector()
         GetComponent<ChangeMat>().healed = false;
         movement = Vector3.zero;
             
-        // Select appropriate spawn list based on current dimension
         List<Vector3> currentSpawns = desertSpawnVectors; // default to desert spawns
         if (currDimension == "Maze" && mazeSpawnVectors.Count > 0)
             currentSpawns = mazeSpawnVectors;
@@ -956,10 +921,6 @@ private void UpdateMovementVector()
         Cursor.lockState = CursorLockMode.Locked;
     }
 
-    // Called on the VICTIM's object (from ChangeMat.ControlDamage) but the
-    // reward applies to the shooter, so this must reach every client and each
-    // one checks "am I the shooter?". RequireOwnership = false because the
-    // victim's object is not owned by whoever triggered the kill.
     public void killHeal(NetworkObject shooter) { ServerKillHeal(shooter); }
 
     [ServerRpc(RequireOwnership = false)]
@@ -971,8 +932,6 @@ private void UpdateMovementVector()
         {
             StartCoroutine(maskController.StartFirstKillScene());
         }
-        // Was 'ChangeMat.Local.avatar == shooter' -- the local player's avatar
-        // reference. Same meaning, now via real network identity.
         if (Local != null && Local.NetworkObject == shooter) {
             upgradeManager.Local.killPoints++;
             killCount++;
@@ -989,7 +948,6 @@ private void UpdateMovementVector()
         canTakeDamage = true;
     }
 
-    //-----Teleportation handling-----//
     private void HandleTeleportation(GameObject endPortal, DimensionInfo target) {
         characterController.enabled = false;
         SetActiveDimension(target);
@@ -1019,7 +977,6 @@ private void UpdateMovementVector()
         Camera.main.GetComponent<FogShader>().ChangeDimension(target.name);
     }
 
-    //Allow teleporting only every 2 seconds
     IEnumerator teleTrue() {
         HealthController.tpAnim = true;
         isTeleporting = true;
@@ -1028,7 +985,6 @@ private void UpdateMovementVector()
         canTeleport = true;
     }
     
-    //Method to get players unstuck from builds they place that intersect with their character by temporarily making the builds non-collidable
     void CheckIfStuckAndMoveUp() {
         Vector3 capsuleBottom = transform.position + characterController.center - Vector3.up * (characterController.height / 2 - characterController.radius);
         Vector3 capsuleTop = transform.position + characterController.center + Vector3.up * (characterController.height / 2 - characterController.radius);
@@ -1082,7 +1038,6 @@ private void UpdateMovementVector()
         }
     }
 
-//-----Procedural Animations-----//
     IEnumerator ApplyLandingShake(float magnitude) {
         float duration = 0.2f;
         float elapsed = 0f;

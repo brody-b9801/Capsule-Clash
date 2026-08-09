@@ -11,9 +11,6 @@ public class BuildHealth : NetworkBehaviour
     public Animator anim;
     public int maxHealth = 4;
 
-    // ClientUnsynchronized mirrors today's behavior: buildDamageSync ran on every
-    // client independently, each mutating its own copy. Phase 5 makes this
-    // ServerOnly so the server is the single source of truth for build health.
     private readonly SyncVar<float> currentHealth = new SyncVar<float>(
         4f, new SyncTypeSettings(WritePermission.ClientUnsynchronized, ReadPermission.Observers));
     [SerializeField] private GameObject build;
@@ -48,23 +45,27 @@ public class BuildHealth : NetworkBehaviour
         if (transMesh != null)
             transMesh.enabled = false;
     }
-    // Bullets from ANY player damage builds, and the build is not owned by the
-    // shooter, so RequireOwnership must be false or the RPC is rejected.
-    // RunLocally = true keeps the shooter's own feedback instant instead of
-    // waiting a round trip -- matching how the old broadcast felt.
     public void TakeDamage(bool shotgun, float dist)
     {
+        Debug.Log($"Taking damage: shotgun={shotgun}, dist={dist}");
         ServerTakeDamage(shotgun, dist);
     }
 
     [ServerRpc(RequireOwnership = false, RunLocally = true)]
-    private void ServerTakeDamage(bool shotgun, float dist) => RpcBuildDamage(shotgun, dist);
+    private void ServerTakeDamage(bool shotgun, float dist) {
+        RpcBuildDamage(shotgun, dist);
+        Debug.Log($"Server received damage: shotgun={shotgun}, dist={dist}");
+    }
 
-    [ObserversRpc(ExcludeServer = true)]
-    private void RpcBuildDamage(bool sg, float dist) => buildDamageSync(sg, dist);
+    [ObserversRpc(ExcludeServer = false)]// change to true later
+    private void RpcBuildDamage(bool sg, float dist)
+    {
+        Debug.Log($"RpcBuildDamage received: shotgun={sg}, dist={dist}");
+        buildDamageSync(sg, dist);
+    }
 
     private void buildDamageSync(bool sg, float dist) {
-        // Unmerge combined meshes so damage is visible
+        Debug.Log("Applying damage to build.");
         WallFinished wallFinished = build.GetComponent<WallFinished>();
         if (wallFinished == null)
             wallFinished = build.GetComponentInParent<WallFinished>(); // Try parent

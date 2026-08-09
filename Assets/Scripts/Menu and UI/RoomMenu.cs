@@ -5,16 +5,6 @@ using System.Linq;
 using FishNet;
 using FishNet.Transporting;
 
-// Fish-Net port of the old Alteruna RoomMenu.
-//
-// The room-browser half of the original is GONE, not ported. AvailableRooms /
-// RefreshRoomList / JoinOnDemandRoom / OnRoomListUpdated were queries against
-// Alteruna's hosted matchmaking service; Fish-Net is a transport and has no
-// such registry. With a single dedicated server there is nothing to browse --
-// "join" is just StartConnection(address, port).
-//
-// Everything that survived is the UI state machine, which was always plain
-// Unity code and is unchanged.
 public class RoomMenu : MonoBehaviour
 {
     [Header("Server")]
@@ -58,7 +48,6 @@ public class RoomMenu : MonoBehaviour
             return;
         }
 
-        // Replaces Multiplayer.OnConnected / OnDisconnected.
         InstanceFinder.ClientManager.OnClientConnectionState += OnClientConnectionState;
 
         StartButton.onClick.AddListener(() =>
@@ -66,13 +55,6 @@ public class RoomMenu : MonoBehaviour
             Loading.SetActive(true);
             GetComponent<Canvas>().enabled = false;
 
-            // Replaces Multiplayer.JoinOnDemandRoom().
-            //
-            // hostLocally is a [SerializeField] on a SCENE object, so every
-            // ParrelSync clone reads the SAME value -- either both try to host
-            // (second one fails, port 7770 already bound) or neither does.
-            // Instead: whoever can bind the port becomes the host, everyone
-            // else joins it as a pure client.
             if (hostLocally && InstanceFinder.ServerManager != null && !IsPortInUse(serverPort))
                 InstanceFinder.ServerManager.StartConnection();
 
@@ -84,7 +66,6 @@ public class RoomMenu : MonoBehaviour
             GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0].enableGun();
             transform.gameObject.GetComponent<MenuHandler>().titleStart();
 
-            // Replaces Multiplayer.CurrentRoom?.Leave().
             InstanceFinder.ClientManager.StopConnection();
             if (hostLocally && InstanceFinder.ServerManager != null)
                 InstanceFinder.ServerManager.StopConnection(true);
@@ -101,8 +82,6 @@ public class RoomMenu : MonoBehaviour
             InstanceFinder.ClientManager.OnClientConnectionState -= OnClientConnectionState;
     }
 
-    // Single Fish-Net event replaces Alteruna's separate connect/disconnect
-    // callbacks -- the state enum says which one happened.
     private void OnClientConnectionState(ClientConnectionStateArgs args)
     {
         if (args.ConnectionState == LocalConnectionState.Started) Connected();
@@ -121,8 +100,6 @@ public class RoomMenu : MonoBehaviour
         LeftRoom();
     }
 
-    // Body is unchanged from the Alteruna version apart from the room name,
-    // which no longer exists -- there is one server, so it is a constant.
     private void JoinedRoom()
     {
         CamTwo.cullingMask |= (1 << LayerMask.NameToLayer("UI"));
@@ -142,10 +119,6 @@ public class RoomMenu : MonoBehaviour
         BulletText.roomName = serverAddress;
         BuildUI.started = true;
 
-        // Capture the typed username BEFORE hiding the field. PlayerMovement
-        // used to GameObject.Find("UsernameInput") in its own startup, but
-        // GameObject.Find ignores inactive objects -- and under Fish-Net the
-        // player spawns AFTER this runs, so the field is already hidden by then.
         CaptureUsername();
 
         usernameInput.SetActive(false);
@@ -171,7 +144,6 @@ public class RoomMenu : MonoBehaviour
         }
         catch
         {
-            // If the check is unavailable, assume free and let StartConnection decide.
         }
 
         return false;
@@ -190,7 +162,6 @@ public class RoomMenu : MonoBehaviour
         TMPro.TextMeshProUGUI t = usernameInput.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
         if (t == null) return;
 
-        // Strip spaces and the zero-width space TMP puts in empty input fields.
         string result = t.text.Replace(" ", "").Replace("​", "");
         TypedUsername = result.Length > 0 ? t.text : "Player";
     }

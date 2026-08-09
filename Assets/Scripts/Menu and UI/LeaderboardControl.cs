@@ -4,8 +4,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// Plain MonoBehaviour: this is local HUD, listed as Local-only in the
-// authority map. It has no RPCs and no synced state.
 public class LeaderboardControl : MonoBehaviour
 {
     public GameObject LBPrefab;
@@ -25,7 +23,6 @@ public class LeaderboardControl : MonoBehaviour
 
     void Start()
     {
-        // Search entire hierarchy for slot objects
         LB1 = FindObjectByName("Slot 1");
         LB2 = FindObjectByName("Slot 2");
         LB3 = FindObjectByName("Slot 3");
@@ -42,8 +39,6 @@ public class LeaderboardControl : MonoBehaviour
         //lbContainer = GameObject.Find("Leaderboard").GetComponent<RectTransform>();
     }
     
-    // Was 'IsOwner' on this component, which described the leaderboard object,
-    // not the row being drawn. The intent is "highlight my own entry".
     private static bool isLocalPlayerRow(string rowUsername)
     {
         return PlayerMovement.Local != null
@@ -56,7 +51,6 @@ public class LeaderboardControl : MonoBehaviour
         GameObject result = GameObject.Find(name);
         if (result != null) return result;
         
-        // If not found, search entire hierarchy
         foreach (GameObject obj in Resources.FindObjectsOfTypeAll<GameObject>())
         {
             if (obj.name == name && obj.scene.name != null) // Only active scene objects
@@ -70,14 +64,11 @@ public class LeaderboardControl : MonoBehaviour
     //[SynchronizableMethod]
     public void UpdateLB()
     {
-        // Find and destroy existing leaderboard objects
         playerYellowedName = false;
         playerYellowedKC = false;
 
-        // Initialize data dictionary
         data = new Dictionary<float, List<string>>();
 
-        // Populate the dictionary with information from tagged objects
         taggedObjects = GameObject.FindGameObjectsWithTag("Player");
         foreach (GameObject obj in taggedObjects)
         {
@@ -85,7 +76,6 @@ public class LeaderboardControl : MonoBehaviour
             killCount = usernameControl.getKills();
             username = usernameControl.getUsername();
 
-            // Add the username to the list for the corresponding kill count
             if (!data.ContainsKey(killCount))
             {
                 data[killCount] = new List<string>();
@@ -98,7 +88,6 @@ public class LeaderboardControl : MonoBehaviour
         var sortedKeys = new List<float>(data.Keys);
         sortedKeys.Sort((a, b) => b.CompareTo(a));
 
-        // Display up to four players
         int displayedCount = 0;
         for (int i = 0; i < lbEntries.Length; i++)
         {

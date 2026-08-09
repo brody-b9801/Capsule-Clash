@@ -418,9 +418,9 @@ MonoBehaviour:
   _componentIndexCache: 3
   _addedNetworkObject: {fileID: 1447310636841987035}
   _networkObjectCache: {fileID: 1447310636841987035}
-  rampPrefab: {fileID: 0}
-  wallPrefab: {fileID: 0}
-  floorPrefab: {fileID: 0}
+  rampPrefab: {fileID: 6186443727193615251, guid: 395be62ad9d3cb84c8cadf755dcd98c3, type: 3}
+  wallPrefab: {fileID: 557634749615070146, guid: 98059948cd6fb444493625ff3f416615, type: 3}
+  floorPrefab: {fileID: 2232761753259631505, guid: 082498592ff166044b7e3187e97543c0, type: 3}
   player: {fileID: 5279564779932534022}
   playerSpawnedObjects: []
   buildNum: 25

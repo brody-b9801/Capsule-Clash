@@ -6,9 +6,6 @@ using TMPro;
 using FishNet;
 using System.Linq;
 
-// Plain MonoBehaviour: this is HUD and lives on a Canvas prefab. The networked
-// build clock lives on BuildTimer (a NetworkBehaviour on a scene object) so
-// that Fish-Net does not force a NetworkObject onto the UI Canvas.
 public class BuildUI : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI builds;
@@ -24,8 +21,6 @@ public class BuildUI : MonoBehaviour
 
     private List<bool> activePrevious = new List<bool>();
 
-    // Replaces the old client-set 'isHost' bool. IsServerStarted is authoritative
-    // and cannot be spoofed by a client, unlike the previous flag.
     public static bool isHost => InstanceFinder.IsServerStarted;
 
     void Update()
@@ -43,8 +38,6 @@ public class BuildUI : MonoBehaviour
         timer.fillAmount = (buildResetTime / 100);
         arrow.localEulerAngles = new Vector3(0, 0, 360 * (buildResetTime / 100));
 
-        // BuildTimer owns the SyncVar; it advances the clock on the server and
-        // returns the replicated value on clients.
         if (BuildTimer.Instance != null)
             totalBuildTime = BuildTimer.Instance.Tick(totalBuildTime, Time.deltaTime);
         else if (isHost)

@@ -18,19 +18,12 @@ public class HealthController : MonoBehaviour
     private float healthPrev;
     private float lastHealth;
 
-    // This is a scene UI object, so Start()/Update() run from scene load.
-    // DamageControl.Local and PlayerMovement.Local are only assigned in
-    // OnStartClient() on the PLAYER object, which spawns later -- and on a
-    // dedicated server, never. ClientManager.Started is not enough: the client
-    // can be running before the local player's object exists.
-    // Everything here must therefore null-check the player, not the connection.
     private static bool PlayerReady =>
         DamageControl.Local != null && PlayerMovement.Local != null;
 
     private void Start() {
         healthBar = h1;
         healthBlack = healthBlackRef;
-        // Do NOT read DamageControl.Local here -- the player has not spawned yet.
         health = healthPrev = lastHealth = 180.0f;
     }
 

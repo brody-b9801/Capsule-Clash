@@ -23,7 +23,6 @@ public static class SceneLookup
     /// </summary>
     public static GameObject FindInactive(string name)
     {
-        // Fast path: active objects.
         GameObject active = GameObject.Find(name);
         if (active != null) return active;
 

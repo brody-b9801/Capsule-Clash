@@ -1,19 +1,5 @@
 using UnityEngine;
 
-// Drop-in replacements for Alteruna's SyncedAxis / SyncedKey.
-//
-// Under Alteruna these read from an InputSynchronizable, which replicated a
-// remote player's inputs so their movement could be simulated locally.
-// Fish-Net does not need that here: PlayerMovement.Update() is gated on IsOwner,
-// so only the owning client ever reads these, and position is replicated by a
-// NetworkTransform component on the prefab instead of by re-simulating input.
-//
-// The implicit operators are what let the ~8 call sites stay unchanged --
-// `new Vector3(_horizontal, 0, _vertical)` and `if (_jump)` still compile.
-//
-// If/when movement moves to [Replicate]/[Reconcile] prediction, these get
-// replaced by a ReplicateData struct rather than extended.
-
 public readonly struct SyncedAxis
 {
     private readonly string _axisName;
@@ -27,7 +13,6 @@ public readonly struct SyncedAxis
 
     public static implicit operator float(SyncedAxis axis) => axis.Value;
 
-    // Supports `CameraZoom.moving = (_horizontal || _vertical);`
     public static implicit operator bool(SyncedAxis axis) => Mathf.Abs(axis.Value) > 0.001f;
 }
 

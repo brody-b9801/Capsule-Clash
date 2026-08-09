@@ -19,9 +19,6 @@ public class GunRotation : NetworkBehaviour
         c1 = SceneLookup.FindInactive("CamCasing").transform;
     }
 
-    // IsOwner cannot be read in Start() -- Unity may run it before Fish-Net has
-    // assigned ownership, so the check would silently be false (error FN0007).
-    // OnStartClient only fires once the object is spawned and ownership is known.
     public override void OnStartClient() {
         base.OnStartClient();
 

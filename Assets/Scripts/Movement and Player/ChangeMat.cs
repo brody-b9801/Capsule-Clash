@@ -115,8 +115,6 @@ public class ChangeMat : NetworkBehaviour
     {
         bool avatarSame = PlayerMovement.getAvatarBool(shotAvatar);
 
-        // ControlDamage runs on the victim's object, so 'this' is already the
-        // player being shot -- read health off this object, not the local player.
         DamageControl damageControl = GetComponent<DamageControl>();
         if (damageControl == null) return;
 
@@ -144,8 +142,6 @@ public class ChangeMat : NetworkBehaviour
         }
     }
 
-    // The shooter calls these on the VICTIM's object, which they do not own,
-    // so RequireOwnership must be false. Each hop is client -> server -> observers.
     [ServerRpc(RequireOwnership = false)]
     private void ServerControlDamage(NetworkObject shot, NetworkObject shooter, bool shotgun, float dist)
         => ControlDamage(shot, shooter, shotgun, dist);

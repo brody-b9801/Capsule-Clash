@@ -9,23 +9,11 @@ using Unity.VisualScripting;
 
 public class ObjectSpawner : NetworkBehaviour
 {
-    // Alteruna's Spawner was a scene component (on the "NetworkManager"-tagged
-    // object) holding a prefab list; _spawner.Spawn(index, ...) picked from it.
-    // That object goes away with Alteruna, so the prefab references live here
-    // now -- this is the permanent replacement, not a stopgap.
-    //
-    // Assign in the Inspector (verified against the prefabs' own tags):
-    //   rampPrefab  = Assets/Prefabs/Builds/Cube 1.prefab  (tag Ramp,  was index 0)
-    //   wallPrefab  = Assets/Prefabs/Builds/Cube 2.prefab  (tag Wall,  was index 2)
-    //   floorPrefab = Assets/Prefabs/Builds/Cube 3.prefab  (tag Floor, was index 3)
     [SerializeField] private GameObject rampPrefab;
     [SerializeField] private GameObject wallPrefab;
     [SerializeField] private GameObject floorPrefab;
 
     [SerializeField] private Transform player;
-    // Note: despite the name, this is repopulated from scene-wide
-    // FindGameObjectsWithTag in checkSupport(), so it holds every player's
-    // builds, not just this one's. Instance-scoped now; ownership is Phase 5.
     public List<GameObject> playerSpawnedObjects;
     private float gridSize = 5f;
 
@@ -36,8 +24,6 @@ public class ObjectSpawner : NetworkBehaviour
     public static bool checkSupportBool = true;
     public static List<GameObject> unsupportedObjects;
 
-    // The local player's ObjectSpawner. Phase 1 accessor: valid on a client,
-    // meaningless on a dedicated server (which has no local player).
     public static ObjectSpawner Local { get; private set; }
     private static HashSet<Vector3> instantiatedParticles = new HashSet<Vector3>();
 
@@ -51,19 +37,12 @@ public class ObjectSpawner : NetworkBehaviour
         Local = this;
     }
 
-    // NetworkBehaviour has real virtual lifecycle hooks, so the
-    // 'private new void OnDestroy()' hiding workaround is no longer needed.
     public override void OnStopClient()
     {
         if (Local == this) Local = null;
         base.OnStopClient();
     }
 
-    // Replaces Alteruna's _spawner.Spawn(index, ...). Server-only in FishNet.
-    // Until build placement is routed through a [ServerRpc] (Phase 5), this
-    // only produces a networked object when called on the server; on a pure
-    // client it falls back to a local-only Instantiate, matching today's
-    // client-side-placement behavior.
     private GameObject SpawnBuild(GameObject prefab, Vector3 pos, Quaternion rot, Vector3 scale)
     {
         if (prefab == null) return null;
@@ -77,7 +56,6 @@ public class ObjectSpawner : NetworkBehaviour
         return go;
     }
 
-    // Replaces Alteruna's _spawner.Despawn(obj).
     private static void DespawnBuild(GameObject obj)
     {
         if (obj == null) return;
@@ -90,7 +68,6 @@ public class ObjectSpawner : NetworkBehaviour
 
     private void OnDrawGizmos()
     {
-        // Draw the grid in the Scene view
         Gizmos.color = Color.gray;
 
         for (float x = -10; x < 10; x += gridSize)
@@ -171,7 +148,6 @@ public GameObjectState DeserializeGameObjectState(string json)
 
         if (type == "Floor")
         {
-            // Align ramps with the grid and slightly higher to be intuitive
             y = Mathf.Floor(position.y / gridSize) * gridSize + gridSize / 2;
         }
 
@@ -357,11 +333,9 @@ IEnumerator checkSupport() {
         playerSpawnedObjects.AddRange(GameObject.FindGameObjectsWithTag("Wall"));
         playerSpawnedObjects.AddRange(GameObject.FindGameObjectsWithTag("Floor"));
 
-        // Single-pass flood-fill: start from ground-touching pieces, mark all reachable as supported
         HashSet<GameObject> supported = new HashSet<GameObject>();
         Queue<GameObject> frontier = new Queue<GameObject>();
 
-        // Step 1: Find all pieces directly touching non-buildable ground
         foreach (var obj in playerSpawnedObjects) {
             if (obj == null) continue;
             if (IsTouchingGround(obj)) {
@@ -370,8 +344,6 @@ IEnumerator checkSupport() {
             }
         }
 
-        // Step 2: BFS outward from ground-touching pieces
-        // Build a set for fast "is this a build piece?" lookup
         HashSet<GameObject> allPieces = new HashSet<GameObject>(playerSpawnedObjects);
 
         while (frontier.Count > 0) {
@@ -394,10 +366,6 @@ IEnumerator checkSupport() {
             }
         }
 
-        // Step 3: Everything not in supported set is unsupported.
-        // Skip pieces still playing their build animation — their collider is
-        // mid-animation and not yet at its grid resting position, so the overlap
-        // probes above can spuriously miss it. They get re-evaluated once settled.
         unsupportedObjects = new List<GameObject>();
         foreach (var obj in playerSpawnedObjects) {
             if (obj != null && !supported.Contains(obj) && IsSettled(obj))

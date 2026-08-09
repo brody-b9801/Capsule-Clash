@@ -132,18 +132,16 @@ GameObject:
   - component: {fileID: 5279564779932534022}
   - component: {fileID: 8768481697642821006}
   - component: {fileID: 6811795265293790440}
-  - component: {fileID: 617679596697389835}
   - component: {fileID: 1075840244914371417}
   - component: {fileID: 3043129110490178642}
   - component: {fileID: 8881949454150505402}
   - component: {fileID: 4555525927683178864}
-  - component: {fileID: 1129547919659083733}
   - component: {fileID: 5773259679459233445}
-  - component: {fileID: 5668613052439384710}
   - component: {fileID: 2790694819776592840}
   - component: {fileID: 3371361198319244119}
   - component: {fileID: 7752035424641388494}
   - component: {fileID: 1447310636841987035}
+  - component: {fileID: 4570701551215273596}
   m_Layer: 3
   m_Name: CapsulePlayer
   m_TagString: Player
@@ -269,25 +267,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4563841083353979690}
   m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
---- !u!114 &617679596697389835
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4563841083353979690}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: -1488051761, guid: 0ae8d181602a00248a82f64a684a1c88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  UseLocalInput: 1
-  keys: 
-  axes: []
-  _onKeyUpdate:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!23 &1075840244914371417
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -438,49 +417,14 @@ MonoBehaviour:
   _componentIndexCache: 255
   _addedNetworkObject: {fileID: 1447310636841987035}
   _networkObjectCache: {fileID: 0}
-  rampPrefab: {fileID: 0}
-  wallPrefab: {fileID: 0}
-  floorPrefab: {fileID: 0}
+  rampPrefab: {fileID: 6186443727193615251, guid: 395be62ad9d3cb84c8cadf755dcd98c3, type: 3}
+  wallPrefab: {fileID: 557634749615070146, guid: 98059948cd6fb444493625ff3f416615, type: 3}
+  floorPrefab: {fileID: 2232761753259631505, guid: 082498592ff166044b7e3187e97543c0, type: 3}
   player: {fileID: 5279564779932534022}
   playerSpawnedObjects: []
   buildNum: 25
   breakParticlesRef: {fileID: 1250507045210962, guid: 3fe0df07025a3e747855b1bb671fc04e, type: 3}
   ground: {fileID: 5007660329891815841, guid: edb0989258826e94ba1fa00d2141c485, type: 3}
---- !u!114 &1129547919659083733
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4563841083353979690}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 1312809854, guid: 0ae8d181602a00248a82f64a684a1c88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: f9cfcb5f-08aa-430b-90ce-8d1bafc61788
-  BucketBehaviors:
-  - Name: Min
-    NetLOD: 0
-    Frequency: -1
-  - Name: Low
-    NetLOD: 1
-    Frequency: 0
-  - Name: Mid
-    NetLOD: 2
-    Frequency: 0
-  - Name: High
-    NetLOD: 3
-    Frequency: 0
-  - Name: Max
-    NetLOD: 4
-    Frequency: 120
-  Reliability: 2
-  UseGlobalPosition: 1
-  OnlySyncFromRoomOwner: 0
-  refreshRate: 60
-  SyncedAxes: 15
 --- !u!143 &5773259679459233445
 CharacterController:
   m_ObjectHideFlags: 0
@@ -506,27 +450,6 @@ CharacterController:
   m_SkinWidth: 0.05
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &5668613052439384710
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4563841083353979690}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: -2141718255, guid: 0ae8d181602a00248a82f64a684a1c88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  IsPossessor: 0
-  IsPossessed: 0
-  OnPossessed:
-    m_PersistentCalls:
-      m_Calls: []
-  OnUnpossessed:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!114 &2790694819776592840
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -644,6 +567,52 @@ MonoBehaviour:
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
   _initializedTimestamp: 0
+--- !u!114 &4570701551215273596
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4563841083353979690}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2836e36774ca1c4bbbee976e17b649c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Component.Transforming.NetworkTransform
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 1447310636841987035}
+  _networkObjectCache: {fileID: 0}
+  _componentConfiguration: 0
+  _synchronizeParent: 0
+  _packing:
+    Position: 1
+    Rotation: 1
+    Scale: 0
+  _useScaledTime: 1
+  _interpolation: 2
+  _extrapolation: 2
+  _enableTeleport: 0
+  _teleportThreshold: 1
+  _clientAuthoritative: 1
+  _sendToOwner: 1
+  _interval: 1
+  _synchronizePosition: 1
+  _positionSensitivity: 0.001
+  _positionSnapping:
+    X: 0
+    Y: 0
+    Z: 0
+  _synchronizeRotation: 0
+  _rotationSnapping:
+    X: 0
+    Y: 0
+    Z: 0
+  _synchronizeScale: 0
+  _scaleSensitivity: 0.001
+  _scaleSnapping:
+    X: 0
+    Y: 0
+    Z: 0
 --- !u!1 &7234072614236262368
 GameObject:
   m_ObjectHideFlags: 0
@@ -1020,10 +989,6 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 297485254485252709}
     - target: {fileID: 6081214143165384429, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
-      propertyPath: avatar
-      value: 
-      objectReference: {fileID: 5668613052439384710}
-    - target: {fileID: 6081214143165384429, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       propertyPath: casing
       value: 
       objectReference: {fileID: 6846196510691304033}
@@ -1039,6 +1004,10 @@ PrefabInstance:
       propertyPath: _addedNetworkObject
       value: 
       objectReference: {fileID: 1447310636841987035}
+    - target: {fileID: 6081214143165384429, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+      propertyPath: _networkObjectCache
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 8046000523938441231, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       propertyPath: m_LocalPosition.y
       value: -0.0338842
