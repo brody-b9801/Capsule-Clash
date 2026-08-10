@@ -137,6 +137,7 @@ public class Shooting : NetworkBehaviour
     public  GameObject playerMag;
 
     public float trailFadeDuration = 0.5f;
+    private Dictionary<NetworkObject, Vector3> previousPositions = new Dictionary<NetworkObject, Vector3>();
 
     void Awake()
     {
@@ -207,8 +208,10 @@ public class Shooting : NetworkBehaviour
 
     void Update()
     {
+        if (IsServerInitialized) {
+            BulletCollisionDetection();
+        }
         if (!IsOwner) return;
-
         isShooting = false;
 
         muzzleFlashCamera.color = new Color(muzzleFlashCamera.color.r, muzzleFlashCamera.color.g, muzzleFlashCamera.color.b, alphaVal);
@@ -272,7 +275,41 @@ public class Shooting : NetworkBehaviour
         if (Input.GetKeyDown(KeyCode.E) && !reloading && canChangeGun && !isShooting)
             StartCoroutine(gunChangeAnim());
     }
+    private void BulletCollisionDetection() {
+        foreach (var bullet in previousPositions.Keys)
+        {
+            Rigidbody rb = bullet.GetComponent<Rigidbody>();
+            Vector3 currentPosition = bullet.GetComponent<Transform>().position;
 
+            Debug.DrawRay(previousPositions[bullet], currentPosition - previousPositions[bullet], Color.cyan);
+
+            rb.rotation = Quaternion.LookRotation(rb.linearVelocity.normalized);
+            HandleRaycastHit(previousPositions[bullet], currentPosition, shooter);
+
+            bulletDist = (currentPosition - bulletStartPos).magnitude;
+
+        if (shottieBool && bulletDist > 20f) {
+            if (rb != null) {
+                rb.linearVelocity = Vector3.zero;
+            }
+            if (trail != null) { trail.emitting = false; trail.enabled = false; trail.Clear(); }
+            DestroyObject();
+            bulletOne.SetActive(false);
+        }
+
+        if (!visualEnabled) {
+            float movedDist = (currentPosition - bulletStartPos).magnitude;
+            if (movedDist >= showDistance) {
+                visualEnabled = true;
+                Visual.SetActive(true);
+                //ps.Play();
+                bulletOne.SetActive(true);
+            } else {
+                Visual.SetActive(false);
+                bulletOne.SetActive(false);
+            }
+        }        }
+    }
     private void FireBullet(
         Vector3 origin, Vector3 direction, Vector3 bS,
         float force, float damage,
@@ -373,12 +410,11 @@ public class Shooting : NetworkBehaviour
 
         bulletRb.linearVelocity = velocity;
         bulletRb.rotation = Quaternion.LookRotation(fireDirection);
-
+        previousPositions[bulletGO.GetComponent<NetworkObject>()] = origin;
         end            = targetPoint;
         isFiringBullet = true;
     }
 
-    /// <summary>Waits for a ParticleSystem to finish playing then returns it to the pool.</summary>
     private IEnumerator ReturnParticleAfterPlay(ParticleSystem ps, Transform defaultParent)
     {
         yield return new WaitWhile(() => ps != null && ps.IsAlive(true));
