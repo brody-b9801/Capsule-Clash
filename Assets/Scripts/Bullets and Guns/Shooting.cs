@@ -138,6 +138,11 @@ public class Shooting : NetworkBehaviour
 
     public float trailFadeDuration = 0.5f;
 
+    void Awake()
+    {
+        Local = this;
+    }
+
     public override void OnStopClient()
     {
         if (Local == this) Local = null;
@@ -149,12 +154,6 @@ public class Shooting : NetworkBehaviour
         base.OnStartClient();
 
         if (!IsOwner) return;
-
-        // Must be owner-gated: Awake ran on every player instance, so the last
-        // one to spawn claimed Local. Callers such as PlayerMovement then wrote
-        // to a remote player's Shooting, whose fields were never initialized
-        // because this method returns early for non-owners.
-        Local = this;
 
         alphaVal = 0;
 
@@ -209,9 +208,6 @@ public class Shooting : NetworkBehaviour
     void Update()
     {
         if (!IsOwner) return;
-        // OnStartClient does the scene lookups that populate these; it can run
-        // after the first Update tick, so idle until initialization completed.
-        if (muzzleFlashCamera == null || mainCameraTransform == null) return;
 
         isShooting = false;
 
@@ -227,7 +223,7 @@ public class Shooting : NetworkBehaviour
         ref int ammo = ref shotgun ? ref shottieNum : ref reloadNum;
 
             bool inputCheck = shotgun ? Input.GetMouseButtonDown(0) : Input.GetMouseButton(0);
-            if (inputCheck && Time.time >= nextFireTime && PlayerMovement.Local != null &&
+            if (inputCheck && Time.time >= nextFireTime &&
                 ammo > 0 && !reloading && canShoot && !PlayerMovement.Local.dead && !HoverCheck.isHovering)
             {
                 Vector3 useCameraPos = IsValidVector3(cameraPosition) ? cameraPosition : posSave;
@@ -285,28 +281,11 @@ public class Shooting : NetworkBehaviour
         bool doMuzzleFlash)
     {
         bool isOwner = IsOwner;
+        ServerBulletLogic(spawnPosition: bS, direction: direction, force: force, origin: origin, randomX: randomX, randomY: randomY, randomZ: randomZ);
         lockCursor = true;
 
         Vector3 spawnMuzzlePosition = IsOwner ? bulletOrigin : bHPos;
         Vector3 spawnPosition       = bS;
-
-        Rigidbody bulletRb = _bulletPool.Get(spawnPosition, Quaternion.identity);
-        GameObject bulletGO = bulletRb.gameObject;
-        bulletGO.layer = IsOwner ? 7 : 6;
-
-        CollisionControl cc = bulletGO.GetComponent<CollisionControl>();
-        cc.OnSpawn();
-        if (isOwner)
-        {
-            cc.shooter        = NetworkObject;
-            cc.shottieBool    = shotgun;
-            lastShotDirection = direction;
-        }
-        CollisionControl.avatar = isOwner;
-        playerShot = isOwner;
-
-        cc.OnReturnToPool = () => _bulletPool.Return(bulletRb, _bulletPoolRoot);
-        cc.InitBullet(this);
 
         if (doMuzzleFlash)
         {
@@ -345,6 +324,14 @@ public class Shooting : NetworkBehaviour
                 }
 
         }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void ServerBulletLogic(Vector3 spawnPosition, Vector3 direction, float force, Vector3 origin, float randomX, float randomY, float randomZ)
+    {
+        Rigidbody bulletRb = _bulletPool.Get(spawnPosition, Quaternion.identity);
+        GameObject bulletGO = bulletRb.gameObject;
+        bulletGO.layer = IsOwner ? 7 : 6;
 
         RaycastHit hit;
         Vector3 targetPoint;
@@ -353,17 +340,14 @@ public class Shooting : NetworkBehaviour
             targetPoint              = transform.position + direction * force;
             origin = mainCameraTransform.position;
             bulletGO.transform.position = origin;
-            CollisionControl.impactBool = true; 
         }
         else if (Physics.Raycast(new Ray(origin, direction), out hit, force, ~ignoreLayers))
         {
             targetPoint              = hit.point;
-            CollisionControl.impactBool = true;
         }
         else
         {
             targetPoint              = origin + direction * force;
-            CollisionControl.impactBool = false;
         }
 
         Vector3 spreadVector     = new Vector3(randomX, randomY, randomZ);

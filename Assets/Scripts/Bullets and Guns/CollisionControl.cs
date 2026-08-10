@@ -101,7 +101,6 @@ public class CollisionControl : MonoBehaviour
             }
         }
     }
-    
     void HandleRaycastHit(Vector3 previousPos, Vector3 currentPos, NetworkObject shooter)
     {
         if (hitPrev) return;

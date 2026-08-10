@@ -17,13 +17,6 @@ public class ObjectSpawner : NetworkBehaviour
     public GameObject ground;
 
     private float gridSize = 5f;
-
-    /// <summary>
-    /// Backed by a SyncVar because builds are consumed on the server but the
-    /// counter is displayed by BuildUI on the client; a plain field would drift.
-    /// Writes are server-authoritative, so client-side assignments (the respawn
-    /// resets in PlayerMovement) only take effect when running as host/server.
-    /// </summary>
     private readonly SyncVar<float> _buildNum = new SyncVar<float>(25f);
 
     public float buildNum
@@ -31,35 +24,10 @@ public class ObjectSpawner : NetworkBehaviour
         get => _buildNum.Value;
         set { if (IsServerStarted) _buildNum.Value = value; }
     }
-
-    /// <summary>
-    /// Server-only registry of every build currently standing. Rebuilt each
-    /// support pass from the tagged objects in the scene, so it is authoritative
-    /// on the server and left empty on pure clients.
-    ///
-    /// Static because its contents are global: the support scan populates it from
-    /// FindGameObjectsWithTag (every build, not just this player's), and only the
-    /// elected loop owner runs that scan. As a per-instance list, a non-owner's
-    /// copy would stay empty and DestroyAllBuilds would silently wipe nothing.
-    /// </summary>
     public static List<GameObject> playerSpawnedObjects = new List<GameObject>();
 
-    /// <summary>
-    /// Set when the build graph changes and support must be re-evaluated. Static
-    /// because the build graph is global: a build placed by one player can unsupport
-    /// another's. As a per-instance flag, only the acting player's spawner was
-    /// marked dirty, so whichever loop ran first could clear it and the others
-    /// would never re-check.
-    /// </summary>
     private static bool checkSupportBool = true;
     private List<GameObject> unsupportedObjects = new List<GameObject>();
-
-    /// <summary>
-    /// The one spawner that runs the support scan. The scan reads the whole scene
-    /// via FindGameObjectsWithTag, so it is identical work no matter which spawner
-    /// runs it — with N players every spawner was repeating the same global sweep
-    /// (and the same OverlapBox per piece) five times a second.
-    /// </summary>
     private static ObjectSpawner _supportLoopOwner;
 
     public static ObjectSpawner Local { get; private set; }
@@ -69,8 +37,6 @@ public class ObjectSpawner : NetworkBehaviour
     public override void OnStartServer()
     {
         base.OnStartServer();
-        // The claim set is static and so outlives a session; clear it when the
-        // first spawner starts or stale cells would stay blocked forever.
         if (!_claimSetInitialized)
         {
             _claimedCells.Clear();
@@ -89,8 +55,6 @@ public class ObjectSpawner : NetworkBehaviour
 
     public override void OnStopServer()
     {
-        // Hand the scan to another live spawner, otherwise unsupported builds
-        // would stop collapsing once the owning player leaves.
         if (_supportLoopOwner == this)
         {
             _supportLoopOwner = null;
@@ -110,9 +74,6 @@ public class ObjectSpawner : NetworkBehaviour
     public override void OnStartClient()
     {
         base.OnStartClient();
-        // Both bindings are owner-only: the HUD shows the local player's build
-        // count, and Awake previously ran on every player instance, so the last
-        // one to spawn pointed the UI at a remote player's spawner.
         if (IsOwner)
         {
             Local = this;
@@ -127,10 +88,6 @@ public class ObjectSpawner : NetworkBehaviour
         base.OnStopClient();
     }
 
-    /// <summary>
-    /// Server-side spawn. Instantiates the prefab and hands it to FishNet, which
-    /// replicates it to every observer — no ObserversRpc needed for the build itself.
-    /// </summary>
     [Server]
     private GameObject SpawnBuild(GameObject prefab, Vector3 pos, Quaternion rot, Vector3 scale, string tag)
     {
@@ -146,18 +103,11 @@ public class ObjectSpawner : NetworkBehaviour
         return go;
     }
 
-    /// <summary>
-    /// Server-side despawn. Plays the break effect on all observers first, since
-    /// the object is gone by the time the despawn replicates.
-    /// </summary>
     [Server]
     private void DespawnBuild(GameObject obj)
     {
         if (obj == null) return;
 
-        // Free the grid cell before the object goes away, or that spot stays
-        // permanently unbuildable. This is the single choke point for every
-        // removal path (break, unsupported collapse, timed wipe).
         ReleaseCell(obj.transform.position, obj.tag, obj.transform.eulerAngles.y);
 
         RpcBreakParticles(obj.transform.position, obj.transform.rotation);
@@ -170,7 +120,6 @@ public class ObjectSpawner : NetworkBehaviour
         checkSupportBool = true;
     }
 
-    /// <summary>Cosmetic only — the particle prefab is not a NetworkObject.</summary>
     [ObserversRpc(RunLocally = true)]
     private void RpcBreakParticles(Vector3 pos, Quaternion rot)
     {
@@ -212,10 +161,6 @@ public class ObjectSpawner : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// Single entry point from client to server. The camera transform is passed as
-    /// plain data; all placement decisions happen server-side.
-    /// </summary>
     [ServerRpc]
     private void CmdSpawnBuild(BuildType type, Vector3 cameraPosition, Vector3 cameraForward)
     {
@@ -260,16 +205,6 @@ public class ObjectSpawner : NetworkBehaviour
         }
         return false;
     }
-
-    /// <summary>
-    /// Grid cells claimed by builds, shared by every player's spawner on the server.
-    /// playerSpawnedObjects is per-instance, so IsPositionOccupied only ever sees
-    /// the local player's builds and cannot detect a clash with another player.
-    /// Physics.OverlapBox does see everyone, but a collider instantiated earlier in
-    /// the same frame is not registered with the physics engine yet — so two builds
-    /// requested on the same tick could both pass validation. Claiming a cell here
-    /// is immediate and atomic, which closes that window.
-    /// </summary>
     private static readonly HashSet<BuildCell> _claimedCells = new HashSet<BuildCell>();
 
     private readonly struct BuildCell : System.IEquatable<BuildCell>
@@ -312,10 +247,6 @@ public class ObjectSpawner : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// Atomically claims a cell. Returns false if another build already holds it,
-    /// in which case the caller must abort without spawning or charging a build.
-    /// </summary>
     [Server]
     private bool TryClaimCell(Vector3 worldPos, string type, float yawDegrees)
     {
@@ -501,12 +432,6 @@ bool IsValidPlacement(Vector3 spawnPosition, Vector3 size, Quaternion rot, Strin
 
 }
 
-/// <summary>
-/// Runs for the lifetime of the server on a single elected spawner. Previously
-/// this restarted itself with StartCoroutine at the end of its own body, which
-/// spawned a new coroutine every pass and grew without bound; it is now a single
-/// long-lived loop, and only _supportLoopOwner runs it.
-/// </summary>
 [Server]
 IEnumerator CheckSupportLoop() {
   WaitForSeconds wait = new WaitForSeconds(0.2f);
@@ -618,8 +543,6 @@ public void DestroyAllBuildsSync() {
 [Server]
 public void DestroyAllBuilds()
 {
-    // Copy before iterating: the original assigned the same reference and then
-    // mutated it inside the loop, which despawned the wrong objects and threw.
     List<GameObject> toDestroy = new List<GameObject>(playerSpawnedObjects);
     toDestroy.Sort((a, b) => a.transform.position.y.CompareTo(b.transform.position.y));
 
@@ -647,11 +570,6 @@ IEnumerator DestroyObjectsSequentially(List<GameObject> toDestroy) {
     checkSupportBool = true;
 }
 
-/// <summary>
-/// Static entry point kept for BuildHealth, which calls this from an ObserversRpc
-/// on every client. Only the server may actually despawn, so non-server callers
-/// are ignored and the server's own despawn replicates to everyone.
-/// </summary>
 public static void DespawnObject(GameObject obj) {
     if (obj == null) return;
     if (!InstanceFinder.IsServerStarted) return;

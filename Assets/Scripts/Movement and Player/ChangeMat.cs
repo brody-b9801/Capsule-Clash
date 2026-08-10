@@ -58,8 +58,6 @@ public class ChangeMat : NetworkBehaviour
     public override void OnStartClient()
     {
         base.OnStartClient();
-        // Owner-gated: Awake claimed Local on every player instance, so the last
-        // to spawn won and callers read a remote player's material state.
         if (IsOwner) Local = this;
     }
 
