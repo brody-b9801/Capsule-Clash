@@ -8,6 +8,9 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/ss.unity
     guid: 6acc5e426310d7f4f8d03c83a6180022
+  - enabled: 1
+    path: Assets/Scenes/CombatScene.unity
+    guid: 5ebc2a43957a879459ac4cb89a1a8fe6
   - enabled: 0
     path: Assets/Scenes/TitleScene.unity
     guid: e2d9d8354ce3b6d4fb9cd7cad4f13a4e
@@ -20,8 +23,5 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/BossScene.unity
     guid: d86c84038e4b9254e98a6e56682303be
-  - enabled: 1
-    path: Assets/Scenes/CombatScene.unity
-    guid: 5ebc2a43957a879459ac4cb89a1a8fe6
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0

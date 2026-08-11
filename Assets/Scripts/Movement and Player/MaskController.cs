@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using TMPro;
+using FishNet.Object;
 
 public class MaskController : MonoBehaviour {
     private const string FeedPrompt = "Press Space to Feed Me 5 Capsules, I MUST GROW";
@@ -49,8 +50,25 @@ public class MaskController : MonoBehaviour {
     private bool AllKeysAcquired => mazeKeyAcquired && spaceKeyAcquired && iceKeyAcquired;
 
     private void Awake() {
-        Local = this;
         SaveSystem.ApplyPendingMaskData(this);
+    }
+
+    private void OnEnable() {
+        TryClaimLocal();
+    }
+
+    /// <summary>
+    /// This is a MonoBehaviour on the networked player prefab, so it has no
+    /// IsOwner of its own — ownership is read from the sibling NetworkObject.
+    /// Claiming in Awake unconditionally (as before) let the last player to
+    /// spawn overwrite Local with a remote player's controller.
+    /// </summary>
+    private void TryClaimLocal() {
+        NetworkObject nob = GetComponentInParent<NetworkObject>();
+        // Ownership is not populated until the object is spawned; Initialize()
+        // re-runs this for the owner once startup has progressed far enough.
+        if (nob != null && nob.IsSpawned && !nob.IsOwner) return;
+        if (nob == null || nob.IsOwner) Local = this;
     }
 
     private void OnDestroy() {
@@ -58,6 +76,9 @@ public class MaskController : MonoBehaviour {
     }
 
     public void Initialize(Camera camera) {
+        // Called from PlayerMovement's owner-gated startup — by now ownership is
+        // known for certain, so make sure the local player holds the claim.
+        Local = this;
         playerCamera = camera;
         cam = camera.transform;
         maskText = GameObject.Find("MaskText").GetComponent<TextMeshProUGUI>();
@@ -135,6 +156,8 @@ public class MaskController : MonoBehaviour {
 
     private void Update() {
         if (playerCamera == null) return;
+        // The local player is spawned by FishNet after this component starts.
+        if (PlayerMovement.Local == null) return;
 
         UpdateMaskDetection();
         UpdateMaskPrompts();

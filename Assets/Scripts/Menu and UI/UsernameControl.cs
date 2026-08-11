@@ -3,23 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
-using Alteruna;
 using TMPro;
 
-public class UsernameControl : AttributesSync
+//   [ServerRpc] void ServerSetName(string n) => RpcSetName(n);
+//   [ObserversRpc(BufferLast = true)] void RpcSetName(string n) { username = n; }
+public class UsernameControl : MonoBehaviour
 {
     [SerializeField] private TMP_Text usernameDisplay;
-    [SerializeField] private Alteruna.Avatar avatar;
     public float killCount;
     public string username;
-
-    [SynchronizableMethod]
-    public void getName(string usernameRef) {
-        username = usernameRef;   
-    }
-
-    [SynchronizableMethod]
-    public void getKills(float killRef) {
-        killCount = killRef;   
-    }
 }

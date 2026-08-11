@@ -9,6 +9,9 @@ public class BreathingAnim : MonoBehaviour
 
     void Update()
     {
+        // The local player is spawned by FishNet after this component starts.
+        if (PlayerMovement.Local == null) return;
+
         if (!CameraZoom.moving && !breathing && PlayerMovement.Local.isGrounded && !Shaker.shooting) {
             StartCoroutine(BreathingControl());
         } 

@@ -2,7 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
-using Alteruna;
+using FishNet;
+using FishNet.Object;
+using FishNet.Object.Synchronizing;
 using TMPro;
 using NUnit.Framework;
 using UnityEngine.UI;
@@ -53,7 +55,7 @@ public class ObjectPool<T> where T : Component
         _pool.Enqueue(instance);
     }
 }
-public class Shooting : AttributesSync
+public class Shooting : NetworkBehaviour
 {
     [SerializeField] private GameObject     bulletPrefab;
     [SerializeField] private Transform      gun;
@@ -71,10 +73,14 @@ public class Shooting : AttributesSync
     [SerializeField] private MeshFilter     playerMesh;
     [SerializeField] private Mesh           shotgunMesh;
     [SerializeField] private Mesh           M4Mesh;
+    [SerializeField] private GameObject impact;
+    [SerializeField] private float impactOffset = 0.01f;
 
     private const int BulletPoolSize  = 30;
     private const int MuzzlePoolSize  = 10;
     private const int CasingPoolSize  = 30;
+    private LayerMask layerMask;
+
 
     private ObjectPool<Rigidbody>      _bulletPool;
     private ObjectPool<ParticleSystem> _muzzlePool;
@@ -110,8 +116,6 @@ public class Shooting : AttributesSync
     public static bool  playerJoin;
     public static bool  leaveHover = false;
 
-    private static Spawner _spawner;
-    private Alteruna.Avatar avatar;
 
     private Transform bulletHole;
     private Transform casingSpawn;
@@ -140,48 +144,58 @@ public class Shooting : AttributesSync
 
     public float trailFadeDuration = 0.5f;
 
+    public struct BulletData
+    {
+        public NetworkObject bulletObject;
+        public Vector3 previousPosition;
+        public Vector3 startPosition;
+        public float timeActive;
+        public bool isShotgun;
+        public NetworkObject shooter;
+    } 
+
+    private List<BulletData> activeBullets = new List<BulletData>();
+
     void Awake()
     {
         Local = this;
     }
 
-    private new void OnDestroy()
+    public override void OnStopClient()
     {
         if (Local == this) Local = null;
-        base.OnDestroy();
+        base.OnStopClient();
     }
 
-    void Start()
+    public override void OnStartClient()
     {
-        avatar = GetComponent<Alteruna.Avatar>();
-        if (!avatar.IsOwner) return;
+        base.OnStartClient();
+
+        if (!IsOwner) return;
 
         alphaVal = 0;
 
-        // Cache camera
         mainCamera          = Camera.main;
         mainCameraTransform = mainCamera.transform;
 
-        // Scene references
         muzzleFlashCamera = GameObject.Find("CamQuad").GetComponent<MeshRenderer>().material;
         muzzleFlashCamera.color = new Color(
             muzzleFlashCamera.color.r,
             muzzleFlashCamera.color.g,
             muzzleFlashCamera.color.b, alphaVal);
 
-        bulletHole  = GameObject.Find("MCBH").transform;
+        bulletHole  = SceneLookup.FindInactive("MCBH").transform;
         bulletSpawn = GameObject.Find("bulletSpawn");
         casingSpawn = GameObject.Find("casingSpawn").transform;
-        gunMesh     = GameObject.Find("CamAKM").GetComponent<MeshFilter>();
-        CamAKM      = GameObject.Find("CamAKM");
-        mag         = GameObject.Find("MC.Magazine");
-        camCasing   = GameObject.Find("CamCasing");
-        gunThing_g1 = GameObject.Find("CamAKM").transform;
+        gunMesh     = SceneLookup.FindInactive("CamAKM").GetComponent<MeshFilter>();
+        CamAKM      = SceneLookup.FindInactive("CamAKM");
+        mag         = SceneLookup.FindInactive("MC.Magazine");
+        camCasing   = SceneLookup.FindInactive("CamCasing");
+        gunThing_g1 = SceneLookup.FindInactive("CamAKM").transform;
 
         previousPosition = transform.position;
         lockCursor       = false;
 
-        _spawner = GameObject.FindGameObjectWithTag("NetworkManager").GetComponent<Spawner>();
         cam2     = GameObject.Find("CameraTwo").GetComponent<Camera>();
 
         camCasing.GetComponent<MeshRenderer>().enabled = false;
@@ -201,6 +215,7 @@ public class Shooting : AttributesSync
         _casingPool = new ObjectPool<Transform>(
             bulletCasingPrefab.GetComponent<Transform>(),
             CasingPoolSize, _casingPoolRoot);
+        layerMask = LayerMask.GetMask("DamageCollide", "Default", "BuildNoColPlayer");
     }
 
     private Transform CreatePoolRoot(string name)
@@ -211,13 +226,14 @@ public class Shooting : AttributesSync
 
     void Update()
     {
-        if (!avatar.IsOwner) return;
-
+        if (IsServerInitialized) {
+            BulletCollisionDetection();
+        }
+        if (!IsOwner) return;
         isShooting = false;
 
         muzzleFlashCamera.color = new Color(muzzleFlashCamera.color.r, muzzleFlashCamera.color.g, muzzleFlashCamera.color.b, alphaVal);
 
-        // Movement delta
         Vector3 currentPosition = transform.position;
         deltaPosition    = currentPosition - previousPosition;
         previousPosition = currentPosition;
@@ -225,7 +241,6 @@ public class Shooting : AttributesSync
         Vector3 cameraPosition = mainCameraTransform.position;
         Vector3 cameraForward  = mainCameraTransform.forward;
 
-        // ── Fire ──────────────────────────────────────────────────────────
         ref int ammo = ref shotgun ? ref shottieNum : ref reloadNum;
 
             bool inputCheck = shotgun ? Input.GetMouseButtonDown(0) : Input.GetMouseButton(0);
@@ -265,7 +280,6 @@ public class Shooting : AttributesSync
                 Shaker.shooting = false;
             }
 
-        // ── Reload ────────────────────────────────────────────────────────
         if (Input.GetKeyDown(KeyCode.R))
         {
             if ((!shotgun && !reloading && reloadNum != 30) || (shotgun && !reloading && shottieNum != 2))
@@ -276,12 +290,103 @@ public class Shooting : AttributesSync
             }
         }
 
-        // ── Switch gun ────────────────────────────────────────────────────
         if (Input.GetKeyDown(KeyCode.E) && !reloading && canChangeGun && !isShooting)
             StartCoroutine(gunChangeAnim());
     }
+    
+    private void BulletCollisionDetection() {
+        for (int i = 0; i < activeBullets.Count; i++)
+        {
+            BulletData bullet = activeBullets[i];
+            Rigidbody rb = bullet.bulletObject.GetComponent<Rigidbody>();
+            Vector3 currentPosition = bullet.bulletObject.GetComponent<Transform>().position;
 
-    // ─────────────────────────────────────────────────────────────────────
+            Debug.DrawRay(bullet.previousPosition, currentPosition - bullet.previousPosition, Color.cyan);
+
+            rb.rotation = Quaternion.LookRotation(rb.linearVelocity.normalized);
+
+            float bulletDist = (currentPosition - bullet.startPosition).magnitude;
+            HandleRaycastHit(bullet.previousPosition, currentPosition, bullet.isShotgun, bulletDist, bullet.shooter);
+
+            if ((bullet.isShotgun && bulletDist > 20f) || bullet.timeActive > 7.5f) {
+                if (rb != null) {
+                    rb.linearVelocity = Vector3.zero;
+                }
+                Destroy(bullet.bulletObject.gameObject);
+                activeBullets.Remove(bullet);
+            }
+            bullet.timeActive += Time.deltaTime;
+            bullet.previousPosition = currentPosition;
+        }
+    }
+
+    void HandleRaycastHit(Vector3 previousPos, Vector3 currentPos, bool shottieBool, float bulletDist, NetworkObject shooter)
+    {
+        Vector3 direction = currentPos - previousPos;
+        float rayDistance = direction.magnitude;
+        RaycastHit hit;
+
+        GameObject hitObject;
+        if (Physics.Raycast(previousPos, direction.normalized, out hit, rayDistance, layerMask))
+        {
+            hitObject = hit.collider.gameObject;
+            
+            BuildHealth buildHealth = hitObject.GetComponent<BuildHealth>();
+            if (buildHealth != null)
+            {
+                buildHealth.TakeDamage(shottieBool, bulletDist);
+                Debug.Log($"Hit building: {hitObject.name} for {bulletDist} damage.");
+            }
+
+            if (hitObject.CompareTag("DamageCollider"))
+            {
+                GameObject parentObject = hitObject.transform.parent.gameObject;
+                NetworkObject parentAvatar = parentObject.GetComponent<NetworkObject>();
+                if (parentAvatar != shooter)
+                {
+                    Renderer renderer = parentObject.GetComponent<Renderer>();
+                    if (renderer != null)
+                    {
+                        renderer.sharedMaterial = damaged;
+                    }
+                    
+                    ChangeMat changeMat = parentObject.GetComponent<ChangeMat>();
+                    if (changeMat != null)
+                    {
+                        if (parentAvatar != null)
+                        {
+                            changeMat.TakeDamage(parentAvatar, shooter, shottieBool, bulletDist);
+                        }
+                    }
+                    
+                    DamageIndicatorControl.setDamageCross = true;
+                }
+            }
+
+            if (hitObject.CompareTag("tester"))
+            {
+                PlayerMovement.Local.hitCount++;
+            }
+
+            // hitPrev = true;
+            impactPrefabInstance(hit.point, hit.normal);
+
+            // if (trail != null) { trail.emitting = false; trail.enabled = false; trail.Clear(); }
+
+            // transform.position = hit.point;
+            // bulletOne.SetActive(false);
+        }
+    }
+
+    public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
+    {
+        Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
+
+        Quaternion rotation = Quaternion.LookRotation(hitNormal);
+
+        Instantiate(impact, spawnPosition, rotation);
+    }
+
     private void FireBullet(
         Vector3 origin, Vector3 direction, Vector3 bS,
         float force, float damage,
@@ -289,34 +394,17 @@ public class Shooting : AttributesSync
         float randomX, float randomY, float randomZ,
         bool doMuzzleFlash)
     {
-        bool isOwner = avatar.IsOwner;
+        bool isOwner = IsOwner;
+        ServerBulletLogic(spawnPosition: bS, direction: direction, force: force, origin: origin, randomX: randomX, randomY: randomY, randomZ: randomZ);
         lockCursor = true;
 
-        Vector3 spawnMuzzlePosition = avatar.IsOwner ? bulletOrigin : bHPos;
+        Vector3 spawnMuzzlePosition = IsOwner ? bulletOrigin : bHPos;
         Vector3 spawnPosition       = bS;
-
-        Rigidbody bulletRb = _bulletPool.Get(spawnPosition, Quaternion.identity);
-        GameObject bulletGO = bulletRb.gameObject;
-        bulletGO.layer = avatar.IsOwner ? 7 : 6;
-
-        CollisionControl cc = bulletGO.GetComponent<CollisionControl>();
-        cc.OnSpawn();
-        if (isOwner)
-        {
-            cc.shooter        = avatar;
-            cc.shottieBool    = shotgun;
-            lastShotDirection = direction;
-        }
-        CollisionControl.avatar = isOwner;
-        playerShot = isOwner;
-
-        cc.OnReturnToPool = () => _bulletPool.Return(bulletRb, _bulletPoolRoot);
-        cc.InitBullet(this);
 
         if (doMuzzleFlash)
         {
             float randomAngle = Random.Range(-45f, 45f);
-            Transform bulletHoleRef = avatar.IsOwner ? bulletHole : bH.transform;
+            Transform bulletHoleRef = IsOwner ? bulletHole : bH.transform;
 
                 if (IsValidQuaternion(bulletHoleRef.rotation))
                 {
@@ -328,11 +416,9 @@ public class Shooting : AttributesSync
                     muzzleInst.transform.localPosition = Vector3.zero;
                     muzzleInst.Play();
 
-                    // Auto-return muzzle particle after it finishes
                     StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bulletHoleRef));
 
-                    // ── Casing ────────────────────────────────────────────
-                    if (avatar.IsOwner) {
+                    if (IsOwner) {
                         Transform casing = _casingPool.Get(
                             casingSpawn.position, bulletCasingPrefab.transform.rotation, casingSpawn);
                         casing.gameObject.layer = 5;
@@ -345,15 +431,22 @@ public class Shooting : AttributesSync
                     Transform nonCameraCasing = _casingPool.Get(
                         casingHolder.position, bulletCasingPrefab.transform.rotation, casingHolder);
                     nonCameraCasing.gameObject.layer = 11;
-                    if (avatar.IsOwner) nonCameraCasing.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+                    if (IsOwner) nonCameraCasing.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
                     BulletCasingAnim casingAnimNonCam = nonCameraCasing.GetComponent<BulletCasingAnim>();
                     if (casingAnimNonCam != null)
                         casingAnimNonCam.OnReturnToPool = () => _casingPool.Return(nonCameraCasing, _casingPoolRoot);
                 }
 
         }
+    }
 
-        // ── Trajectory ────────────────────────────────────────────────────
+    [ServerRpc(RequireOwnership = false)]
+    private void ServerBulletLogic(Vector3 spawnPosition, Vector3 direction, float force, Vector3 origin, float randomX, float randomY, float randomZ)
+    {
+        Rigidbody bulletRb = _bulletPool.Get(spawnPosition, Quaternion.identity);
+        GameObject bulletGO = bulletRb.gameObject;
+        bulletGO.layer = IsOwner ? 7 : 6;
+
         RaycastHit hit;
         Vector3 targetPoint;
 
@@ -361,17 +454,14 @@ public class Shooting : AttributesSync
             targetPoint              = transform.position + direction * force;
             origin = mainCameraTransform.position;
             bulletGO.transform.position = origin;
-            CollisionControl.impactBool = true; 
         }
         else if (Physics.Raycast(new Ray(origin, direction), out hit, force, ~ignoreLayers))
         {
             targetPoint              = hit.point;
-            CollisionControl.impactBool = true;
         }
         else
         {
             targetPoint              = origin + direction * force;
-            CollisionControl.impactBool = false;
         }
 
         Vector3 spreadVector     = new Vector3(randomX, randomY, randomZ);
@@ -398,26 +488,26 @@ public class Shooting : AttributesSync
         bulletRb.linearVelocity = velocity;
         bulletRb.rotation = Quaternion.LookRotation(fireDirection);
 
+        activeBullets.Add(new BulletData
+        {
+            bulletObject = bulletGO.GetComponent<NetworkObject>(),
+            previousPosition = origin,
+            startPosition = origin,
+            timeActive = 0f,
+            isShotgun = shotgun,
+            shooter = GetComponent<NetworkObject>()
+        });
+
         end            = targetPoint;
         isFiringBullet = true;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Pool return helpers
-    // ─────────────────────────────────────────────────────────────────────
-
-    /// <summary>Waits for a ParticleSystem to finish playing then returns it to the pool.</summary>
     private IEnumerator ReturnParticleAfterPlay(ParticleSystem ps, Transform defaultParent)
     {
-        // Guard: if the particle system was destroyed externally, bail out
         yield return new WaitWhile(() => ps != null && ps.IsAlive(true));
         if (ps != null)
             _muzzlePool.Return(ps, _muzzlePoolRoot);
     }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Everything below is unchanged
-    // ─────────────────────────────────────────────────────────────────────
 
     public IEnumerator gunChangeAnim()
     {
@@ -459,7 +549,7 @@ public class Shooting : AttributesSync
             bH.transform.localPosition         = new Vector3(bH.transform.localPosition.x, bH.transform.localPosition.y, 0.6f);
         }
 
-        BroadcastRemoteMethod(1, shotgun,
+        ServerGunSkin(shotgun,
             gunThing_g1.transform.position - new Vector3(0f, 0.35f, 0f),
             gunThing_g1.transform.rotation, false);
 
@@ -475,12 +565,6 @@ public class Shooting : AttributesSync
         canChangeGun    = true;
         changeOffset    = 0f;
         changeRotOffset = 0f;
-    }
-
-    [SynchronizableMethod]
-    private void BulletSync()
-    {
-        // Placeholder method
     }
 
     IEnumerator EnableDisable()
@@ -525,7 +609,14 @@ public class Shooting : AttributesSync
             Cursor.lockState = CursorLockMode.Locked;
     }
 
-    [SynchronizableMethod]
+    [ServerRpc]
+    private void ServerGunSkin(bool sg, Vector3 pos, Quaternion rot, bool networkedCall)
+        => RpcGunSkin(sg, pos, rot, networkedCall);
+
+    [ObserversRpc(BufferLast = true)]
+    private void RpcGunSkin(bool sg, Vector3 pos, Quaternion rot, bool networkedCall)
+        => gunSkinSync(sg, pos, rot, networkedCall);
+
     public void gunSkinSync(bool sg, Vector3 pos, Quaternion rot, bool networkedCall)
     {
         if (!networkedCall)

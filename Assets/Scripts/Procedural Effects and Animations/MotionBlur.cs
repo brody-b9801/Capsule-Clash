@@ -23,6 +23,8 @@ public class MotionBlurToggle : MonoBehaviour
     void Update()
     {
         if (chromaticAberration == null) return;
+        // The local player is spawned by FishNet after this component starts.
+        if (PlayerMovement.Local == null) return;
         float val;
         if (RetroDither.isTeleporting) {
             val = 0;

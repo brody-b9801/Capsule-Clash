@@ -45,13 +45,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cebdd0f6f5bb564fbad577ec1487cb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: 7ed4d6c9-622c-4721-863f-31853954730a
-  Reliability: 1
-  LocalMethodBehavior: 1
+  _componentIndexCache: 0
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
   gr: {fileID: 2253834035685955736}
   gun: {fileID: 3519931097519917165}
-  avatar: {fileID: 0}
+  casing: {fileID: 0}
+  gunMag: {fileID: 0}
 --- !u!1001 &2112826592600839259
 PrefabInstance:
   m_ObjectHideFlags: 0

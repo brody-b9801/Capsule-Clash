@@ -1,21 +1,21 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Alteruna;
+using FishNet.Object;
 
 public class BuildingManager : MonoBehaviour
 {
     private int keyPressCount = 0;
     private int buildHitCount = 0;
     public GameObject cube;
-    private Alteruna.Avatar avatar;
+    private NetworkObject netObj;
 
     void Start() {
-        avatar = GetComponent<Alteruna.Avatar>();
+        netObj = GetComponent<NetworkObject>();
     }
     void Update()
     {
-        if (avatar.IsOwner) {
+        if (netObj != null && netObj.IsOwner) {
             if (Input.GetKeyDown(KeyCode.X) || Input.GetKeyDown(KeyCode.C))
             {
                 keyPressCount++;
@@ -32,7 +32,7 @@ public class BuildingManager : MonoBehaviour
     }
     public void IncrementBuildHitCount()
     {
-        //if (avatar.IsOwner) {
+        //if (netObj.IsOwner) {
             buildHitCount++;
             if (buildHitCount == 3) {
                 Destroy(cube);

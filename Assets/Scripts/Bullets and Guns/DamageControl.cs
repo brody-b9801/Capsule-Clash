@@ -2,50 +2,42 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Alteruna;
+using FishNet.Object;
+using FishNet.Object.Synchronizing;
 
-public class DamageControl : AttributesSync
+public class DamageControl : NetworkBehaviour
 {
-    [SynchronizableField] public float health = 180;
+    public readonly SyncVar<float> health = new SyncVar<float>(
+        180f, new SyncTypeSettings(WritePermission.ClientUnsynchronized, ReadPermission.Observers));
+
     [SerializeField] private int damage = 18;
     [SerializeField] private int playerSelfLayer;
 
-    [SerializeField] private Alteruna.Avatar avatar;
+    public static DamageControl Local { get; private set; }
 
-    public static DamageControl Local {get; private set; }
-
-    private void Awake()
+    public override void OnStartClient()
     {
-        Local = this;
-    }
+        base.OnStartClient();
 
-    void Start()
-    {
-       if (avatar.IsOwner) {
-         avatar.gameObject.layer = playerSelfLayer;
-       }
-    }
-
-    private new void OnDestroy() {
-        if (Local == this) {
-            Local = null;
-        }
-        base.OnDestroy();
-    }
-
-    public void Hit(int damageTaken) {
-        health -= damageTaken;
-        if (health <= 0)
+        if (IsOwner)
         {
-           Debug.Log("Die");
+            Local = this;
+            gameObject.layer = playerSelfLayer;
         }
     }
 
-    void OnCollisionEnter(Collision collision) {
-       if (collision.gameObject.CompareTag("bullet") && !avatar.IsOwner && PlayerMovement.Local.canTakeDamage) {
-          Destroy(collision.gameObject);
-          health -= damage;
-          HealthController.updateHealth();
-       }
+    public override void OnStopClient()
+    {
+        if (Local == this) Local = null;
+        base.OnStopClient();
+    }
+
+    public void Hit(float damageTaken)
+    {
+        health.Value -= damageTaken;
+        if (health.Value <= 0)
+        {
+            Debug.Log("Die");
+        }
     }
 }

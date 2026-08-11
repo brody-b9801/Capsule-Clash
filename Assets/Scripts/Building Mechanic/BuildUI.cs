@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using Alteruna;
+using FishNet;
 using System.Linq;
 
-public class BuildUI : AttributesSync
+public class BuildUI : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI builds;
     [SerializeField] private Image timer;
@@ -17,10 +17,11 @@ public class BuildUI : AttributesSync
     public static bool started = false;
     private bool lerpingBuild = false;
     public static ObjectSpawner objectSpawner;
-    public static bool isHost;
     [SerializeField] private Transform arrow;
-    [SynchronizableField] private float syncedBuildTime; 
+
     private List<bool> activePrevious = new List<bool>();
+
+    public static bool isHost => InstanceFinder.IsServerStarted;
 
     void Update()
     {
@@ -30,6 +31,11 @@ public class BuildUI : AttributesSync
             return;
         }
 
+        // started is set by RoomMenu when the room UI opens, which is independent
+        // of player spawn — under FishNet the player arrives later, so the spawner
+        // reference can still be null here.
+        if (objectSpawner == null) return;
+
         if (objectSpawner.buildNum < 25 && !lerpingBuild)
             StartCoroutine(lerpBuild());
 
@@ -37,15 +43,10 @@ public class BuildUI : AttributesSync
         timer.fillAmount = (buildResetTime / 100);
         arrow.localEulerAngles = new Vector3(0, 0, 360 * (buildResetTime / 100));
 
-        if (isHost)
-        {
+        if (BuildTimer.Instance != null)
+            totalBuildTime = BuildTimer.Instance.Tick(totalBuildTime, Time.deltaTime);
+        else if (isHost)
             totalBuildTime += Time.deltaTime;
-            syncedBuildTime = totalBuildTime;
-        }
-        else
-        {
-            totalBuildTime = syncedBuildTime; 
-        }
 
         buildResetTime = 100 - (totalBuildTime % 100);
         if (isHost && buildResetTime > buildResetTimePrev) {
@@ -92,7 +93,8 @@ public class BuildUI : AttributesSync
         }   
 
         lerpingBuild = false;
-        objectSpawner.buildNum++;
+        // The spawner can despawn while this coroutine is mid-wait.
+        if (objectSpawner != null) objectSpawner.buildNum++;
         yield break;
 
     }

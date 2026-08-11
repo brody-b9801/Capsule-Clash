@@ -1,9 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Alteruna;
+using FishNet.Object;
 
-public class ChangeMat : AttributesSync
+public class ChangeMat : NetworkBehaviour
 {
     public Material damaged;
     public Material normal;
@@ -43,7 +43,6 @@ public class ChangeMat : AttributesSync
 
     private Renderer player;
     private PlayerMovement movement;
-    [SerializeField] public Alteruna.Avatar avatar;
 
     public static ChangeMat Local { get; private set; }
 
@@ -51,16 +50,21 @@ public class ChangeMat : AttributesSync
 
     private void Awake()
     {
-        Local = this;
         player = GetComponent<Renderer>();
         movement = GetComponent<PlayerMovement>();
         dimensionMaterialChange("Desert");
     }
 
-    private new void OnDestroy()
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+        if (IsOwner) Local = this;
+    }
+
+    public override void OnStopClient()
     {
         if (Local == this) Local = null;
-        base.OnDestroy();
+        base.OnStopClient();
     }
 
     public void dimensionMaterialChange(string materialDimension)
@@ -95,15 +99,15 @@ public class ChangeMat : AttributesSync
         if (mat.HasProperty(HardEdgeLightColorID)) mat.SetColor(HardEdgeLightColorID, hardEdgeLight);
     }
 
-    public void TakeDamage(Alteruna.Avatar shot, Alteruna.Avatar shooter, bool shotgun, float dist)
+    public void TakeDamage(NetworkObject shot, NetworkObject shooter, bool shotgun, float dist)
     {
         StartCoroutine(endDamaged(shot, shooter, shotgun, dist));
     }
 
-    [SynchronizableMethod]
-    private void TakeDamageSync(string av, string shoot, bool shotgun, float dist)
+    [ObserversRpc]
+    private void TakeDamageSync(NetworkObject av, NetworkObject shoot, bool shotgun, float dist)
     {
-        if (player.gameObject.GetComponent<Alteruna.Avatar>().IsOwner)
+        if (IsOwner)
         {
             player.sharedMaterial = self;
         } else{
@@ -111,32 +115,30 @@ public class ChangeMat : AttributesSync
         }
     }
 
-    [SynchronizableMethod]
-    public void ControlDamage(Alteruna.Avatar shotAvatar, Alteruna.Avatar shooter, bool shotgun, float dist)
+    [ObserversRpc]
+    public void ControlDamage(NetworkObject shotAvatar, NetworkObject shooter, bool shotgun, float dist)
     {
         bool avatarSame = PlayerMovement.getAvatarBool(shotAvatar);
 
-        // ControlDamage runs on the victim's object, so 'this' is already the
-        // player being shot -- read health off this object, not the local player.
         DamageControl damageControl = GetComponent<DamageControl>();
         if (damageControl == null) return;
 
         if (avatarSame)
         {
             if (!shotgun) {
-                damageControl.health -= 18 * upgradeManager.Local.damageMultiplier;
+                damageControl.health.Value -= 18 * upgradeManager.Local.damageMultiplier;
             } else {
                 if (dist < 3) {
-                    damageControl.health -= 17 * upgradeManager.Local.damageMultiplier;
+                    damageControl.health.Value -= 17 * upgradeManager.Local.damageMultiplier;
                 } else {
-                    damageControl.health -= Mathf.Clamp((17 * upgradeManager.Local.damageMultiplier - ((dist-3)*0.6f)), 1, 15 * upgradeManager.Local.damageMultiplier);
+                    damageControl.health.Value -= Mathf.Clamp((17 * upgradeManager.Local.damageMultiplier - ((dist-3)*0.6f)), 1, 15 * upgradeManager.Local.damageMultiplier);
                 }
 
             }
 
             HealthController.updateHealth();
 
-            if (damageControl.health <= 0 && !healed) {
+            if (damageControl.health.Value <= 0 && !healed) {
                 healed = true;
                 PlayerMovement playerMovementInstance = GetComponent<PlayerMovement>();
                 playerMovementInstance.Die();
@@ -145,9 +147,17 @@ public class ChangeMat : AttributesSync
         }
     }
 
-    IEnumerator endDamaged(Alteruna.Avatar shot, Alteruna.Avatar shooter, bool shotgun, float dist) {
-        BroadcastRemoteMethod(1, shot, shooter, shotgun, dist);
+    [ServerRpc(RequireOwnership = false)]
+    private void ServerControlDamage(NetworkObject shot, NetworkObject shooter, bool shotgun, float dist)
+        => ControlDamage(shot, shooter, shotgun, dist);
+
+    [ServerRpc(RequireOwnership = false)]
+    private void ServerTakeDamageSync(NetworkObject shot, NetworkObject shooter, bool shotgun, float dist)
+        => TakeDamageSync(shot, shooter, shotgun, dist);
+
+    IEnumerator endDamaged(NetworkObject shot, NetworkObject shooter, bool shotgun, float dist) {
+        ServerControlDamage(shot, shooter, shotgun, dist);
         yield return new WaitForSeconds(0.05f);
-        BroadcastRemoteMethod(0, shot, shooter, shotgun, dist);
+        ServerTakeDamageSync(shot, shooter, shotgun, dist);
     }
 }

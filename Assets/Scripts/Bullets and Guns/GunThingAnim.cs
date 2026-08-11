@@ -8,6 +8,9 @@ public class GunThingAnim : MonoBehaviour
     public static bool movingState = false;
     public static bool gunMoving = false;
     void Update() {
+        // The local player is spawned by FishNet after this component starts.
+        if (PlayerMovement.Local == null) return;
+
         if (PlayerMovement.Local.isGrounded && CameraZoom.moving && !movingState) {
             movingState = true;
             gunMoving = true;

@@ -1,13 +1,11 @@
-using Alteruna;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class LeaderboardControl : AttributesSync
+public class LeaderboardControl : MonoBehaviour
 {
-    public Alteruna.Avatar _avatar;
     public GameObject LBPrefab;
     public static Dictionary<float, List<string>> data;
     private GameObject[] taggedObjects;
@@ -25,7 +23,6 @@ public class LeaderboardControl : AttributesSync
 
     void Start()
     {
-        // Search entire hierarchy for slot objects
         LB1 = FindObjectByName("Slot 1");
         LB2 = FindObjectByName("Slot 2");
         LB3 = FindObjectByName("Slot 3");
@@ -38,24 +35,22 @@ public class LeaderboardControl : AttributesSync
         lbEntries[1] = LB2;
         lbEntries[2] = LB3;
         
-        // Initialize avatar if not set in inspector
-        if (_avatar == null)
-        {
-            _avatar = GetComponent<Alteruna.Avatar>();
-        }
-        
         UpdateLB();
-        //BroadcastRemoteMethod(0);
         //lbContainer = GameObject.Find("Leaderboard").GetComponent<RectTransform>();
     }
     
+    private static bool isLocalPlayerRow(string rowUsername)
+    {
+        return PlayerMovement.Local != null
+            && PlayerMovement.Local.getUsername() == rowUsername;
+    }
+
     private GameObject FindObjectByName(string name)
     {
         // First try GameObject.Find (for root-level objects)
         GameObject result = GameObject.Find(name);
         if (result != null) return result;
         
-        // If not found, search entire hierarchy
         foreach (GameObject obj in Resources.FindObjectsOfTypeAll<GameObject>())
         {
             if (obj.name == name && obj.scene.name != null) // Only active scene objects
@@ -69,14 +64,11 @@ public class LeaderboardControl : AttributesSync
     //[SynchronizableMethod]
     public void UpdateLB()
     {
-        // Find and destroy existing leaderboard objects
         playerYellowedName = false;
         playerYellowedKC = false;
 
-        // Initialize data dictionary
         data = new Dictionary<float, List<string>>();
 
-        // Populate the dictionary with information from tagged objects
         taggedObjects = GameObject.FindGameObjectsWithTag("Player");
         foreach (GameObject obj in taggedObjects)
         {
@@ -84,7 +76,6 @@ public class LeaderboardControl : AttributesSync
             killCount = usernameControl.getKills();
             username = usernameControl.getUsername();
 
-            // Add the username to the list for the corresponding kill count
             if (!data.ContainsKey(killCount))
             {
                 data[killCount] = new List<string>();
@@ -97,7 +88,6 @@ public class LeaderboardControl : AttributesSync
         var sortedKeys = new List<float>(data.Keys);
         sortedKeys.Sort((a, b) => b.CompareTo(a));
 
-        // Display up to four players
         int displayedCount = 0;
         for (int i = 0; i < lbEntries.Length; i++)
         {
@@ -138,7 +128,7 @@ public class LeaderboardControl : AttributesSync
                     if (child.name == "leftText")
                     {
                         child.GetComponent<TextMeshProUGUI>().text = "#" + (displayedCount + 1).ToString() + " - " + u;
-                        if (_avatar.IsOwner && !playerYellowedName)
+                        if (isLocalPlayerRow(u) && !playerYellowedName)
                         {
                             playerYellowedName = true;
                             child.GetComponentInParent<Image>().color = new Color32(255, 220, 105, 255);
@@ -156,7 +146,7 @@ public class LeaderboardControl : AttributesSync
                     else if (child.name == "rightText")
                     {
                         child.GetComponent<TextMeshProUGUI>().text = ((int)k).ToString();
-                        if (_avatar.IsOwner && !playerYellowedKC) {
+                        if (isLocalPlayerRow(u) && !playerYellowedKC) {
                             playerYellowedKC = true;
                             //child.GetComponent<TextMeshProUGUI>().color = new Color(1.0f, 0.8f, 0f, 1.0f);
                         } else {

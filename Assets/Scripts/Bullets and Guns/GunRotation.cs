@@ -1,9 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Alteruna;
+using FishNet.Object;
 
-public class GunRotation : AttributesSync
+public class GunRotation : NetworkBehaviour
 {
     [SerializeField] private Transform gr;
     [SerializeField] private Transform gun;
@@ -12,14 +12,17 @@ public class GunRotation : AttributesSync
     private Transform gm1;
     private Transform c1;
     [SerializeField] private Transform gunMag;
-    [SerializeField] private Alteruna.Avatar avatar;
 
     void Start() {
-        g1 = GameObject.Find("CamAKM").transform;
-        gm1 = GameObject.Find("MC.Magazine").transform;
-        c1 = GameObject.Find("CamCasing").transform;
-        Debug.Log(c1.transform.position);
-        if (avatar.IsOwner) {
+        g1 = SceneLookup.FindInactive("CamAKM").transform;
+        gm1 = SceneLookup.FindInactive("MC.Magazine").transform;
+        c1 = SceneLookup.FindInactive("CamCasing").transform;
+    }
+
+    public override void OnStartClient() {
+        base.OnStartClient();
+
+        if (IsOwner) {
             Transform rendererContainer = transform.GetChild(0);
             for (int i = 0; i < rendererContainer.childCount; i++)
             {
@@ -71,7 +74,7 @@ public class GunRotation : AttributesSync
             if (type == "magazine" || type == "casing")
                 thingToPosition.transform.localPosition = pos;
             else
-                thingToPosition.transform.localPosition = avatar.IsOwner ? new Vector3(0.6f, thingToPosition.transform.localPosition.y - 0.1f, thingToPosition.transform.localPosition.z - 0.5f) : new Vector3(0.6f, thingToPosition.transform.localPosition.y - 0.1f, thingToPosition.transform.localPosition.z - 0.25f);
+                thingToPosition.transform.localPosition = IsOwner ? new Vector3(0.6f, thingToPosition.transform.localPosition.y - 0.1f, thingToPosition.transform.localPosition.z - 0.5f) : new Vector3(0.6f, thingToPosition.transform.localPosition.y - 0.1f, thingToPosition.transform.localPosition.z - 0.25f);
         }
     }
     private bool IsValidVector3(Vector3 vector)
