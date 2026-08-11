@@ -2,7 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using FishNet;
 using FishNet.Object;
+using FishNet.Object.Synchronizing;
 using TMPro;
 using NUnit.Framework;
 using UnityEngine.UI;
@@ -71,10 +73,14 @@ public class Shooting : NetworkBehaviour
     [SerializeField] private MeshFilter     playerMesh;
     [SerializeField] private Mesh           shotgunMesh;
     [SerializeField] private Mesh           M4Mesh;
+    [SerializeField] private GameObject impact;
+    [SerializeField] private float impactOffset = 0.01f;
 
     private const int BulletPoolSize  = 30;
     private const int MuzzlePoolSize  = 10;
     private const int CasingPoolSize  = 30;
+    private LayerMask layerMask;
+
 
     private ObjectPool<Rigidbody>      _bulletPool;
     private ObjectPool<ParticleSystem> _muzzlePool;
@@ -137,7 +143,18 @@ public class Shooting : NetworkBehaviour
     public  GameObject playerMag;
 
     public float trailFadeDuration = 0.5f;
-    private Dictionary<NetworkObject, Vector3> previousPositions = new Dictionary<NetworkObject, Vector3>();
+
+    public struct BulletData
+    {
+        public NetworkObject bulletObject;
+        public Vector3 previousPosition;
+        public Vector3 startPosition;
+        public float timeActive;
+        public bool isShotgun;
+        public NetworkObject shooter;
+    } 
+
+    private List<BulletData> activeBullets = new List<BulletData>();
 
     void Awake()
     {
@@ -198,6 +215,7 @@ public class Shooting : NetworkBehaviour
         _casingPool = new ObjectPool<Transform>(
             bulletCasingPrefab.GetComponent<Transform>(),
             CasingPoolSize, _casingPoolRoot);
+        layerMask = LayerMask.GetMask("DamageCollide", "Default", "BuildNoColPlayer");
     }
 
     private Transform CreatePoolRoot(string name)
@@ -275,41 +293,100 @@ public class Shooting : NetworkBehaviour
         if (Input.GetKeyDown(KeyCode.E) && !reloading && canChangeGun && !isShooting)
             StartCoroutine(gunChangeAnim());
     }
+    
     private void BulletCollisionDetection() {
-        foreach (var bullet in previousPositions.Keys)
+        for (int i = 0; i < activeBullets.Count; i++)
         {
-            Rigidbody rb = bullet.GetComponent<Rigidbody>();
-            Vector3 currentPosition = bullet.GetComponent<Transform>().position;
+            BulletData bullet = activeBullets[i];
+            Rigidbody rb = bullet.bulletObject.GetComponent<Rigidbody>();
+            Vector3 currentPosition = bullet.bulletObject.GetComponent<Transform>().position;
 
-            Debug.DrawRay(previousPositions[bullet], currentPosition - previousPositions[bullet], Color.cyan);
+            Debug.DrawRay(bullet.previousPosition, currentPosition - bullet.previousPosition, Color.cyan);
 
             rb.rotation = Quaternion.LookRotation(rb.linearVelocity.normalized);
-            HandleRaycastHit(previousPositions[bullet], currentPosition, shooter);
 
-            bulletDist = (currentPosition - bulletStartPos).magnitude;
+            float bulletDist = (currentPosition - bullet.startPosition).magnitude;
+            HandleRaycastHit(bullet.previousPosition, currentPosition, bullet.isShotgun, bulletDist, bullet.shooter);
 
-        if (shottieBool && bulletDist > 20f) {
-            if (rb != null) {
-                rb.linearVelocity = Vector3.zero;
+            if ((bullet.isShotgun && bulletDist > 20f) || bullet.timeActive > 7.5f) {
+                if (rb != null) {
+                    rb.linearVelocity = Vector3.zero;
+                }
+                Destroy(bullet.bulletObject.gameObject);
+                activeBullets.Remove(bullet);
             }
-            if (trail != null) { trail.emitting = false; trail.enabled = false; trail.Clear(); }
-            DestroyObject();
-            bulletOne.SetActive(false);
+            bullet.timeActive += Time.deltaTime;
+            bullet.previousPosition = currentPosition;
         }
-
-        if (!visualEnabled) {
-            float movedDist = (currentPosition - bulletStartPos).magnitude;
-            if (movedDist >= showDistance) {
-                visualEnabled = true;
-                Visual.SetActive(true);
-                //ps.Play();
-                bulletOne.SetActive(true);
-            } else {
-                Visual.SetActive(false);
-                bulletOne.SetActive(false);
-            }
-        }        }
     }
+
+    void HandleRaycastHit(Vector3 previousPos, Vector3 currentPos, bool shottieBool, float bulletDist, NetworkObject shooter)
+    {
+        Vector3 direction = currentPos - previousPos;
+        float rayDistance = direction.magnitude;
+        RaycastHit hit;
+
+        GameObject hitObject;
+        if (Physics.Raycast(previousPos, direction.normalized, out hit, rayDistance, layerMask))
+        {
+            hitObject = hit.collider.gameObject;
+            
+            BuildHealth buildHealth = hitObject.GetComponent<BuildHealth>();
+            if (buildHealth != null)
+            {
+                buildHealth.TakeDamage(shottieBool, bulletDist);
+                Debug.Log($"Hit building: {hitObject.name} for {bulletDist} damage.");
+            }
+
+            if (hitObject.CompareTag("DamageCollider"))
+            {
+                GameObject parentObject = hitObject.transform.parent.gameObject;
+                NetworkObject parentAvatar = parentObject.GetComponent<NetworkObject>();
+                if (parentAvatar != shooter)
+                {
+                    Renderer renderer = parentObject.GetComponent<Renderer>();
+                    if (renderer != null)
+                    {
+                        renderer.sharedMaterial = damaged;
+                    }
+                    
+                    ChangeMat changeMat = parentObject.GetComponent<ChangeMat>();
+                    if (changeMat != null)
+                    {
+                        if (parentAvatar != null)
+                        {
+                            changeMat.TakeDamage(parentAvatar, shooter, shottieBool, bulletDist);
+                        }
+                    }
+                    
+                    DamageIndicatorControl.setDamageCross = true;
+                }
+            }
+
+            if (hitObject.CompareTag("tester"))
+            {
+                PlayerMovement.Local.hitCount++;
+            }
+
+            // hitPrev = true;
+            impactPrefabInstance(hit.point, hit.normal);
+
+            // if (trail != null) { trail.emitting = false; trail.enabled = false; trail.Clear(); }
+
+            // transform.position = hit.point;
+            // bulletOne.SetActive(false);
+        }
+    }
+
+    public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
+    {
+        Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
+
+        Quaternion rotation = Quaternion.LookRotation(hitNormal);
+
+        Instantiate(impact, spawnPosition, rotation);
+    }
+
     private void FireBullet(
         Vector3 origin, Vector3 direction, Vector3 bS,
         float force, float damage,
@@ -410,7 +487,17 @@ public class Shooting : NetworkBehaviour
 
         bulletRb.linearVelocity = velocity;
         bulletRb.rotation = Quaternion.LookRotation(fireDirection);
-        previousPositions[bulletGO.GetComponent<NetworkObject>()] = origin;
+
+        activeBullets.Add(new BulletData
+        {
+            bulletObject = bulletGO.GetComponent<NetworkObject>(),
+            previousPosition = origin,
+            startPosition = origin,
+            timeActive = 0f,
+            isShotgun = shotgun,
+            shooter = GetComponent<NetworkObject>()
+        });
+
         end            = targetPoint;
         isFiringBullet = true;
     }

@@ -349,6 +349,8 @@ MonoBehaviour:
   playerMesh: {fileID: 9146832561924185666}
   shotgunMesh: {fileID: 6919841926953838382, guid: ef692815acc00a84abbedf794f71d664, type: 3}
   M4Mesh: {fileID: -8401218714792031518, guid: 19b3217a01ed3df42b30c781edabc747, type: 3}
+  impact: {fileID: 5586783540032275536, guid: 6e57a3cf9435eb14fb9928fa4ee60c63, type: 3}
+  impactOffset: 0.01
   bulletSpeed: 150
   snipeSpeed: 150
   fireRate: 11
@@ -421,8 +423,6 @@ MonoBehaviour:
   wallPrefab: {fileID: 557634749615070146, guid: 98059948cd6fb444493625ff3f416615, type: 3}
   floorPrefab: {fileID: 2232761753259631505, guid: 082498592ff166044b7e3187e97543c0, type: 3}
   player: {fileID: 5279564779932534022}
-  playerSpawnedObjects: []
-  buildNum: 25
   breakParticlesRef: {fileID: 1250507045210962, guid: 3fe0df07025a3e747855b1bb671fc04e, type: 3}
   ground: {fileID: 5007660329891815841, guid: edb0989258826e94ba1fa00d2141c485, type: 3}
 --- !u!143 &5773259679459233445
@@ -550,7 +550,7 @@ MonoBehaviour:
     Scale: {x: 0, y: 0, z: 0}
     IsValid: 0
   <IsNested>k__BackingField: 0
-  WasActiveDuringEdit: 0
+  WasActiveDuringEdit: 1
   WasActiveDuringEdit_Set1: 1
   <ComponentIndex>k__BackingField: 0
   <PredictedSpawn>k__BackingField: {fileID: 0}
