@@ -10,15 +10,11 @@ public class AnimationController2 : MonoBehaviour
     }
 
     public static void PlayAnim()
-    {        
-        if (CollisionControl.avatar) {
-            animator.SetTrigger("Shoot");
-        }
+    {
+        animator.SetTrigger("Shoot");
     }
 
     public void EndAnim() {
-        if (CollisionControl.avatar) {
-            animator.SetTrigger("NoShoot");
-        }
+        animator.SetTrigger("NoShoot");
     }
 }

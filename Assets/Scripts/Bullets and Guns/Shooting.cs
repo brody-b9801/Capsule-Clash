@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using FishNet;
+using FishNet.Connection;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using TMPro;
@@ -61,7 +62,6 @@ public class Shooting : NetworkBehaviour
     [SerializeField] private Transform      gun;
     [SerializeField] private GameObject     player;
     [SerializeField] private Material       normal;
-    [SerializeField] private Material       damaged;
     [SerializeField] private Material       bulletTrailMaterial;
     [SerializeField] private LayerMask      ignoreLayers;
     [SerializeField] private GameObject     muzzleFlash;
@@ -73,13 +73,10 @@ public class Shooting : NetworkBehaviour
     [SerializeField] private MeshFilter     playerMesh;
     [SerializeField] private Mesh           shotgunMesh;
     [SerializeField] private Mesh           M4Mesh;
-    [SerializeField] private GameObject impact;
-    [SerializeField] private float impactOffset = 0.01f;
 
     private const int BulletPoolSize  = 30;
     private const int MuzzlePoolSize  = 10;
     private const int CasingPoolSize  = 30;
-    private LayerMask layerMask;
 
 
     private ObjectPool<Rigidbody>      _bulletPool;
@@ -144,18 +141,6 @@ public class Shooting : NetworkBehaviour
 
     public float trailFadeDuration = 0.5f;
 
-    public struct BulletData
-    {
-        public NetworkObject bulletObject;
-        public Vector3 previousPosition;
-        public Vector3 startPosition;
-        public float timeActive;
-        public bool isShotgun;
-        public NetworkObject shooter;
-    } 
-
-    private List<BulletData> activeBullets = new List<BulletData>();
-
     void Awake()
     {
         Local = this;
@@ -215,7 +200,11 @@ public class Shooting : NetworkBehaviour
         _casingPool = new ObjectPool<Transform>(
             bulletCasingPrefab.GetComponent<Transform>(),
             CasingPoolSize, _casingPoolRoot);
-        layerMask = LayerMask.GetMask("DamageCollide", "Default", "BuildNoColPlayer");
+    }
+
+    private void OnServerStart()
+    {
+        
     }
 
     private Transform CreatePoolRoot(string name)
@@ -226,9 +215,6 @@ public class Shooting : NetworkBehaviour
 
     void Update()
     {
-        if (IsServerInitialized) {
-            BulletCollisionDetection();
-        }
         if (!IsOwner) return;
         isShooting = false;
 
@@ -282,7 +268,7 @@ public class Shooting : NetworkBehaviour
 
         if (Input.GetKeyDown(KeyCode.R))
         {
-            if ((!shotgun && !reloading && reloadNum != 30) || (shotgun && !reloading && shottieNum != 2))
+            if (canChangeGun && ((!shotgun && !reloading && reloadNum != 30) || (shotgun && !reloading && shottieNum != 2)))
             {
                 ReloadAnimation.PlayReload();
                 StartCoroutine(waitReload());
@@ -293,91 +279,7 @@ public class Shooting : NetworkBehaviour
         if (Input.GetKeyDown(KeyCode.E) && !reloading && canChangeGun && !isShooting)
             StartCoroutine(gunChangeAnim());
     }
-    
-    private void BulletCollisionDetection() {
-        for (int i = 0; i < activeBullets.Count; i++)
-        {
-            BulletData bullet = activeBullets[i];
-            Rigidbody rb = bullet.bulletObject.GetComponent<Rigidbody>();
-            Vector3 currentPosition = bullet.bulletObject.GetComponent<Transform>().position;
-
-            Debug.DrawRay(bullet.previousPosition, currentPosition - bullet.previousPosition, Color.cyan);
-
-            rb.rotation = Quaternion.LookRotation(rb.linearVelocity.normalized);
-
-            float bulletDist = (currentPosition - bullet.startPosition).magnitude;
-            HandleRaycastHit(bullet.previousPosition, currentPosition, bullet.isShotgun, bulletDist, bullet.shooter);
-
-            if ((bullet.isShotgun && bulletDist > 20f) || bullet.timeActive > 7.5f) {
-                if (rb != null) {
-                    rb.linearVelocity = Vector3.zero;
-                }
-                Destroy(bullet.bulletObject.gameObject);
-                activeBullets.Remove(bullet);
-            }
-            bullet.timeActive += Time.deltaTime;
-            bullet.previousPosition = currentPosition;
-        }
-    }
-
-    void HandleRaycastHit(Vector3 previousPos, Vector3 currentPos, bool shottieBool, float bulletDist, NetworkObject shooter)
-    {
-        Vector3 direction = currentPos - previousPos;
-        float rayDistance = direction.magnitude;
-        RaycastHit hit;
-
-        GameObject hitObject;
-        if (Physics.Raycast(previousPos, direction.normalized, out hit, rayDistance, layerMask))
-        {
-            hitObject = hit.collider.gameObject;
-            
-            BuildHealth buildHealth = hitObject.GetComponent<BuildHealth>();
-            if (buildHealth != null)
-            {
-                buildHealth.TakeDamage(shottieBool, bulletDist);
-                Debug.Log($"Hit building: {hitObject.name} for {bulletDist} damage.");
-            }
-
-            if (hitObject.CompareTag("DamageCollider"))
-            {
-                GameObject parentObject = hitObject.transform.parent.gameObject;
-                NetworkObject parentAvatar = parentObject.GetComponent<NetworkObject>();
-                if (parentAvatar != shooter)
-                {
-                    Renderer renderer = parentObject.GetComponent<Renderer>();
-                    if (renderer != null)
-                    {
-                        renderer.sharedMaterial = damaged;
-                    }
-                    
-                    ChangeMat changeMat = parentObject.GetComponent<ChangeMat>();
-                    if (changeMat != null)
-                    {
-                        if (parentAvatar != null)
-                        {
-                            changeMat.TakeDamage(parentAvatar, shooter, shottieBool, bulletDist);
-                        }
-                    }
-                    
-                    DamageIndicatorControl.setDamageCross = true;
-                }
-            }
-
-            if (hitObject.CompareTag("tester"))
-            {
-                PlayerMovement.Local.hitCount++;
-            }
-
-            // hitPrev = true;
-            impactPrefabInstance(hit.point, hit.normal);
-
-            // if (trail != null) { trail.emitting = false; trail.enabled = false; trail.Clear(); }
-
-            // transform.position = hit.point;
-            // bulletOne.SetActive(false);
-        }
-    }
-
+ 
     public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
     {
         Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
@@ -441,8 +343,12 @@ public class Shooting : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void ServerBulletLogic(Vector3 spawnPosition, Vector3 direction, float force, Vector3 origin, float randomX, float randomY, float randomZ)
+    private void ServerBulletLogic(Vector3 spawnPosition, Vector3 direction, float force, Vector3 origin, float randomX, float randomY, float randomZ, NetworkConnection conn = null)
     {
+        // The shooter is whoever actually sent this RPC. Deriving it from local state
+        // (IsOwner / *.Local) misattributes every bullet on a host or dedicated server.
+        NetworkObject shooterObj = conn != null ? conn.FirstObject : NetworkObject;
+
         Rigidbody bulletRb = _bulletPool.Get(spawnPosition, Quaternion.identity);
         GameObject bulletGO = bulletRb.gameObject;
         bulletGO.layer = IsOwner ? 7 : 6;
@@ -495,7 +401,8 @@ public class Shooting : NetworkBehaviour
             startPosition = origin,
             timeActive = 0f,
             isShotgun = shotgun,
-            shooter = GetComponent<NetworkObject>()
+            shooter = shooterObj,
+            hitPrev = false,
         });
 
         end            = targetPoint;
@@ -592,10 +499,17 @@ public class Shooting : NetworkBehaviour
         alphaVal = 0f;
     }
 
+    public const float ReloadDuration = 2.01f;
+    public const float ShotgunSingleShellReloadDuration = 1.31f;
+
+    public static float CurrentReloadDuration =>
+        ((Local.shotgun && Local.shottieNum == 1) ? ShotgunSingleShellReloadDuration : ReloadDuration)
+        / upgradeManager.Local.reloadSpeedMultiplier;
+
     IEnumerator waitReload()
     {
         reloading = true;
-        yield return new WaitForSeconds((shotgun && shottieNum == 1) ? 1.31f : 2.01f / upgradeManager.Local.reloadSpeedMultiplier);
+        yield return new WaitForSeconds(CurrentReloadDuration);
 
         if (shotgun) shottieNum = 2;
         else         reloadNum  = 30;

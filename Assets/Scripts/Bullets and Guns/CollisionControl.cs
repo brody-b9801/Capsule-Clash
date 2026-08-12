@@ -7,7 +7,6 @@ using FishNet.Object;
 public class CollisionControl : MonoBehaviour
 {
     [SerializeField] public Vector3 previousPosition;
-    public static bool avatar = false;
     private bool hitPrev = false;
     [SerializeField] public Vector3 bulletEndPos;
     [SerializeField] private Material trailMaterial;
@@ -154,10 +153,7 @@ public class CollisionControl : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (avatar)
-        {
-            previousPosition = transform.position;
-        }
+        previousPosition = transform.position;
     }
 
     public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
