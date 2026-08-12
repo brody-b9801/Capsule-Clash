@@ -74,16 +74,13 @@ public class Shooting : NetworkBehaviour
     [SerializeField] private Mesh           shotgunMesh;
     [SerializeField] private Mesh           M4Mesh;
 
-    private const int BulletPoolSize  = 30;
     private const int MuzzlePoolSize  = 10;
     private const int CasingPoolSize  = 30;
 
 
-    private ObjectPool<Rigidbody>      _bulletPool;
     private ObjectPool<ParticleSystem> _muzzlePool;
     private ObjectPool<Transform>      _casingPool;
 
-    private Transform _bulletPoolRoot;
     private Transform _muzzlePoolRoot;
     private Transform _casingPoolRoot;
     public float bulletSpeed  = 15.0f;
@@ -189,13 +186,8 @@ public class Shooting : NetworkBehaviour
 
         camCasing.GetComponent<MeshRenderer>().enabled = false;
 
-        _bulletPoolRoot = CreatePoolRoot("Pool_Bullets");
         _muzzlePoolRoot = CreatePoolRoot("Pool_Muzzle");
         _casingPoolRoot = CreatePoolRoot("Pool_Casings");
-
-        _bulletPool = new ObjectPool<Rigidbody>(
-            bulletPrefab.GetComponent<Rigidbody>(),
-            BulletPoolSize, _bulletPoolRoot);
 
         _muzzlePool = new ObjectPool<ParticleSystem>(
             muzzlePrefab,
@@ -206,9 +198,9 @@ public class Shooting : NetworkBehaviour
             CasingPoolSize, _casingPoolRoot);
     }
 
-    private void OnServerStart()
+    public override void OnStartServer()
     {
-        
+        base.OnStartServer();
     }
 
     private Transform CreatePoolRoot(string name)
@@ -292,7 +284,23 @@ public class Shooting : NetworkBehaviour
         bool doMuzzleFlash)
     {
         bool isOwner = IsOwner;
-        ServerBulletLogic(spawnPosition: bS, direction: direction, force: force, origin: origin, randomX: randomX, randomY: randomY, randomZ: randomZ);
+
+        Vector3 shooterVelocity = PlayerMovement.Local.dashVector;
+        if (IsValidVector3(PlayerMovement.Local.newVelocity))
+        {
+            shooterVelocity += PlayerMovement.Local.isGrounded
+                ? new Vector3(PlayerMovement.Local.newVelocity.x, 0f, PlayerMovement.Local.newVelocity.z)
+                : PlayerMovement.Local.newVelocity;
+        }
+
+        ServerBulletLogic(
+            spawnPosition: bS, direction: direction, force: force, origin: origin,
+            randomX: randomX, randomY: randomY, randomZ: randomZ,
+            camPosition: mainCameraTransform.position,
+            camForward: mainCameraTransform.forward,
+            isShotgun: shotgun,
+            shooterVelocity: shooterVelocity);
+
         lockCursor = true;
 
         Vector3 spawnMuzzlePosition = IsOwner ? bulletOrigin : bHPos;
@@ -338,60 +346,50 @@ public class Shooting : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void ServerBulletLogic(Vector3 spawnPosition, Vector3 direction, float force, Vector3 origin, float randomX, float randomY, float randomZ, NetworkConnection conn = null)
+    private void ServerBulletLogic(
+        Vector3 spawnPosition, Vector3 direction, float force, Vector3 origin,
+        float randomX, float randomY, float randomZ,
+        Vector3 camPosition, Vector3 camForward, bool isShotgun, Vector3 shooterVelocity,
+        NetworkConnection conn = null)
     {
-        // The shooter is whoever actually sent this RPC. Deriving it from local state
-        // (IsOwner / *.Local) misattributes every bullet on a host or dedicated server.
         NetworkObject shooterObj = conn != null ? conn.FirstObject : NetworkObject;
 
-        Rigidbody bulletRb = _bulletPool.Get(spawnPosition, Quaternion.identity);
-        GameObject bulletGO = bulletRb.gameObject;
-        bulletGO.layer = IsOwner ? 7 : 6;
-
-        RaycastHit hit;
         Vector3 targetPoint;
+        Vector3 bulletPosition = spawnPosition;
 
-        if (Physics.Raycast(new Ray(mainCameraTransform.position, mainCameraTransform.forward), out hit, 1.5f, ~ignoreLayers)){
-            targetPoint              = transform.position + direction * force;
-            origin = mainCameraTransform.position;
-            bulletGO.transform.position = origin;
-        }
-        else if (Physics.Raycast(new Ray(origin, direction), out hit, force, ~ignoreLayers))
+        if (Physics.Raycast(new Ray(camPosition, camForward), out _, 1.5f, ~ignoreLayers))
         {
-            targetPoint              = hit.point;
+            targetPoint    = transform.position + direction * force;
+            origin         = camPosition;
+            bulletPosition = origin;
+        }
+        else if (Physics.Raycast(new Ray(origin, direction), out RaycastHit hit, force, ~ignoreLayers))
+        {
+            targetPoint = hit.point;
         }
         else
         {
-            targetPoint              = origin + direction * force;
+            targetPoint = origin + direction * force;
         }
 
-        Vector3 spreadVector     = new Vector3(randomX, randomY, randomZ);
+        Vector3 spreadVector       = new Vector3(randomX, randomY, randomZ);
         float   distanceFromCamera = Vector3.Distance(origin, targetPoint);
         targetPoint += spreadVector * distanceFromCamera;
 
         Vector3 fireDirection = (targetPoint - origin).normalized;
-        PlayerMovement.Local.shotBoost = new Vector3(fireDirection.x, 0, fireDirection.z);
+        Vector3 velocity      = fireDirection * bulletSpeed + shooterVelocity;
 
-        Vector3 velocity      = fireDirection * bulletSpeed;
+        GameObject    bulletGO  = Instantiate(bulletPrefab, bulletPosition, Quaternion.LookRotation(fireDirection));
+        Rigidbody     bulletRb  = bulletGO.GetComponent<Rigidbody>();
+        NetworkObject bulletNob = bulletGO.GetComponent<NetworkObject>();
 
-        if (IsValidVector3(PlayerMovement.Local.newVelocity))
-        {
-            velocity += PlayerMovement.Local.isGrounded
-                ? new Vector3(PlayerMovement.Local.newVelocity.x, 0f, PlayerMovement.Local.newVelocity.z)
-                  + PlayerMovement.Local.dashVector
-                : PlayerMovement.Local.newVelocity + PlayerMovement.Local.dashVector;
-        }
-        else
-        {
-            velocity += PlayerMovement.Local.dashVector;
-        }
+        if (bulletRb != null) bulletRb.linearVelocity = velocity;
 
-        bulletRb.linearVelocity = velocity;
-        bulletRb.rotation = Quaternion.LookRotation(fireDirection);
+        ServerManager.Spawn(bulletNob, shooterObj != null ? shooterObj.Owner : conn);
 
         if (bulletManager != null)
         {
-            bulletManager.AddBulletData(bulletGO.GetComponent<NetworkObject>(), origin, shotgun, shooterObj);
+            bulletManager.AddBulletData(bulletNob, origin, isShotgun, shooterObj);
         }
 
         end            = targetPoint;

@@ -165,10 +165,6 @@ public class CollisionControl : MonoBehaviour
         Instantiate(impact, spawnPosition, rotation);
     }
 
-    /// <summary>
-    /// Impact FX spawner for server-driven hits. Shooting.RpcBulletImpact calls this
-    /// on every client; the prefab reference is cached from the first bullet to spawn.
-    /// </summary>
     private static GameObject _cachedImpactPrefab;
 
     public static void SpawnImpact(Vector3 hitpoint, Vector3 hitNormal, float offset = 0.01f)

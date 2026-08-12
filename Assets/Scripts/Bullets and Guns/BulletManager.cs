@@ -1,13 +1,10 @@
 using UnityEngine;
 using FishNet.Object;
+using FishNet.Connection;
 using System.Collections.Generic;
 
 public class BulletManager : NetworkBehaviour
-{
-    [SerializeField] private Material       damaged;
-    [SerializeField] private GameObject impact;
-    [SerializeField] private float impactOffset = 0.01f;
-    
+{    
     public struct BulletData
     {
         public NetworkObject bulletObject;
@@ -38,13 +35,15 @@ public class BulletManager : NetworkBehaviour
         });
     }
 
-    private void OnServerStart()
+    public override void OnStartServer()
     {
+        base.OnStartServer();
         layerMask = LayerMask.GetMask("DamageCollide", "Default", "BuildNoColPlayer");
     }
 
     private void Update()
     {
+        if (!IsServerInitialized) return;
         BulletCollisionDetection();
     }
     
@@ -76,7 +75,7 @@ public class BulletManager : NetworkBehaviour
             if (bullet.hitPrev || (bullet.isShotgun && bulletDist > 20f) || bullet.timeActive > 7.5f)
             {
                 if (rb != null) rb.linearVelocity = Vector3.zero;
-                if (bullet.bulletObject != null) Destroy(bullet.bulletObject.gameObject);
+                if (bullet.bulletObject != null) ServerManager.Despawn(bullet.bulletObject.gameObject);
                 activeBullets.RemoveAt(i);
             }
             else
@@ -111,37 +110,22 @@ public class BulletManager : NetworkBehaviour
 
                 GameObject parentObject = victim.gameObject;
 
-                Renderer renderer = parentObject.GetComponent<Renderer>();
-                if (renderer != null)
-                {
-                    renderer.sharedMaterial = damaged;
-                }
-
                 ChangeMat changeMat = parentObject.GetComponent<ChangeMat>();
                 if (changeMat != null)
-                {
                     changeMat.TakeDamage(victim, bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
-                }
-
-                DamageIndicatorControl.setDamageCross = true;
-            }
-
-            if (hitObject.CompareTag("tester"))
-            {
-                PlayerMovement.Local.hitCount++;
+                
+                if (bulletData.shooter.Owner != null)
+                    SetDamageCross(bulletData.shooter.Owner);
             }
 
             bulletData.hitPrev = true;
-            impactPrefabInstance(hit.point, hit.normal);
+            CollisionControl.SpawnImpact(hit.point, hit.normal);
         }
     }
 
-    public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
+    [TargetRpc]
+    private void SetDamageCross(NetworkConnection target)
     {
-        Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
-
-        Quaternion rotation = Quaternion.LookRotation(hitNormal);
-
-        Instantiate(impact, spawnPosition, rotation);
+        DamageIndicatorControl.setDamageCross = true;
     }
 }
