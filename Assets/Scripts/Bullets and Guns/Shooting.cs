@@ -139,11 +139,15 @@ public class Shooting : NetworkBehaviour
     private GameObject bulletSpawn;
     public  GameObject playerMag;
 
+    private BulletManager bulletManager;
+
+
     public float trailFadeDuration = 0.5f;
 
     void Awake()
     {
         Local = this;
+        bulletManager = FindFirstObjectByType<BulletManager>();
     }
 
     public override void OnStopClient()
@@ -279,15 +283,6 @@ public class Shooting : NetworkBehaviour
         if (Input.GetKeyDown(KeyCode.E) && !reloading && canChangeGun && !isShooting)
             StartCoroutine(gunChangeAnim());
     }
- 
-    public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
-    {
-        Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
-
-        Quaternion rotation = Quaternion.LookRotation(hitNormal);
-
-        Instantiate(impact, spawnPosition, rotation);
-    }
 
     private void FireBullet(
         Vector3 origin, Vector3 direction, Vector3 bS,
@@ -394,16 +389,10 @@ public class Shooting : NetworkBehaviour
         bulletRb.linearVelocity = velocity;
         bulletRb.rotation = Quaternion.LookRotation(fireDirection);
 
-        activeBullets.Add(new BulletData
+        if (bulletManager != null)
         {
-            bulletObject = bulletGO.GetComponent<NetworkObject>(),
-            previousPosition = origin,
-            startPosition = origin,
-            timeActive = 0f,
-            isShotgun = shotgun,
-            shooter = shooterObj,
-            hitPrev = false,
-        });
+            bulletManager.AddBulletData(bulletGO.GetComponent<NetworkObject>(), origin, shotgun, shooterObj);
+        }
 
         end            = targetPoint;
         isFiringBullet = true;

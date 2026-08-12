@@ -24,9 +24,18 @@ public class BulletManager : NetworkBehaviour
 
     private List<BulletData> activeBullets = new List<BulletData>();
 
-    public void AddBulletData()
+    public void AddBulletData(NetworkObject bulletGO, Vector3 origin, bool shotgun, NetworkObject shooterObj)
     {
-        
+        activeBullets.Add(new BulletData
+        {
+            bulletObject = bulletGO,
+            previousPosition = origin,
+            startPosition = origin,
+            timeActive = 0f,
+            isShotgun = shotgun,
+            shooter = shooterObj,
+            hitPrev = false,
+        });
     }
 
     private void OnServerStart()
