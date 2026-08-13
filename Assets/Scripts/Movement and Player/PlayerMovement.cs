@@ -21,7 +21,6 @@ public class PlayerMovement : NetworkBehaviour {
     private Camera playerCamera;
     [SerializeField] private Transform gun;
     public static Vector3 gunRotation;
-    [SerializeField] private Renderer playerRenderer;
     public bool isGrounded = false;
     public bool fastAir = false;
     public static float currentCameraRotationX = 0.0f;

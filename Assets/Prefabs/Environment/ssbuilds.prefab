@@ -3080,7 +3080,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 29
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 9201778096820024973}
   maxHealth: 4
@@ -10292,7 +10292,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 8
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 5524471381899895127}
   maxHealth: 4
@@ -14788,7 +14788,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 28
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 7233570068482547196}
   maxHealth: 4
@@ -15504,7 +15504,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 9
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 4161455058846227728}
   maxHealth: 4
@@ -16310,7 +16310,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 15
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 2207091361643645025}
   maxHealth: 4
@@ -16598,7 +16598,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 33
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 6438829808816980220}
   maxHealth: 4
@@ -17156,7 +17156,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 5
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 6350985199251241998}
   maxHealth: 4
@@ -18974,7 +18974,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 3
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 1688553878578176015}
   maxHealth: 4
@@ -24221,7 +24221,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 18
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 3938781872512984554}
   maxHealth: 4
@@ -36514,7 +36514,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 31
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 4192942565172609590}
   maxHealth: 4
@@ -37410,7 +37410,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 26
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 8510744271016404798}
   maxHealth: 4
@@ -51714,7 +51714,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 30
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 4777764892090567265}
   maxHealth: 4
@@ -58423,7 +58423,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 12
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 6567086413275086237}
   maxHealth: 4
@@ -61284,7 +61284,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 24
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 777857841211006857}
   maxHealth: 4
@@ -65590,7 +65590,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 16
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 1654134773416440247}
   maxHealth: 4
@@ -67790,7 +67790,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 6
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 7932914484761466277}
   maxHealth: 4
@@ -67806,8 +67806,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 380885004582544442}
-  - component: {fileID: 9141976850279307540}
-  - component: {fileID: 2265475119243252428}
   m_Layer: 0
   m_Name: ssbuilds
   m_TagString: Untagged
@@ -67866,78 +67864,6 @@ Transform:
   - {fileID: 3603679414342449969}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &9141976850279307540
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4387486687302503737}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a6a39c46bf52104ba8efe3100bce3f7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Object.EmptyNetworkBehaviour
-  _componentIndexCache: 255
-  _addedNetworkObject: {fileID: 2265475119243252428}
-  _networkObjectCache: {fileID: 0}
---- !u!114 &2265475119243252428
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4387486687302503737}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 26b716c41e9b56b4baafaf13a523ba2e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Object.NetworkObject
-  _localLevelOfDetailCalculationType: 0
-  _useLevelOfDetail: 0
-  _useRootLevelOfDetail: 1
-  NetworkObserver: {fileID: 0}
-  _enablePrediction: 0
-  _predictionType: 0
-  _localReconcileCorrectionType: 2
-  _graphicalObject: {fileID: 0}
-  _detachGraphicalObject: 0
-  _enableStateForwarding: 1
-  _networkTransform: {fileID: 0}
-  _ownerInterpolation: 1
-  _ownerSmoothedProperties: 255
-  _adaptiveInterpolation: 3
-  _spectatorSmoothedProperties: 255
-  _spectatorInterpolation: 2
-  _enableTeleport: 0
-  _teleportThreshold: 1
-  <PrefabId>k__BackingField: 65535
-  <SpawnableCollectionId>k__BackingField: 0
-  <AssetPathHash>k__BackingField: 2203248030590594168
-  SceneId: 0
-  SerializedTransformProperties:
-    Position: {x: 0, y: 0, z: 0}
-    Rotation: {x: 0, y: 0, z: 0, w: 0}
-    Scale: {x: 0, y: 0, z: 0}
-    IsValid: 0
-  <IsNested>k__BackingField: 0
-  WasActiveDuringEdit: 0
-  WasActiveDuringEdit_Set1: 1
-  <ComponentIndex>k__BackingField: 0
-  <PredictedSpawn>k__BackingField: {fileID: 0}
-  <PredictedOwner>k__BackingField: {fileID: 0}
-  NetworkBehaviours: []
-  InitializedParentNetworkBehaviour: {fileID: 0}
-  InitializedNestedNetworkObjects: []
-  RuntimeParentNetworkBehaviour: {fileID: 0}
-  RuntimeChildNetworkBehaviours: []
-  _isNetworked: 1
-  _isSpawnable: 1
-  _isGlobal: 0
-  _initializeOrder: 0
-  _preventDespawnOnDisconnect: 0
-  _defaultDespawnType: 0
-  _initializedTimestamp: 0
 --- !u!1 &4393211175095825186
 GameObject:
   m_ObjectHideFlags: 0
@@ -76128,7 +76054,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 2
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 1599035916120945027}
   maxHealth: 4
@@ -76824,7 +76750,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 23
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 360383853924461516}
   maxHealth: 4
@@ -79190,7 +79116,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 4
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 4323856484650491045}
   maxHealth: 4
@@ -85718,7 +85644,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 10
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 7715009765269188404}
   maxHealth: 4
@@ -92629,7 +92555,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 20
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 3043059964535663840}
   maxHealth: 4
@@ -95920,7 +95846,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 17
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 4030193328781939655}
   maxHealth: 4
@@ -97536,7 +97462,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 35
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 8552582436596049231}
   maxHealth: 4
@@ -97802,7 +97728,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 34
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 3078758736098567006}
   maxHealth: 4
@@ -102536,7 +102462,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 22
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 8396944474173628408}
   maxHealth: 4
@@ -104548,7 +104474,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 19
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 4544628071581389343}
   maxHealth: 4
@@ -107417,7 +107343,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 13
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 6840318341044223663}
   maxHealth: 4
@@ -107863,7 +107789,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 1
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 5188690441088985111}
   maxHealth: 4
@@ -109703,7 +109629,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 25
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 1258717130612540174}
   maxHealth: 4
@@ -117926,7 +117852,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 32
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 5342511767508086008}
   maxHealth: 4
@@ -118102,7 +118028,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 14
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 3885493984289166825}
   maxHealth: 4
@@ -122670,7 +122596,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 11
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 7471414141131279577}
   maxHealth: 4
@@ -123566,7 +123492,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 7
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 1731985201453872441}
   maxHealth: 4
@@ -131068,7 +130994,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 27
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 1500978391922150578}
   maxHealth: 4
@@ -131808,7 +131734,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 21
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 5263322244236565173}
   maxHealth: 4
@@ -137757,7 +137683,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 36
-  _addedNetworkObject: {fileID: 2265475119243252428}
+  _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   anim: {fileID: 2055223838373936950}
   maxHealth: 4
