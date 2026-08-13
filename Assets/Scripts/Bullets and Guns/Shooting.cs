@@ -390,6 +390,10 @@ public class Shooting : NetworkBehaviour
         if (bulletManager != null)
         {
             bulletManager.AddBulletData(bulletNob, origin, isShotgun, shooterObj);
+            Debug.Log("Bullet added to BulletManager");
+        } else
+        {
+            Debug.Log("BulletManager is null");
         }
 
         end            = targetPoint;

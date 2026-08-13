@@ -5,6 +5,9 @@ using System.Collections.Generic;
 
 public class BulletManager : NetworkBehaviour
 {    
+    [SerializeField] private GameObject impact;
+    [SerializeField] private float impactOffset = 0.01f;
+    
     public struct BulletData
     {
         public NetworkObject bulletObject;
@@ -14,9 +17,13 @@ public class BulletManager : NetworkBehaviour
         public bool isShotgun;
         public NetworkObject shooter;
         public bool hitPrev;
+        public Vector3 hitPoint;
+        public Vector3 hitNormal;
     } 
 
     private LayerMask layerMask;
+
+    private bool onServer = false;
 
 
     private List<BulletData> activeBullets = new List<BulletData>();
@@ -31,19 +38,20 @@ public class BulletManager : NetworkBehaviour
             timeActive = 0f,
             isShotgun = shotgun,
             shooter = shooterObj,
-            hitPrev = false,
+            hitPrev = false
         });
     }
 
     public override void OnStartServer()
     {
         base.OnStartServer();
+        onServer = true;
         layerMask = LayerMask.GetMask("DamageCollide", "Default", "BuildNoColPlayer");
     }
 
     private void Update()
     {
-        if (!IsServerInitialized) return;
+        if (!onServer) return;
         BulletCollisionDetection();
     }
     
@@ -74,9 +82,7 @@ public class BulletManager : NetworkBehaviour
 
             if (bullet.hitPrev || (bullet.isShotgun && bulletDist > 20f) || bullet.timeActive > 7.5f)
             {
-                if (rb != null) rb.linearVelocity = Vector3.zero;
-                if (bullet.bulletObject != null) ServerManager.Despawn(bullet.bulletObject.gameObject);
-                activeBullets.RemoveAt(i);
+                DestroyBullet(bullet);
             }
             else
             {
@@ -117,10 +123,27 @@ public class BulletManager : NetworkBehaviour
                 if (bulletData.shooter.Owner != null)
                     SetDamageCross(bulletData.shooter.Owner);
             }
-
+            DestroyBullet(bulletData);
             bulletData.hitPrev = true;
-            CollisionControl.SpawnImpact(hit.point, hit.normal);
+            impactPrefabInstance(hit.point, hit.normal);
+
         }
+    }
+
+    [ObserversRpc]
+    private void DestroyBullet(BulletData bullet)
+    {
+        ServerManager.Despawn(bullet.bulletObject);
+        CollisionControl.SpawnImpact(bullet.hitPoint, bullet.hitNormal);
+        activeBullets.Remove(bullet);
+    }
+    
+    public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
+    {
+        Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
+        Quaternion rotation = Quaternion.LookRotation(hitNormal);
+        GameObject impactInstance = Instantiate(impact, spawnPosition, rotation);
+        ServerManager.Spawn(impactInstance);
     }
 
     [TargetRpc]
