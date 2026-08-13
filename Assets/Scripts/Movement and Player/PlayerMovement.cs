@@ -389,7 +389,7 @@ public class PlayerMovement : NetworkBehaviour {
             started = true;
         } else {
             foreach (Transform child in transform) {
-                if (child.name == "Renderer") child.gameObject.SetActive(false);
+                if (child.name == "RenderedBody") child.gameObject.SetActive(false);
             }
         }
 

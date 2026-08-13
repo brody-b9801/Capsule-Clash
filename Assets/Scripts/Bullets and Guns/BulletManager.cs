@@ -110,6 +110,7 @@ public class BulletManager : NetworkBehaviour
 
             if (hitObject.CompareTag("DamageCollider"))
             {
+                Debug.Log("DamageCollider hit");
                 NetworkObject victim = hitObject.GetComponentInParent<NetworkObject>();
 
                 if (victim == null || victim == bulletData.shooter) return;

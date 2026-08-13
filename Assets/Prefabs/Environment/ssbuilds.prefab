@@ -67806,6 +67806,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 380885004582544442}
+  - component: {fileID: -2842269999065713287}
   m_Layer: 0
   m_Name: ssbuilds
   m_TagString: Untagged
@@ -67864,6 +67865,21 @@ Transform:
   - {fileID: 3603679414342449969}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &-2842269999065713287
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4387486687302503737}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a6a39c46bf52104ba8efe3100bce3f7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Object.EmptyNetworkBehaviour
+  _componentIndexCache: 0
+  _addedNetworkObject: {fileID: 0}
+  _networkObjectCache: {fileID: 0}
 --- !u!1 &4393211175095825186
 GameObject:
   m_ObjectHideFlags: 0
