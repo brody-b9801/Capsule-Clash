@@ -115,35 +115,48 @@ public class ChangeMat : NetworkBehaviour
         }
     }
 
-    [ObserversRpc]
+    [Server]
     public void ControlDamage(NetworkObject shotAvatar, NetworkObject shooter, bool shotgun, float dist)
     {
-        bool avatarSame = PlayerMovement.getAvatarBool(shotAvatar);
-
         DamageControl damageControl = GetComponent<DamageControl>();
         if (damageControl == null) return;
 
-        if (avatarSame)
-        {
-            if (!shotgun) {
-                damageControl.health.Value -= 18 * upgradeManager.Local.damageMultiplier;
+        PlayerMovement victimMovement = GetComponent<PlayerMovement>();
+        if (victimMovement == null || !victimMovement.canTakeDamage) return;
+
+        float damageMultiplier = upgradeManager.Local != null ? upgradeManager.Local.damageMultiplier : 1f;
+
+        float damageDealt;
+        if (!shotgun) {
+            damageDealt = 18 * damageMultiplier;
+        } else {
+            if (dist < 3) {
+                damageDealt = 17 * damageMultiplier;
             } else {
-                if (dist < 3) {
-                    damageControl.health.Value -= 17 * upgradeManager.Local.damageMultiplier;
-                } else {
-                    damageControl.health.Value -= Mathf.Clamp((17 * upgradeManager.Local.damageMultiplier - ((dist-3)*0.6f)), 1, 15 * upgradeManager.Local.damageMultiplier);
-                }
-
+                damageDealt = Mathf.Clamp((17 * damageMultiplier - ((dist-3)*0.6f)), 1, 15 * damageMultiplier);
             }
+        }
 
-            HealthController.updateHealth();
+        damageControl.health.Value -= damageDealt;
 
-            if (damageControl.health.Value <= 0 && !healed) {
-                healed = true;
-                PlayerMovement playerMovementInstance = GetComponent<PlayerMovement>();
-                playerMovementInstance.Die();
-                playerMovementInstance.killHeal(shooter);
-            }
+        bool died = damageControl.health.Value <= 0 && !healed;
+        if (died) {
+            healed = true;
+            victimMovement.killHealSync(shooter);
+        }
+
+        ApplyDamageFeedback(died);
+    }
+
+    [ObserversRpc]
+    private void ApplyDamageFeedback(bool died)
+    {
+        HealthController.updateHealth();
+
+        if (died)
+        {
+            PlayerMovement victimMovement = GetComponent<PlayerMovement>();
+            if (victimMovement != null) victimMovement.Die();
         }
     }
 

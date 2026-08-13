@@ -21,7 +21,6 @@ public class PlayerMovement : NetworkBehaviour {
     private Camera playerCamera;
     [SerializeField] private Transform gun;
     public static Vector3 gunRotation;
-    [SerializeField] private Renderer playerRenderer;
     public bool isGrounded = false;
     public bool fastAir = false;
     public static float currentCameraRotationX = 0.0f;
@@ -314,9 +313,6 @@ public class PlayerMovement : NetworkBehaviour {
         InitializeInput();
 
         if (IsOwner) {
-            // Must be owner-gated: Awake ran on every player instance, so in a
-            // multiplayer session the last one to spawn claimed Local and every
-            // consumer silently read the wrong player's state.
             Local = this;
             gunRenderer = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
             gunRenderer.enableGun();
@@ -326,9 +322,6 @@ public class PlayerMovement : NetworkBehaviour {
             iceSpawnPosContainer = GameObject.Find("IceSpawnContainer").transform;
             spaceSpawnPosContainer = GameObject.Find("VoidSpawnContainer").transform;
             mazeSpawnPosContainer = GameObject.Find("MazeSpawnContainer").transform;
-            // Resolve siblings via GetComponent rather than their Local statics:
-            // each sets its static in its own OnStartClient and FishNet does not
-            // guarantee callback order, so those statics may still be null here.
             localShooting = GetComponent<Shooting>();
             localSpawner = GetComponent<ObjectSpawner>();
             if (localShooting != null) localShooting.canShoot = true;
@@ -372,9 +365,6 @@ public class PlayerMovement : NetworkBehaviour {
                     iceSpawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
             canTakeDamage = false;
             HealthController.updateHealth();
-            // Sibling components set their Local statics in their own
-            // OnStartClient, which FishNet may invoke after this one — resolve
-            // them off this GameObject instead of through the statics.
             if (localShooting != null) localShooting.reloadNum = 30;
             GunThingAnim.movingState = false;
             dashes = 0;
@@ -396,14 +386,10 @@ public class PlayerMovement : NetworkBehaviour {
             InitializeDimensions();
             SetActiveDimension(desertInfo);
             GetComponent<MeshRenderer>().enabled = false;
-            //characterController.enableOverlapRecovery = false;
-
-            // Set last: Update() and BuildUI treat this as "owner setup complete",
-            // so it must not go true partway through the block above.
             started = true;
         } else {
             foreach (Transform child in transform) {
-                if (child.name == "Renderer") child.gameObject.SetActive(false);
+                if (child.name == "RenderedBody") child.gameObject.SetActive(false);
             }
         }
 

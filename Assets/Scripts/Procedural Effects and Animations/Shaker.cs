@@ -115,74 +115,72 @@ public class Shaker : MonoBehaviour
 
     private IEnumerator ShakeScreen()
     {
-        if (CollisionControl.avatar) {
-            elapsed = 0.0f;
-            if (!CameraZoom.isAiming) {
-                if (Shooting.Local.shotgun) {
-                    rotationAmountX = previousERC + (rotMod * 2 * Random.Range(0.9f, 1f));
-                } else if (CameraZoom.moving) {
-                    rotationAmountX = previousERC + (rotMod * 1.2f * Random.Range(0.9f, 1f));
-                } else {
-                    rotationAmountX = previousERC + (rotMod * Random.Range(0.9f, 1f));
-                }
+        elapsed = 0.0f;
+        if (!CameraZoom.isAiming) {
+            if (Shooting.Local.shotgun) {
+                rotationAmountX = previousERC + (rotMod * 2 * Random.Range(0.9f, 1f));
+            } else if (CameraZoom.moving) {
+                rotationAmountX = previousERC + (rotMod * 1.2f * Random.Range(0.9f, 1f));
             } else {
-                rotationAmountX = previousERC + (rotModZoom * Random.Range(0.9f, 1f));
+                rotationAmountX = previousERC + (rotMod * Random.Range(0.9f, 1f));
             }
-            percentComplete = 0.0f;
-            easedRotationChange = previousERC;
-            fovChanged = false;
-
-            if (!shakeStarted) {
-                shakeStarted = true;
-            }
-
-            while (elapsed < shakeDuration)
-            {
-                upRot = true;
-                if (shakeStarted) {
-                    percentComplete = elapsed / shakeDuration;
-                    smoothStep = Mathf.SmoothStep(0f, 1f, percentComplete);
-
-                    easedRotationChange = Mathf.SmoothStep(previousERC, rotationAmountX, percentComplete);
-
-                    elapsed += Time.deltaTime;
-                    yield return null;
-                } else {
-                    StopShake();
-                    yield return null;
-                }
-            }
-
-            elapsed = 0.0f;
-            percentComplete = 0.0f;
-            smoothStep = 0.0f;
-
-            while (elapsed < changeDownRot)
-            {
-                upRot = false;
-                if (!shooting) {
-                    changeDownRot = downDuration;
-                }
-                if (shakeStarted) {
-                    percentComplete = elapsed / changeDownRot;
-                    smoothStep = Mathf.SmoothStep(0f, 1f, percentComplete);
-
-                    easedRotationChange = rotationAmountX - Mathf.SmoothStep(0f, rotationAmountX-previousERC, percentComplete);
-
-                    elapsed += Time.deltaTime;
-                    yield return null;
-                } else {
-                    StopShake();
-                    yield return null;
-                }
-            }
-
-            setDownRot = true;
-            changeDownRot = downDuration;
-            shakeStarted = false;
-            previousERC = 0.0f;
-            yield break;
+        } else {
+            rotationAmountX = previousERC + (rotModZoom * Random.Range(0.9f, 1f));
         }
+        percentComplete = 0.0f;
+        easedRotationChange = previousERC;
+        fovChanged = false;
+
+        if (!shakeStarted) {
+            shakeStarted = true;
+        }
+
+        while (elapsed < shakeDuration)
+        {
+            upRot = true;
+            if (shakeStarted) {
+                percentComplete = elapsed / shakeDuration;
+                smoothStep = Mathf.SmoothStep(0f, 1f, percentComplete);
+
+                easedRotationChange = Mathf.SmoothStep(previousERC, rotationAmountX, percentComplete);
+
+                elapsed += Time.deltaTime;
+                yield return null;
+            } else {
+                StopShake();
+                yield return null;
+            }
+        }
+
+        elapsed = 0.0f;
+        percentComplete = 0.0f;
+        smoothStep = 0.0f;
+
+        while (elapsed < changeDownRot)
+        {
+            upRot = false;
+            if (!shooting) {
+                changeDownRot = downDuration;
+            }
+            if (shakeStarted) {
+                percentComplete = elapsed / changeDownRot;
+                smoothStep = Mathf.SmoothStep(0f, 1f, percentComplete);
+
+                easedRotationChange = rotationAmountX - Mathf.SmoothStep(0f, rotationAmountX-previousERC, percentComplete);
+
+                elapsed += Time.deltaTime;
+                yield return null;
+            } else {
+                StopShake();
+                yield return null;
+            }
+        }
+
+        setDownRot = true;
+        changeDownRot = downDuration;
+        shakeStarted = false;
+        previousERC = 0.0f;
+        yield break;
     }
 
     private IEnumerator ShakeWithPerlinNoise()
@@ -239,23 +237,21 @@ public class Shaker : MonoBehaviour
 
     public static void StopShake()
     {
-        if (CollisionControl.avatar) {
-            if (shakeStartedRef && setDownRot) {
-                changeDownRot = startDownSpeedRef;
-                rotMod = startRotRef;
-                setDownRot = false;
-            }
-            
-            if (instance != null)
-            {
-                changeDownRot -= downRotationChangeRef;
-                rotMod -= rotationModChangeRef;
-                PlayerMovement.currentCameraRotationX -= easedRotationChange;
-                easedRotationChange = 0.0f;
-                instance.shakeStarted = false;
-                instance.StopAllCoroutines();
-                instance.ResetCameraRotation();
-            }
+        if (shakeStartedRef && setDownRot) {
+            changeDownRot = startDownSpeedRef;
+            rotMod = startRotRef;
+            setDownRot = false;
+        }
+
+        if (instance != null)
+        {
+            changeDownRot -= downRotationChangeRef;
+            rotMod -= rotationModChangeRef;
+            PlayerMovement.currentCameraRotationX -= easedRotationChange;
+            easedRotationChange = 0.0f;
+            instance.shakeStarted = false;
+            instance.StopAllCoroutines();
+            instance.ResetCameraRotation();
         }
     }
 

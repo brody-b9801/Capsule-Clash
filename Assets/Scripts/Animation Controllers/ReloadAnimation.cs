@@ -28,6 +28,8 @@ public class ReloadAnimation : MonoBehaviour
     public static void PlayReload()
     {
         ShootState = false;
+        animator.ResetTrigger("Shoot");
+        animator.ResetTrigger("NoReload");
         animator.speed = upgradeManager.Local.reloadSpeedMultiplier;
         animator.SetTrigger("Reload");
     }
@@ -36,16 +38,14 @@ public class ReloadAnimation : MonoBehaviour
     {
         ShootState = false;
         PlayerMovement.lerpingWalkDone = false;
+        animator.speed = 1f;
         animator.SetTrigger("NoReload");
     }
 
     public static void PlayAnim()
     {
-        if (CollisionControl.avatar)
-        {
-            animator.SetTrigger("Shoot");
-            ShootState = true;
-        }
+        animator.SetTrigger("Shoot");
+        ShootState = true;
     }
 
     public void EndAnim()
@@ -55,7 +55,7 @@ public class ReloadAnimation : MonoBehaviour
             animator.SetTrigger("NoReload");
             ShootState = false;
         }
-        else
+        else if (!Shooting.Local.reloading)
         {
             animator.SetTrigger("Reload");
         }

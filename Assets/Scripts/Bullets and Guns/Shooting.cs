@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using FishNet;
+using FishNet.Connection;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using TMPro;
@@ -61,7 +62,6 @@ public class Shooting : NetworkBehaviour
     [SerializeField] private Transform      gun;
     [SerializeField] private GameObject     player;
     [SerializeField] private Material       normal;
-    [SerializeField] private Material       damaged;
     [SerializeField] private Material       bulletTrailMaterial;
     [SerializeField] private LayerMask      ignoreLayers;
     [SerializeField] private GameObject     muzzleFlash;
@@ -73,20 +73,14 @@ public class Shooting : NetworkBehaviour
     [SerializeField] private MeshFilter     playerMesh;
     [SerializeField] private Mesh           shotgunMesh;
     [SerializeField] private Mesh           M4Mesh;
-    [SerializeField] private GameObject impact;
-    [SerializeField] private float impactOffset = 0.01f;
 
-    private const int BulletPoolSize  = 30;
     private const int MuzzlePoolSize  = 10;
     private const int CasingPoolSize  = 30;
-    private LayerMask layerMask;
 
 
-    private ObjectPool<Rigidbody>      _bulletPool;
     private ObjectPool<ParticleSystem> _muzzlePool;
     private ObjectPool<Transform>      _casingPool;
 
-    private Transform _bulletPoolRoot;
     private Transform _muzzlePoolRoot;
     private Transform _casingPoolRoot;
     public float bulletSpeed  = 15.0f;
@@ -142,23 +136,15 @@ public class Shooting : NetworkBehaviour
     private GameObject bulletSpawn;
     public  GameObject playerMag;
 
+    private BulletManager bulletManager;
+
+
     public float trailFadeDuration = 0.5f;
-
-    public struct BulletData
-    {
-        public NetworkObject bulletObject;
-        public Vector3 previousPosition;
-        public Vector3 startPosition;
-        public float timeActive;
-        public bool isShotgun;
-        public NetworkObject shooter;
-    } 
-
-    private List<BulletData> activeBullets = new List<BulletData>();
 
     void Awake()
     {
         Local = this;
+        bulletManager = FindFirstObjectByType<BulletManager>();
     }
 
     public override void OnStopClient()
@@ -200,13 +186,8 @@ public class Shooting : NetworkBehaviour
 
         camCasing.GetComponent<MeshRenderer>().enabled = false;
 
-        _bulletPoolRoot = CreatePoolRoot("Pool_Bullets");
         _muzzlePoolRoot = CreatePoolRoot("Pool_Muzzle");
         _casingPoolRoot = CreatePoolRoot("Pool_Casings");
-
-        _bulletPool = new ObjectPool<Rigidbody>(
-            bulletPrefab.GetComponent<Rigidbody>(),
-            BulletPoolSize, _bulletPoolRoot);
 
         _muzzlePool = new ObjectPool<ParticleSystem>(
             muzzlePrefab,
@@ -215,7 +196,11 @@ public class Shooting : NetworkBehaviour
         _casingPool = new ObjectPool<Transform>(
             bulletCasingPrefab.GetComponent<Transform>(),
             CasingPoolSize, _casingPoolRoot);
-        layerMask = LayerMask.GetMask("DamageCollide", "Default", "BuildNoColPlayer");
+    }
+
+    public override void OnStartServer()
+    {
+        base.OnStartServer();
     }
 
     private Transform CreatePoolRoot(string name)
@@ -226,9 +211,6 @@ public class Shooting : NetworkBehaviour
 
     void Update()
     {
-        if (IsServerInitialized) {
-            BulletCollisionDetection();
-        }
         if (!IsOwner) return;
         isShooting = false;
 
@@ -282,7 +264,7 @@ public class Shooting : NetworkBehaviour
 
         if (Input.GetKeyDown(KeyCode.R))
         {
-            if ((!shotgun && !reloading && reloadNum != 30) || (shotgun && !reloading && shottieNum != 2))
+            if (canChangeGun && ((!shotgun && !reloading && reloadNum != 30) || (shotgun && !reloading && shottieNum != 2)))
             {
                 ReloadAnimation.PlayReload();
                 StartCoroutine(waitReload());
@@ -293,99 +275,6 @@ public class Shooting : NetworkBehaviour
         if (Input.GetKeyDown(KeyCode.E) && !reloading && canChangeGun && !isShooting)
             StartCoroutine(gunChangeAnim());
     }
-    
-    private void BulletCollisionDetection() {
-        for (int i = 0; i < activeBullets.Count; i++)
-        {
-            BulletData bullet = activeBullets[i];
-            Rigidbody rb = bullet.bulletObject.GetComponent<Rigidbody>();
-            Vector3 currentPosition = bullet.bulletObject.GetComponent<Transform>().position;
-
-            Debug.DrawRay(bullet.previousPosition, currentPosition - bullet.previousPosition, Color.cyan);
-
-            rb.rotation = Quaternion.LookRotation(rb.linearVelocity.normalized);
-
-            float bulletDist = (currentPosition - bullet.startPosition).magnitude;
-            HandleRaycastHit(bullet.previousPosition, currentPosition, bullet.isShotgun, bulletDist, bullet.shooter);
-
-            if ((bullet.isShotgun && bulletDist > 20f) || bullet.timeActive > 7.5f) {
-                if (rb != null) {
-                    rb.linearVelocity = Vector3.zero;
-                }
-                Destroy(bullet.bulletObject.gameObject);
-                activeBullets.Remove(bullet);
-            }
-            bullet.timeActive += Time.deltaTime;
-            bullet.previousPosition = currentPosition;
-        }
-    }
-
-    void HandleRaycastHit(Vector3 previousPos, Vector3 currentPos, bool shottieBool, float bulletDist, NetworkObject shooter)
-    {
-        Vector3 direction = currentPos - previousPos;
-        float rayDistance = direction.magnitude;
-        RaycastHit hit;
-
-        GameObject hitObject;
-        if (Physics.Raycast(previousPos, direction.normalized, out hit, rayDistance, layerMask))
-        {
-            hitObject = hit.collider.gameObject;
-            
-            BuildHealth buildHealth = hitObject.GetComponent<BuildHealth>();
-            if (buildHealth != null)
-            {
-                buildHealth.TakeDamage(shottieBool, bulletDist);
-                Debug.Log($"Hit building: {hitObject.name} for {bulletDist} damage.");
-            }
-
-            if (hitObject.CompareTag("DamageCollider"))
-            {
-                GameObject parentObject = hitObject.transform.parent.gameObject;
-                NetworkObject parentAvatar = parentObject.GetComponent<NetworkObject>();
-                if (parentAvatar != shooter)
-                {
-                    Renderer renderer = parentObject.GetComponent<Renderer>();
-                    if (renderer != null)
-                    {
-                        renderer.sharedMaterial = damaged;
-                    }
-                    
-                    ChangeMat changeMat = parentObject.GetComponent<ChangeMat>();
-                    if (changeMat != null)
-                    {
-                        if (parentAvatar != null)
-                        {
-                            changeMat.TakeDamage(parentAvatar, shooter, shottieBool, bulletDist);
-                        }
-                    }
-                    
-                    DamageIndicatorControl.setDamageCross = true;
-                }
-            }
-
-            if (hitObject.CompareTag("tester"))
-            {
-                PlayerMovement.Local.hitCount++;
-            }
-
-            // hitPrev = true;
-            impactPrefabInstance(hit.point, hit.normal);
-
-            // if (trail != null) { trail.emitting = false; trail.enabled = false; trail.Clear(); }
-
-            // transform.position = hit.point;
-            // bulletOne.SetActive(false);
-        }
-    }
-
-    public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
-    {
-        Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
-
-        Quaternion rotation = Quaternion.LookRotation(hitNormal);
-
-        Instantiate(impact, spawnPosition, rotation);
-    }
 
     private void FireBullet(
         Vector3 origin, Vector3 direction, Vector3 bS,
@@ -395,7 +284,23 @@ public class Shooting : NetworkBehaviour
         bool doMuzzleFlash)
     {
         bool isOwner = IsOwner;
-        ServerBulletLogic(spawnPosition: bS, direction: direction, force: force, origin: origin, randomX: randomX, randomY: randomY, randomZ: randomZ);
+
+        Vector3 shooterVelocity = PlayerMovement.Local.dashVector;
+        if (IsValidVector3(PlayerMovement.Local.newVelocity))
+        {
+            shooterVelocity += PlayerMovement.Local.isGrounded
+                ? new Vector3(PlayerMovement.Local.newVelocity.x, 0f, PlayerMovement.Local.newVelocity.z)
+                : PlayerMovement.Local.newVelocity;
+        }
+
+        ServerBulletLogic(
+            spawnPosition: bS, direction: direction, force: force, origin: origin,
+            randomX: randomX, randomY: randomY, randomZ: randomZ,
+            camPosition: mainCameraTransform.position,
+            camForward: mainCameraTransform.forward,
+            isShotgun: shotgun,
+            shooterVelocity: shooterVelocity);
+
         lockCursor = true;
 
         Vector3 spawnMuzzlePosition = IsOwner ? bulletOrigin : bHPos;
@@ -441,62 +346,55 @@ public class Shooting : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void ServerBulletLogic(Vector3 spawnPosition, Vector3 direction, float force, Vector3 origin, float randomX, float randomY, float randomZ)
+    private void ServerBulletLogic(
+        Vector3 spawnPosition, Vector3 direction, float force, Vector3 origin,
+        float randomX, float randomY, float randomZ,
+        Vector3 camPosition, Vector3 camForward, bool isShotgun, Vector3 shooterVelocity,
+        NetworkConnection conn = null)
     {
-        Rigidbody bulletRb = _bulletPool.Get(spawnPosition, Quaternion.identity);
-        GameObject bulletGO = bulletRb.gameObject;
-        bulletGO.layer = IsOwner ? 7 : 6;
+        NetworkObject shooterObj = conn != null ? conn.FirstObject : NetworkObject;
 
-        RaycastHit hit;
         Vector3 targetPoint;
+        Vector3 bulletPosition = spawnPosition;
 
-        if (Physics.Raycast(new Ray(mainCameraTransform.position, mainCameraTransform.forward), out hit, 1.5f, ~ignoreLayers)){
-            targetPoint              = transform.position + direction * force;
-            origin = mainCameraTransform.position;
-            bulletGO.transform.position = origin;
-        }
-        else if (Physics.Raycast(new Ray(origin, direction), out hit, force, ~ignoreLayers))
+        if (Physics.Raycast(new Ray(camPosition, camForward), out _, 1.5f, ~ignoreLayers))
         {
-            targetPoint              = hit.point;
+            targetPoint    = transform.position + direction * force;
+            origin         = camPosition;
+            bulletPosition = origin;
+        }
+        else if (Physics.Raycast(new Ray(origin, direction), out RaycastHit hit, force, ~ignoreLayers))
+        {
+            targetPoint = hit.point;
         }
         else
         {
-            targetPoint              = origin + direction * force;
+            targetPoint = origin + direction * force;
         }
 
-        Vector3 spreadVector     = new Vector3(randomX, randomY, randomZ);
+        Vector3 spreadVector       = new Vector3(randomX, randomY, randomZ);
         float   distanceFromCamera = Vector3.Distance(origin, targetPoint);
         targetPoint += spreadVector * distanceFromCamera;
 
         Vector3 fireDirection = (targetPoint - origin).normalized;
-        PlayerMovement.Local.shotBoost = new Vector3(fireDirection.x, 0, fireDirection.z);
+        Vector3 velocity      = fireDirection * bulletSpeed + shooterVelocity;
 
-        Vector3 velocity      = fireDirection * bulletSpeed;
+        GameObject    bulletGO  = Instantiate(bulletPrefab, bulletPosition, Quaternion.LookRotation(fireDirection));
+        Rigidbody     bulletRb  = bulletGO.GetComponent<Rigidbody>();
+        NetworkObject bulletNob = bulletGO.GetComponent<NetworkObject>();
 
-        if (IsValidVector3(PlayerMovement.Local.newVelocity))
+        if (bulletRb != null) bulletRb.linearVelocity = velocity;
+
+        ServerManager.Spawn(bulletNob, shooterObj != null ? shooterObj.Owner : conn);
+
+        if (bulletManager != null)
         {
-            velocity += PlayerMovement.Local.isGrounded
-                ? new Vector3(PlayerMovement.Local.newVelocity.x, 0f, PlayerMovement.Local.newVelocity.z)
-                  + PlayerMovement.Local.dashVector
-                : PlayerMovement.Local.newVelocity + PlayerMovement.Local.dashVector;
+            bulletManager.AddBulletData(bulletNob, origin, isShotgun, shooterObj);
+            Debug.Log("Bullet added to BulletManager");
+        } else
+        {
+            Debug.Log("BulletManager is null");
         }
-        else
-        {
-            velocity += PlayerMovement.Local.dashVector;
-        }
-
-        bulletRb.linearVelocity = velocity;
-        bulletRb.rotation = Quaternion.LookRotation(fireDirection);
-
-        activeBullets.Add(new BulletData
-        {
-            bulletObject = bulletGO.GetComponent<NetworkObject>(),
-            previousPosition = origin,
-            startPosition = origin,
-            timeActive = 0f,
-            isShotgun = shotgun,
-            shooter = GetComponent<NetworkObject>()
-        });
 
         end            = targetPoint;
         isFiringBullet = true;
@@ -592,10 +490,17 @@ public class Shooting : NetworkBehaviour
         alphaVal = 0f;
     }
 
+    public const float ReloadDuration = 2.01f;
+    public const float ShotgunSingleShellReloadDuration = 1.31f;
+
+    public static float CurrentReloadDuration =>
+        ((Local.shotgun && Local.shottieNum == 1) ? ShotgunSingleShellReloadDuration : ReloadDuration)
+        / upgradeManager.Local.reloadSpeedMultiplier;
+
     IEnumerator waitReload()
     {
         reloading = true;
-        yield return new WaitForSeconds((shotgun && shottieNum == 1) ? 1.31f : 2.01f / upgradeManager.Local.reloadSpeedMultiplier);
+        yield return new WaitForSeconds(CurrentReloadDuration);
 
         if (shotgun) shottieNum = 2;
         else         reloadNum  = 30;

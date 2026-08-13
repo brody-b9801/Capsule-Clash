@@ -7,12 +7,10 @@ using FishNet.Object;
 public class CollisionControl : MonoBehaviour
 {
     [SerializeField] public Vector3 previousPosition;
-    public static bool avatar = false;
     private bool hitPrev = false;
     [SerializeField] public Vector3 bulletEndPos;
     [SerializeField] private Material trailMaterial;
-    [SerializeField] private GameObject impact;
-    [SerializeField] private float impactOffset = 0.01f;
+
     public static bool impactBool;
     public GameObject bulletOne;
     public GameObject Visual;
@@ -44,8 +42,8 @@ public class CollisionControl : MonoBehaviour
         
         if (_cachedBulletHole == null)
             _cachedBulletHole = GameObject.Find("PlayerBulletHole").transform;
-        if (_cachedImpactPrefab == null)
-            _cachedImpactPrefab = impact;
+        // if (_cachedImpactPrefab == null)
+        //     _cachedImpactPrefab = impact;
         bulletEndPos = _cachedBulletHole.position;
         Visual.SetActive(false);
         bulletOne.SetActive(false);
@@ -154,25 +152,18 @@ public class CollisionControl : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (avatar)
-        {
-            previousPosition = transform.position;
-        }
+        previousPosition = transform.position;
     }
 
-    public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
-    {
-        Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
+    // public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
+    // {
+    //     Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
 
-        Quaternion rotation = Quaternion.LookRotation(hitNormal);
+    //     Quaternion rotation = Quaternion.LookRotation(hitNormal);
 
-        Instantiate(impact, spawnPosition, rotation);
-    }
+    //     Instantiate(impact, spawnPosition, rotation);
+    // }
 
-    /// <summary>
-    /// Impact FX spawner for server-driven hits. Shooting.RpcBulletImpact calls this
-    /// on every client; the prefab reference is cached from the first bullet to spawn.
-    /// </summary>
     private static GameObject _cachedImpactPrefab;
 
     public static void SpawnImpact(Vector3 hitpoint, Vector3 hitNormal, float offset = 0.01f)
