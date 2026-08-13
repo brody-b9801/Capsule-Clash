@@ -49,16 +49,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 076fe48f90c59264b828ccd02bdf1549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  normal: {fileID: 2100000, guid: b67ecb75ff79943459ef6057421c626e, type: 2}
-  damaged: {fileID: 2100000, guid: 53b9e9f3c9c81324fb5884a244a84926, type: 2}
   previousPosition: {x: 0, y: 0, z: 0}
   bulletEndPos: {x: 0, y: 0, z: 0}
   trailMaterial: {fileID: 2100000, guid: db2f5d074e2f6674a9ba76dfcdcd2290, type: 2}
-  impact: {fileID: 5586783540032275536, guid: 6e57a3cf9435eb14fb9928fa4ee60c63, type: 3}
-  impactOffset: 0.01
   bulletOne: {fileID: 7908568636026974177}
   Visual: {fileID: 7908568636026974177}
-  shooter: {fileID: 0}
   shottieBool: 0
   showDistance: 0.25
 --- !u!54 &2432923963459860620
@@ -251,6 +246,10 @@ PrefabInstance:
     - target: {fileID: 6804990658058999119, guid: 65c9f6563c561ee4e8905d1e6a32548b, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667026902598471980, guid: 65c9f6563c561ee4e8905d1e6a32548b, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 1329286381489647958, guid: 65c9f6563c561ee4e8905d1e6a32548b, type: 3}

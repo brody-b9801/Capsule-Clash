@@ -112,17 +112,7 @@ public class BulletManager : NetworkBehaviour
             {
                 Debug.Log("DamageCollider hit");
                 NetworkObject victim = hitObject.GetComponentInParent<NetworkObject>();
-
-                if (victim == null || victim == bulletData.shooter) return;
-
-                GameObject parentObject = victim.gameObject;
-
-                ChangeMat changeMat = parentObject.GetComponent<ChangeMat>();
-                if (changeMat != null)
-                    changeMat.TakeDamage(victim, bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
-                
-                if (bulletData.shooter.Owner != null)
-                    SetDamageCross(bulletData.shooter.Owner);
+                ApplyDamage(victim.Owner, bulletData);
             }
             DestroyBullet(bulletData);
             bulletData.hitPrev = true;
@@ -139,12 +129,26 @@ public class BulletManager : NetworkBehaviour
         activeBullets.Remove(bullet);
     }
     
+    [ObserversRpc]
     public void impactPrefabInstance(Vector3 hitpoint, Vector3 hitNormal)
     {
         Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
         Quaternion rotation = Quaternion.LookRotation(hitNormal);
         GameObject impactInstance = Instantiate(impact, spawnPosition, rotation);
         ServerManager.Spawn(impactInstance);
+    }
+
+    [TargetRpc]
+    private void ApplyDamage(NetworkConnection victim, BulletData bulletData)
+    {
+        if (victim == null || victim.FirstObject == bulletData.shooter) return;
+            GameObject parentObject = victim.FirstObject.gameObject;
+
+            ChangeMat changeMat = parentObject.GetComponent<ChangeMat>();
+            if (changeMat != null)
+                changeMat.TakeDamage(victim.FirstObject, bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
+            if (bulletData.shooter.Owner != null)
+                SetDamageCross(bulletData.shooter.Owner);
     }
 
     [TargetRpc]
