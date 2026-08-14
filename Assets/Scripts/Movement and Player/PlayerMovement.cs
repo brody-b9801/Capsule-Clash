@@ -29,10 +29,10 @@ public class PlayerMovement : NetworkBehaviour {
     public bool isSprinting = false;
     public Vector3 newPosition;
     public Vector3 movement;
-    private SyncedAxis _horizontal;
-    private SyncedAxis _vertical;
-    private SyncedKey _jump;
-    private SyncedKey _dash;
+    private float _horizontal;
+    private float _vertical;
+    private bool _jump;
+    private bool _dash;
     public static bool started = false;
     [SerializeField] private GameObject capsuleCollider;
     [SerializeField] private Transform playerTransform;
@@ -209,16 +209,19 @@ public class PlayerMovement : NetworkBehaviour {
     private GunThingAnim gunRenderer;
 
     public static PlayerMovement Local {get; private set;}
-
-    // Sibling components on this same player object. Cached in OnStartClient so
-    // local access never depends on another component's static being assigned first.
     private Shooting localShooting;
     private ObjectSpawner localSpawner;
-    private void InitializeInput() {
-        _horizontal = new SyncedAxis("Horizontal");
-        _vertical = new SyncedAxis("Vertical");
-        _jump = new SyncedKey(KeyCode.Space);
-        _dash = new SyncedKey(KeyCode.Space, SyncedKey.KeyMode.KeyDown);
+
+    private float _getHorizontal() => Input.GetAxisRaw("Horizontal");
+    private float _getVertical() => Input.GetAxisRaw("Vertical");
+    private bool _getJump() => Input.GetKey(KeyCode.Space);
+    private bool _getDash() => Input.GetKeyDown(KeyCode.Space);
+    
+    private void CacheInputs() {
+        _horizontal = _getHorizontal();
+        _vertical = _getVertical();
+        _jump = _getJump();
+        _dash = _getDash();
     }
 
     public static Vector3 getVelocity() { return Local != null ? Local.velocityTransform : Vector3.zero; }
@@ -310,7 +313,6 @@ public class PlayerMovement : NetworkBehaviour {
         base.OnStartClient();
 
         Application.targetFrameRate = -1;
-        InitializeInput();
 
         if (IsOwner) {
             Local = this;
@@ -437,10 +439,10 @@ public class PlayerMovement : NetworkBehaviour {
 
     private void Update() {
         if (!IsOwner || MaskController.maskAnimationPlaying) return;
-        // OnStartClient performs the owner-only setup this method depends on
-        // (dt, characterController, Shooting.Local, MaskController.Local, ...).
-        // It can run after the first Update tick, so idle until it has finished.
+
         if (!started) return;
+        CacheInputs();
+
         IsOnSlope();
         CheckIfStuckAndMoveUp();
         dt.text = dashes.ToString();
@@ -571,8 +573,8 @@ private void UpdateMovementVector()
     }
 
     private void HandleCameraRotation() {
-        float mouseX = Input.GetAxis("Mouse X");
-        float mouseY = Input.GetAxis("Mouse Y");
+        float mouseX = Input.GetAxisRaw("Mouse X");
+        float mouseY = Input.GetAxisRaw("Mouse Y");
         rotationX = -(mouseY * rotationSpeed);
         rotationY = mouseX * rotationSpeed;
 
@@ -631,7 +633,7 @@ private void UpdateMovementVector()
             }
         }
         if (!canTakeDamage) StartCoroutine(Invulnerable());
-        CameraZoom.moving = (_horizontal || _vertical);
+        CameraZoom.moving = (Mathf.Abs(_horizontal) > 0.01f || Mathf.Abs(_vertical) > 0.01f);
     }
 
     private void HandleDashing() {

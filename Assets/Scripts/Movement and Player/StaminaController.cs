@@ -1,10 +1,13 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using FishNet.Object;
 
-public class StaminaController : MonoBehaviour
+public class StaminaController : NetworkBehaviour
 {
     [SerializeField] private RectTransform staminaBar;
+    [SerializeField] private RectTransform staminaBlack;
+
     private Image barImage;
     [SerializeField] private float maxStamina = 100f;
     [SerializeField] private float staminaRegenRate = 10f;
@@ -13,38 +16,40 @@ public class StaminaController : MonoBehaviour
 
     public bool canSprint = true;
     public static bool zoomOut = false;
-    [SerializeField] private RectTransform staminaBlack;
     private float currentStamina;
     private Color yellow;
     private Color red;
     private bool lowStaminaWarningPlayed = false;
 
-    private void Awake()
+    public override void OnStartClient()
     {
+        base.OnStartClient();
+        if (!IsOwner) return;
+
         Local = this;
-    }
-
-    private void OnDestroy()
-    {
-        if (Local == this) Local = null;
-    }
-
-    private void Start()
-    {
         currentStamina = maxStamina;
         yellow = new Color32(255, 220, 105, 255);
         red = new Color32(255, 112, 112, 255);
+        staminaBlack = GameObject.Find("StaminaBlack").GetComponent<RectTransform>();
+        staminaBar = GameObject.Find("StaminaBar").GetComponent<RectTransform>();
         barImage = staminaBar.GetComponent<Image>();
         UpdateStaminaBar();
     }
 
+    public override void OnStopClient()
+    {
+        if (Local == this) Local = null;
+        base.OnStopClient();
+    }
+
     private void Update()
     {
-      // The local player is spawned by FishNet after this component starts.
-      if (PlayerMovement.Local == null) return;
+      if (!IsOwner) return;
+      if (PlayerMovement.Local == null || upgradeManager.Local == null) return;
 
-      if ((PlayerMovement.Local.isSprinting && (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.D))) || PlayerMovement.Local.fastAir)
+      if (PlayerMovement.Local.isSprinting && (CameraZoom.moving || PlayerMovement.Local.fastAir))
       {
+        Debug.Log("Sprinting and moving or in fast air.");
         if (currentStamina > 0f)
         {
           currentStamina -= staminaDepletionRate * Time.deltaTime;
