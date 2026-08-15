@@ -114,20 +114,19 @@ public class BulletManager : NetworkBehaviour
                 NetworkObject victim = hitObject.GetComponentInParent<NetworkObject>();
 
                 if (victim == null || victim == bulletData.shooter) return;
-
+                Debug.Log("early return did not terminate");
                 GameObject parentObject = victim.gameObject;
 
-                ChangeMat changeMat = parentObject.GetComponent<ChangeMat>();
-                if (changeMat != null)
-                    changeMat.TakeDamage(victim, bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
+                DamageControl damage = parentObject.GetComponent<DamageControl>();
+                if (damage != null)
+                    damage.ControlDamage(victim, bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
                 
                 if (bulletData.shooter.Owner != null)
                     SetDamageCross(bulletData.shooter.Owner);
             }
-            DestroyBullet(bulletData);
-            bulletData.hitPrev = true;
             impactPrefabInstance(hit.point, hit.normal);
-
+            bulletData.hitPrev = true;
+            DestroyBullet(bulletData);
         }
     }
 

@@ -901,7 +901,6 @@ private void UpdateMovementVector()
         characterController.enabled = false;
         dead = false;
         lastGroundedHeight = -13;
-        GetComponent<ChangeMat>().healed = false;
         movement = Vector3.zero;
             
         List<Vector3> currentSpawns = desertSpawnVectors; // default to desert spawns
