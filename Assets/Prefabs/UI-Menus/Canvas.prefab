@@ -4078,6 +4078,8 @@ MonoBehaviour:
   _componentIndexCache: 1
   _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
+  staminaBar: {fileID: 0}
+  staminaBlack: {fileID: 0}
   maxStamina: 100
   staminaRegenRate: 20
   staminaDepletionRate: 25

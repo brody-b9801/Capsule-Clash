@@ -24,14 +24,10 @@ public class StaminaController : NetworkBehaviour
     public override void OnStartClient()
     {
         base.OnStartClient();
-        if (!IsOwner) return;
-
         Local = this;
         currentStamina = maxStamina;
         yellow = new Color32(255, 220, 105, 255);
         red = new Color32(255, 112, 112, 255);
-        staminaBlack = GameObject.Find("StaminaBlack").GetComponent<RectTransform>();
-        staminaBar = GameObject.Find("StaminaBar").GetComponent<RectTransform>();
         barImage = staminaBar.GetComponent<Image>();
         UpdateStaminaBar();
     }
@@ -44,7 +40,6 @@ public class StaminaController : NetworkBehaviour
 
     private void Update()
     {
-      if (!IsOwner) return;
       if (PlayerMovement.Local == null || upgradeManager.Local == null) return;
 
       if (PlayerMovement.Local.isSprinting && (CameraZoom.moving || PlayerMovement.Local.fastAir))
