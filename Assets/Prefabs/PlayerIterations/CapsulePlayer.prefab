@@ -142,6 +142,7 @@ GameObject:
   - component: {fileID: 7752035424641388494}
   - component: {fileID: 1447310636841987035}
   - component: {fileID: 4570701551215273596}
+  - component: {fileID: 7559977541259542866}
   m_Layer: 3
   m_Name: CapsulePlayer
   m_TagString: Player
@@ -205,7 +206,6 @@ MonoBehaviour:
   dashForce: 20
   jumpedLast: 0
   isTeleporting: 0
-  isDashing: 0
   newVelocity: {x: 0, y: 0, z: 0}
   targetWalkXPos: -0.1
   targetWalkYPos: -0.1
@@ -399,7 +399,6 @@ MonoBehaviour:
   iceUnlitColor: {r: 0.7058824, g: 0.7058824, b: 1, a: 1}
   iceHardEdgeLightColor: {r: 0, g: 0, b: 0.19607843, a: 1}
   icePlayerUnlitColor: {r: 0.60784316, g: 0.60784316, b: 1, a: 1}
-  healed: 0
 --- !u!114 &4555525927683178864
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -609,6 +608,23 @@ MonoBehaviour:
     X: 0
     Y: 0
     Z: 0
+--- !u!114 &7559977541259542866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4563841083353979690}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2b805e31f1d39b478761112b7bc3d3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DamageControl
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 1447310636841987035}
+  _networkObjectCache: {fileID: 0}
+  damage: 18
+  playerSelfLayer: 0
 --- !u!1 &7234072614236262368
 GameObject:
   m_ObjectHideFlags: 0

@@ -11,7 +11,6 @@ public class DamageControl : NetworkBehaviour
         180f, new SyncTypeSettings(WritePermission.ClientUnsynchronized, ReadPermission.Observers));
 
     [SerializeField] private int damage = 18;
-    [SerializeField] private int playerSelfLayer;
 
     public static DamageControl Local { get; private set; }
 
@@ -22,7 +21,6 @@ public class DamageControl : NetworkBehaviour
         if (IsOwner)
         {
             Local = this;
-            gameObject.layer = playerSelfLayer;
         }
     }
 
