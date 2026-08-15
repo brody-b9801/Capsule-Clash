@@ -33,7 +33,7 @@ public class DamageControl : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void ControlDamage(NetworkObject shotAvatar, NetworkObject shooter, bool shotgun, float dist)
+    public void ControlDamage(NetworkObject shooter, bool shotgun, float dist)
     {
         Debug.Log("Control damage reached");
         PlayerMovement victimMovement = GetComponent<PlayerMovement>();
