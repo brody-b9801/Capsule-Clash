@@ -129,7 +129,7 @@ public class BulletManager : NetworkBehaviour
         }
     }
 
-    [ObserversRpc]
+    [ServerRpc(RequireOwnership = false)]
     private void DestroyBullet(BulletData bullet)
     {
         ServerManager.Despawn(bullet.bulletObject);
@@ -142,8 +142,7 @@ public class BulletManager : NetworkBehaviour
     {
         Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
         Quaternion rotation = Quaternion.LookRotation(hitNormal);
-        GameObject impactInstance = Instantiate(impact, spawnPosition, rotation);
-        ServerManager.Spawn(impactInstance);
+        Instantiate(impact, spawnPosition, rotation);
     }
 
     [TargetRpc]
