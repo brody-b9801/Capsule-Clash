@@ -44,7 +44,6 @@ public class StaminaController : NetworkBehaviour
 
       if (PlayerMovement.Local.isSprinting && (CameraZoom.moving || PlayerMovement.Local.fastAir))
       {
-        Debug.Log("Sprinting and moving or in fast air.");
         if (currentStamina > 0f)
         {
           currentStamina -= staminaDepletionRate * Time.deltaTime;

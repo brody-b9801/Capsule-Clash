@@ -71,7 +71,6 @@ public class PlayerMovement : NetworkBehaviour {
     private Vector3 hitPoint;
     public bool jumpedLast = false;
     public bool isTeleporting = false;
-    public bool isDashing = false;
     public Vector3 newVelocity;
     private bool groundedPrev;
     private bool groundBeneath;
@@ -125,7 +124,7 @@ public class PlayerMovement : NetworkBehaviour {
     public Vector3 dashVector;
     public static float dashFOV = 0;
     private TextMeshProUGUI dt;
-    private bool lerpingDash = false;
+    private Coroutine dashRoutine;
     private RectTransform dashIcon;
     public bool canTakeDamage = true;
     [SerializeField] private LayerMask collisionMask;
@@ -450,7 +449,6 @@ public class PlayerMovement : NetworkBehaviour {
         usernameDisplay.transform.gameObject.GetComponent<MeshRenderer>().enabled = false;
 
         isGrounded = isGround();
-        Debug.Log(isGrounded);
         lastFrameMovement = movement;
         HandleCameraRotation();
         UpdateMovementVector();
@@ -499,7 +497,6 @@ private void UpdateMovementVector()
     if (moveDirection.magnitude > 1f) moveDirection.Normalize();
     if (isGrounded) {
         moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
-        Debug.Log(floorNormal);
         moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
     }
     if (moveDirection.magnitude > characterController.minMoveDistance)
@@ -638,16 +635,18 @@ private void UpdateMovementVector()
 
     private void HandleDashing() {
         if (_dash && dashes > 0 && !isGrounded && currDimension != "Maze") {
+            Debug.Log("dashing");
             HealthController.noFDAnim = true;
             dashes--;
             dashVector = Vector3.Project(dashVector, playerCamera.transform.forward * dashForce)
                          + (playerCamera.transform.forward * dashForce);
             newVelocity.y = 0;
             jumpedLast = true;
-            dashFOV = 20;
+            dashFOV = Mathf.Clamp(dashFOV, 20, dashFOV + 10);
             lastGroundedHeight = -30;
-            if (!lerpingDash) StartCoroutine(LerpDash());
-        } else {
+            if (dashRoutine != null) StopCoroutine(dashRoutine);
+            dashRoutine = StartCoroutine(LerpDash());
+        } else {    
             dashFOV = 0;
         }
 
@@ -1237,32 +1236,16 @@ private void UpdateMovementVector()
     }
 
     IEnumerator LerpDash() {
-        lerpingDash = true;
-        isDashing = true;
         Vector3 dashVectorRef = dashVector;
         float elapsedTime = 0f;
         float duration = 2f * (1 + (upgradeManager.Local.dashForceMultiplier - 1) * 0.5f);
         while (elapsedTime < duration && !isGround() && dashVector.magnitude > 0) {
-            if (!(_dash && dashes > 0 && !isGround())) {
-                dashVector = Vector3.Lerp(dashVectorRef, Vector3.zero, elapsedTime / duration);
-                elapsedTime += Time.deltaTime;
-                yield return null;
-            } else {
-                HealthController.noFDAnim = true;
-                lerpingDash = false;
-                dashes--;
-                newVelocity.y = 0;
-                dashVector = Vector3.Project(dashVector, playerCamera.transform.forward * dashForce)
-                             + (playerCamera.transform.forward * dashForce);
-                jumpedLast = true;
-                dashFOV += 10;
-                StartCoroutine(LerpDash());
-                yield break;
-            }
+            dashVector = Vector3.Lerp(dashVectorRef, Vector3.zero, elapsedTime / duration);
+            elapsedTime += Time.deltaTime;
+            yield return null;
         }
         dashVector = Vector3.zero;
-        lerpingDash = false;
-        isDashing = false;
+        dashRoutine = null;
     }
 
     IEnumerator rotLerpY() {
