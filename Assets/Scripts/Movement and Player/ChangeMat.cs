@@ -46,8 +46,6 @@ public class ChangeMat : NetworkBehaviour
 
     public static ChangeMat Local { get; private set; }
 
-    public bool healed = false;
-
     private void Awake()
     {
         player = GetComponent<Renderer>();
@@ -101,11 +99,11 @@ public class ChangeMat : NetworkBehaviour
 
     public void TakeDamage(NetworkObject shot, NetworkObject shooter, bool shotgun, float dist)
     {
-        StartCoroutine(endDamaged(shot, shooter, shotgun, dist));
+        StartCoroutine(endDamaged());
     }
 
     [ObserversRpc]
-    private void TakeDamageSync(NetworkObject av, NetworkObject shoot, bool shotgun, float dist)
+    private void SetMaterialNormal()
     {
         if (IsOwner)
         {
@@ -115,62 +113,20 @@ public class ChangeMat : NetworkBehaviour
         }
     }
 
-    [Server]
-    public void ControlDamage(NetworkObject shotAvatar, NetworkObject shooter, bool shotgun, float dist)
-    {
-        DamageControl damageControl = GetComponent<DamageControl>();
-        if (damageControl == null) return;
-
-        PlayerMovement victimMovement = GetComponent<PlayerMovement>();
-        if (victimMovement == null || !victimMovement.canTakeDamage) return;
-
-        float damageMultiplier = upgradeManager.Local != null ? upgradeManager.Local.damageMultiplier : 1f;
-
-        float damageDealt;
-        if (!shotgun) {
-            damageDealt = 18 * damageMultiplier;
-        } else {
-            if (dist < 3) {
-                damageDealt = 17 * damageMultiplier;
-            } else {
-                damageDealt = Mathf.Clamp((17 * damageMultiplier - ((dist-3)*0.6f)), 1, 15 * damageMultiplier);
-            }
-        }
-
-        damageControl.health.Value -= damageDealt;
-
-        bool died = damageControl.health.Value <= 0 && !healed;
-        if (died) {
-            healed = true;
-            victimMovement.killHealSync(shooter);
-        }
-
-        ApplyDamageFeedback(died);
-    }
-
     [ObserversRpc]
-    private void ApplyDamageFeedback(bool died)
+    private void SetMaterialDamaged()
     {
-        HealthController.updateHealth();
-
-        if (died)
+        if (IsOwner)
         {
-            PlayerMovement victimMovement = GetComponent<PlayerMovement>();
-            if (victimMovement != null) victimMovement.Die();
+            player.sharedMaterial = self;
+        } else{
+            player.sharedMaterial = normal;
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    private void ServerControlDamage(NetworkObject shot, NetworkObject shooter, bool shotgun, float dist)
-        => ControlDamage(shot, shooter, shotgun, dist);
-
-    [ServerRpc(RequireOwnership = false)]
-    private void ServerTakeDamageSync(NetworkObject shot, NetworkObject shooter, bool shotgun, float dist)
-        => TakeDamageSync(shot, shooter, shotgun, dist);
-
-    IEnumerator endDamaged(NetworkObject shot, NetworkObject shooter, bool shotgun, float dist) {
-        ServerControlDamage(shot, shooter, shotgun, dist);
+    IEnumerator endDamaged() {
+        SetMaterialDamaged();
         yield return new WaitForSeconds(0.05f);
-        ServerTakeDamageSync(shot, shooter, shotgun, dist);
+        SetMaterialNormal();
     }
 }

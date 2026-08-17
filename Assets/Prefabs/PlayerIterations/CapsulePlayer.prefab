@@ -142,6 +142,7 @@ GameObject:
   - component: {fileID: 7752035424641388494}
   - component: {fileID: 1447310636841987035}
   - component: {fileID: 4570701551215273596}
+  - component: {fileID: 7559977541259542866}
   m_Layer: 3
   m_Name: CapsulePlayer
   m_TagString: Player
@@ -189,7 +190,6 @@ MonoBehaviour:
   airSpeed: 8
   sprintSpeed: 8
   gun: {fileID: 5678431955460453153}
-  playerRenderer: {fileID: 1075840244914371417}
   isGrounded: 0
   fastAir: 0
   isAiming: 0
@@ -206,7 +206,6 @@ MonoBehaviour:
   dashForce: 20
   jumpedLast: 0
   isTeleporting: 0
-  isDashing: 0
   newVelocity: {x: 0, y: 0, z: 0}
   targetWalkXPos: -0.1
   targetWalkYPos: -0.1
@@ -335,7 +334,6 @@ MonoBehaviour:
   gun: {fileID: 297485254485252709}
   player: {fileID: 4563841083353979690}
   normal: {fileID: 2100000, guid: b67ecb75ff79943459ef6057421c626e, type: 2}
-  damaged: {fileID: 2100000, guid: 53b9e9f3c9c81324fb5884a244a84926, type: 2}
   bulletTrailMaterial: {fileID: 2100000, guid: ad23528f247ce424ab9fe0447205b9bc, type: 2}
   ignoreLayers:
     serializedVersion: 2
@@ -349,8 +347,6 @@ MonoBehaviour:
   playerMesh: {fileID: 9146832561924185666}
   shotgunMesh: {fileID: 6919841926953838382, guid: ef692815acc00a84abbedf794f71d664, type: 3}
   M4Mesh: {fileID: -8401218714792031518, guid: 19b3217a01ed3df42b30c781edabc747, type: 3}
-  impact: {fileID: 5586783540032275536, guid: 6e57a3cf9435eb14fb9928fa4ee60c63, type: 3}
-  impactOffset: 0.01
   bulletSpeed: 150
   snipeSpeed: 150
   fireRate: 11
@@ -403,7 +399,6 @@ MonoBehaviour:
   iceUnlitColor: {r: 0.7058824, g: 0.7058824, b: 1, a: 1}
   iceHardEdgeLightColor: {r: 0, g: 0, b: 0.19607843, a: 1}
   icePlayerUnlitColor: {r: 0.60784316, g: 0.60784316, b: 1, a: 1}
-  healed: 0
 --- !u!114 &4555525927683178864
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -550,7 +545,7 @@ MonoBehaviour:
     Scale: {x: 0, y: 0, z: 0}
     IsValid: 0
   <IsNested>k__BackingField: 0
-  WasActiveDuringEdit: 1
+  WasActiveDuringEdit: 0
   WasActiveDuringEdit_Set1: 1
   <ComponentIndex>k__BackingField: 0
   <PredictedSpawn>k__BackingField: {fileID: 0}
@@ -613,6 +608,23 @@ MonoBehaviour:
     X: 0
     Y: 0
     Z: 0
+--- !u!114 &7559977541259542866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4563841083353979690}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2b805e31f1d39b478761112b7bc3d3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DamageControl
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 1447310636841987035}
+  _networkObjectCache: {fileID: 0}
+  damage: 18
+  playerSelfLayer: 0
 --- !u!1 &7234072614236262368
 GameObject:
   m_ObjectHideFlags: 0

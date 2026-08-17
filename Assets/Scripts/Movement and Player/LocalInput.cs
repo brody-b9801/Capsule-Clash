@@ -20,9 +20,9 @@ public readonly struct SyncedKey
 {
     public enum KeyMode
     {
-        Key,     // held down  -> Input.GetKey
-        KeyDown, // pressed this frame -> Input.GetKeyDown
-        KeyUp    // released this frame -> Input.GetKeyUp
+        Key,   
+        KeyDown, 
+        KeyUp 
     }
 
     private readonly KeyCode _key;

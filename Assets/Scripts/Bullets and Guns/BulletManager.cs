@@ -114,24 +114,22 @@ public class BulletManager : NetworkBehaviour
                 NetworkObject victim = hitObject.GetComponentInParent<NetworkObject>();
 
                 if (victim == null || victim == bulletData.shooter) return;
+                Debug.Log("early return did not terminate");
 
-                GameObject parentObject = victim.gameObject;
-
-                ChangeMat changeMat = parentObject.GetComponent<ChangeMat>();
-                if (changeMat != null)
-                    changeMat.TakeDamage(victim, bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
+                DamageControl damage = victim.gameObject.GetComponent<DamageControl>();
+                if (damage != null)
+                    damage.ControlDamage(bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
                 
                 if (bulletData.shooter.Owner != null)
                     SetDamageCross(bulletData.shooter.Owner);
             }
-            DestroyBullet(bulletData);
-            bulletData.hitPrev = true;
             impactPrefabInstance(hit.point, hit.normal);
-
+            bulletData.hitPrev = true;
+            DestroyBullet(bulletData);
         }
     }
 
-    [ObserversRpc]
+    [ServerRpc(RequireOwnership = false)]
     private void DestroyBullet(BulletData bullet)
     {
         ServerManager.Despawn(bullet.bulletObject);
@@ -144,8 +142,7 @@ public class BulletManager : NetworkBehaviour
     {
         Vector3 spawnPosition = hitpoint + hitNormal * impactOffset;
         Quaternion rotation = Quaternion.LookRotation(hitNormal);
-        GameObject impactInstance = Instantiate(impact, spawnPosition, rotation);
-        ServerManager.Spawn(impactInstance);
+        Instantiate(impact, spawnPosition, rotation);
     }
 
     [TargetRpc]

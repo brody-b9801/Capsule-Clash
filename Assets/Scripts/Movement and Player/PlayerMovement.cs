@@ -29,10 +29,10 @@ public class PlayerMovement : NetworkBehaviour {
     public bool isSprinting = false;
     public Vector3 newPosition;
     public Vector3 movement;
-    private SyncedAxis _horizontal;
-    private SyncedAxis _vertical;
-    private SyncedKey _jump;
-    private SyncedKey _dash;
+    private float _horizontal;
+    private float _vertical;
+    private bool _jump;
+    private bool _dash;
     public static bool started = false;
     [SerializeField] private GameObject capsuleCollider;
     [SerializeField] private Transform playerTransform;
@@ -71,7 +71,6 @@ public class PlayerMovement : NetworkBehaviour {
     private Vector3 hitPoint;
     public bool jumpedLast = false;
     public bool isTeleporting = false;
-    public bool isDashing = false;
     public Vector3 newVelocity;
     private bool groundedPrev;
     private bool groundBeneath;
@@ -125,7 +124,7 @@ public class PlayerMovement : NetworkBehaviour {
     public Vector3 dashVector;
     public static float dashFOV = 0;
     private TextMeshProUGUI dt;
-    private bool lerpingDash = false;
+    private Coroutine dashRoutine;
     private RectTransform dashIcon;
     public bool canTakeDamage = true;
     [SerializeField] private LayerMask collisionMask;
@@ -209,16 +208,19 @@ public class PlayerMovement : NetworkBehaviour {
     private GunThingAnim gunRenderer;
 
     public static PlayerMovement Local {get; private set;}
-
-    // Sibling components on this same player object. Cached in OnStartClient so
-    // local access never depends on another component's static being assigned first.
     private Shooting localShooting;
     private ObjectSpawner localSpawner;
-    private void InitializeInput() {
-        _horizontal = new SyncedAxis("Horizontal");
-        _vertical = new SyncedAxis("Vertical");
-        _jump = new SyncedKey(KeyCode.Space);
-        _dash = new SyncedKey(KeyCode.Space, SyncedKey.KeyMode.KeyDown);
+
+    private float _getHorizontal() => Input.GetAxisRaw("Horizontal");
+    private float _getVertical() => Input.GetAxisRaw("Vertical");
+    private bool _getJump() => Input.GetKey(KeyCode.Space);
+    private bool _getDash() => Input.GetKeyDown(KeyCode.Space);
+    
+    private void CacheInputs() {
+        _horizontal = _getHorizontal();
+        _vertical = _getVertical();
+        _jump = _getJump();
+        _dash = _getDash();
     }
 
     public static Vector3 getVelocity() { return Local != null ? Local.velocityTransform : Vector3.zero; }
@@ -310,7 +312,6 @@ public class PlayerMovement : NetworkBehaviour {
         base.OnStartClient();
 
         Application.targetFrameRate = -1;
-        InitializeInput();
 
         if (IsOwner) {
             Local = this;
@@ -437,10 +438,10 @@ public class PlayerMovement : NetworkBehaviour {
 
     private void Update() {
         if (!IsOwner || MaskController.maskAnimationPlaying) return;
-        // OnStartClient performs the owner-only setup this method depends on
-        // (dt, characterController, Shooting.Local, MaskController.Local, ...).
-        // It can run after the first Update tick, so idle until it has finished.
+
         if (!started) return;
+        CacheInputs();
+
         IsOnSlope();
         CheckIfStuckAndMoveUp();
         dt.text = dashes.ToString();
@@ -448,7 +449,6 @@ public class PlayerMovement : NetworkBehaviour {
         usernameDisplay.transform.gameObject.GetComponent<MeshRenderer>().enabled = false;
 
         isGrounded = isGround();
-        Debug.Log(isGrounded);
         lastFrameMovement = movement;
         HandleCameraRotation();
         UpdateMovementVector();
@@ -497,7 +497,6 @@ private void UpdateMovementVector()
     if (moveDirection.magnitude > 1f) moveDirection.Normalize();
     if (isGrounded) {
         moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
-        Debug.Log(floorNormal);
         moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
     }
     if (moveDirection.magnitude > characterController.minMoveDistance)
@@ -571,8 +570,8 @@ private void UpdateMovementVector()
     }
 
     private void HandleCameraRotation() {
-        float mouseX = Input.GetAxis("Mouse X");
-        float mouseY = Input.GetAxis("Mouse Y");
+        float mouseX = Input.GetAxisRaw("Mouse X");
+        float mouseY = Input.GetAxisRaw("Mouse Y");
         rotationX = -(mouseY * rotationSpeed);
         rotationY = mouseX * rotationSpeed;
 
@@ -631,21 +630,23 @@ private void UpdateMovementVector()
             }
         }
         if (!canTakeDamage) StartCoroutine(Invulnerable());
-        CameraZoom.moving = (_horizontal || _vertical);
+        CameraZoom.moving = (Mathf.Abs(_horizontal) > 0.01f || Mathf.Abs(_vertical) > 0.01f);
     }
 
     private void HandleDashing() {
         if (_dash && dashes > 0 && !isGrounded && currDimension != "Maze") {
+            Debug.Log("dashing");
             HealthController.noFDAnim = true;
             dashes--;
             dashVector = Vector3.Project(dashVector, playerCamera.transform.forward * dashForce)
                          + (playerCamera.transform.forward * dashForce);
             newVelocity.y = 0;
             jumpedLast = true;
-            dashFOV = 20;
+            dashFOV = Mathf.Clamp(dashFOV, 20, dashFOV + 10);
             lastGroundedHeight = -30;
-            if (!lerpingDash) StartCoroutine(LerpDash());
-        } else {
+            if (dashRoutine != null) StopCoroutine(dashRoutine);
+            dashRoutine = StartCoroutine(LerpDash());
+        } else {    
             dashFOV = 0;
         }
 
@@ -900,7 +901,6 @@ private void UpdateMovementVector()
         characterController.enabled = false;
         dead = false;
         lastGroundedHeight = -13;
-        GetComponent<ChangeMat>().healed = false;
         movement = Vector3.zero;
             
         List<Vector3> currentSpawns = desertSpawnVectors; // default to desert spawns
@@ -1235,32 +1235,16 @@ private void UpdateMovementVector()
     }
 
     IEnumerator LerpDash() {
-        lerpingDash = true;
-        isDashing = true;
         Vector3 dashVectorRef = dashVector;
         float elapsedTime = 0f;
         float duration = 2f * (1 + (upgradeManager.Local.dashForceMultiplier - 1) * 0.5f);
         while (elapsedTime < duration && !isGround() && dashVector.magnitude > 0) {
-            if (!(_dash && dashes > 0 && !isGround())) {
-                dashVector = Vector3.Lerp(dashVectorRef, Vector3.zero, elapsedTime / duration);
-                elapsedTime += Time.deltaTime;
-                yield return null;
-            } else {
-                HealthController.noFDAnim = true;
-                lerpingDash = false;
-                dashes--;
-                newVelocity.y = 0;
-                dashVector = Vector3.Project(dashVector, playerCamera.transform.forward * dashForce)
-                             + (playerCamera.transform.forward * dashForce);
-                jumpedLast = true;
-                dashFOV += 10;
-                StartCoroutine(LerpDash());
-                yield break;
-            }
+            dashVector = Vector3.Lerp(dashVectorRef, Vector3.zero, elapsedTime / duration);
+            elapsedTime += Time.deltaTime;
+            yield return null;
         }
         dashVector = Vector3.zero;
-        lerpingDash = false;
-        isDashing = false;
+        dashRoutine = null;
     }
 
     IEnumerator rotLerpY() {
