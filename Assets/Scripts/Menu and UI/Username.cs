@@ -14,13 +14,14 @@ public class Username : NetworkBehaviour
 
     void Update()
     {
-        //setRotation();
+        setRotation();
+        GetInfo();
     }
 
-    /*public void GetInfo() {
-        if (IsOwner && PlayerMovement.username != null) {
-            ServerSetName(PlayerMovement.username);
-            ServerSetKills(PlayerMovement.killCount);
+    public void GetInfo() {
+        if (IsOwner && PlayerMovement.Local.username != null) {
+            ServerSetName(PlayerMovement.Local.username);
+            ServerSetKills(PlayerMovement.Local.killCount);
         }
     }
 
@@ -38,7 +39,8 @@ public class Username : NetworkBehaviour
     [ObserversRpc(BufferLast = true)]
     private void RpcSetKills(float killRef) {
         killCount = killRef;
-    }*/
+    }
+
     public void setRotation()
     {
         transform.LookAt(Camera.main.transform);

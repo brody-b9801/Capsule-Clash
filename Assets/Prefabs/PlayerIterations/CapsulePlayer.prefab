@@ -624,7 +624,6 @@ MonoBehaviour:
   _addedNetworkObject: {fileID: 1447310636841987035}
   _networkObjectCache: {fileID: 0}
   damage: 18
-  playerSelfLayer: 0
 --- !u!1 &7234072614236262368
 GameObject:
   m_ObjectHideFlags: 0
@@ -850,9 +849,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2156591388696579827, guid: f9ebe0ac56b645c47982ccb6489607a6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 9158572828972272116}
-    - targetCorrespondingSourceObject: {fileID: 2156591388696579827, guid: f9ebe0ac56b645c47982ccb6489607a6, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 4038310910761108685}
   m_SourcePrefab: {fileID: 100100000, guid: f9ebe0ac56b645c47982ccb6489607a6, type: 3}
 --- !u!1 &1054499837766755018 stripped
 GameObject:
@@ -877,41 +873,6 @@ MonoBehaviour:
   usernameDisplay: {fileID: 1981088015738634965}
   killCount: 0
   username: 
---- !u!114 &4038310910761108685
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1054499837766755018}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 1312809854, guid: 0ae8d181602a00248a82f64a684a1c88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Multiplayer: {fileID: 0}
-  _uidString: cdced6a6-2f83-4dd6-a681-43427707dc19
-  BucketBehaviors:
-  - Name: Min
-    NetLOD: 0
-    Frequency: -1
-  - Name: Low
-    NetLOD: 1
-    Frequency: 0
-  - Name: Mid
-    NetLOD: 2
-    Frequency: 0
-  - Name: High
-    NetLOD: 3
-    Frequency: 0
-  - Name: Max
-    NetLOD: 4
-    Frequency: 120
-  Reliability: 2
-  UseGlobalPosition: 0
-  OnlySyncFromRoomOwner: 0
-  refreshRate: 60
-  SyncedAxes: 24
 --- !u!114 &1981088015738634965 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 590441588174679788, guid: f9ebe0ac56b645c47982ccb6489607a6, type: 3}
