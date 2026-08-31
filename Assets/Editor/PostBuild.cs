@@ -1,3 +1,5 @@
+#if UNITY_EDITOR
+
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -8,15 +10,6 @@ using System.IO;
 
 public class PostBuild : IPostprocessBuildWithReport
 {
-    void Start()
-    {
-        
-    }
-
-    void Update()
-    {
-        
-    }
     public int callbackOrder => 0;
 
     public void OnPostprocessBuild(BuildReport report)
@@ -29,3 +22,4 @@ public class PostBuild : IPostprocessBuildWithReport
         ZipFile.CreateFromDirectory("Builds", zip_path);
     }
 }
+#endif
