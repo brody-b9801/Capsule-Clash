@@ -13,6 +13,7 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
   m_InvalidKeywords:
+  - _OUTLINESCREENSPACE_ON
   - _SEGMENTED_ON
   - _SHADOWHATCHCROSS_ON
   - _USECASTSHADOWHATCH_ON
@@ -155,7 +156,8 @@ Material:
     - _OutlineLightModulation: 0
     - _OutlineNormalWeight: 1.5
     - _OutlineScaleStartDistance: 0
-    - _OutlineSize: 0.003
+    - _OutlineScreenSpace: 1
+    - _OutlineSize: 0.004
     - _OutlineThickness: 2
     - _PanelLineFrequency: 1
     - _PanelLineWidth: 0.005

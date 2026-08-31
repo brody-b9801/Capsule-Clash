@@ -172,7 +172,7 @@ Material:
     - _OutlineScaleDistance: 0.1
     - _OutlineScaleStartDistance: 0.5
     - _OutlineScreenSpace: 1
-    - _OutlineSize: 0.047
+    - _OutlineSize: 0.004
     - _OutlineThickness: 2
     - _PanelLineFrequency: 0.1
     - _PanelLineWidth: 0

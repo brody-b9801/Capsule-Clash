@@ -131,7 +131,7 @@ Material:
     - _OutlineLightModulation: 0
     - _OutlineScaleStartDistance: 0
     - _OutlineScreenSpace: 1
-    - _OutlineSize: 0.028
+    - _OutlineSize: 0.004
     - _Parallax: 0.02
     - _RampLevels: 4
     - _RimAlpha: 0.5
