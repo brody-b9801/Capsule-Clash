@@ -8,43 +8,49 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.IO;
 
-public class PostBuild : MonoBehaviour
+public class PostBuild
 {
-    public int callbackOrder => 0;
-    [MenuItem("Build")]
+    [MenuItem("Build/Windows Client Server")]
     public static void Build()
     {
         BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions();
-        string buildPath = "Builds/WindowsServer/Server.exe";        
+        string buildPath = "Builds/WindowsClient/Client.exe";
         buildPlayerOptions.locationPathName = buildPath;
         buildPlayerOptions.target = BuildTarget.StandaloneWindows64; 
-        buildPlayerOptions.subtarget = (int)StandaloneBuildSubtarget.Server;    
         
         BuildPlayerOptions serverPlayerOptions = new BuildPlayerOptions();
         string serverPath = "Builds/WindowsServer/Server.exe";        
         serverPlayerOptions.locationPathName = serverPath;
+        serverPlayerOptions.scenes = new[] { "Assets/Scenes/CombatScene.unity" };
         serverPlayerOptions.target = BuildTarget.StandaloneWindows64; 
         serverPlayerOptions.subtarget = (int)StandaloneBuildSubtarget.Server; 
 
+
         BuildReport buildResult = BuildPipeline.BuildPlayer(buildPlayerOptions);
+
         if (buildResult.summary.result == BuildResult.Succeeded)
         {
             BuildReport serverResult = BuildPipeline.BuildPlayer(serverPlayerOptions);
             if (serverResult.summary.result == BuildResult.Succeeded)
             {
-                zip();
+                Zip();
+            } else {
+                UnityEngine.Debug.LogError("Server build failed: " + serverResult.summary.result);
             }
+        } else {
+            UnityEngine.Debug.LogError("Client build failed: " + buildResult.summary.result);
         }
+
     }
 
-    public static void zip()
+    public static void Zip()
     {
         string zip_path = "Builds.zip";
         if (File.Exists(zip_path))
         {
             File.Delete(zip_path);
         }
-        ZipFile.CreateFromDirectory("Builds", zip_path);
+        ZipFile.CreateFromDirectory("Builds", zip_path, System.IO.Compression.CompressionLevel.Optimal, true);
     }
 }
 #endif
