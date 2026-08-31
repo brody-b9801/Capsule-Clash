@@ -14,12 +14,14 @@ Material:
   m_ValidKeywords: []
   m_InvalidKeywords:
   - _DYNAMICOUTLINE_ON
+  - _OUTLINESCREENSPACE_ON
   - _SEGMENTED_ON
   - _SHADOWHATCHCROSS_ON
   - _USECASTSHADOWHATCH_ON
   - _USECROSSHATCH_ON
   - _USEFLATSHADING_ON
   - _USERIMBANDS_ON
+  - _USESHADOWBANDS_ON
   - _USEWORLDSPACEEDGES_ON
   m_LightmapFlags: 6
   m_EnableInstancingVariants: 1
@@ -133,7 +135,7 @@ Material:
     - _HatchAngle: 45
     - _HatchScale: 6
     - _HatchWidth: 0.25
-    - _HighIntensity: 2.5
+    - _HighIntensity: 1.5
     - _HighlightDotDistanceScale: 0.5
     - _HighlightDotIntensity: 0.4
     - _HighlightDotScale: 120
@@ -147,7 +149,7 @@ Material:
     - _InvertColors: 0
     - _LightScalar: 1
     - _LightThreshold: 0.4
-    - _LowIntensity: 2
+    - _LowIntensity: 1
     - _Lumin: 0
     - _MaxLight: 1
     - _Metallic: 0
@@ -169,7 +171,8 @@ Material:
     - _OutlineNormalWeight: 1.5
     - _OutlineScaleDistance: 0.1
     - _OutlineScaleStartDistance: 0.5
-    - _OutlineSize: 0.01
+    - _OutlineScreenSpace: 1
+    - _OutlineSize: 0.047
     - _OutlineThickness: 2
     - _PanelLineFrequency: 0.1
     - _PanelLineWidth: 0
@@ -196,7 +199,7 @@ Material:
     - _Saturation: 1
     - _Segmented: 1
     - _ShadowBandSmoothness: 0
-    - _ShadowBands: 2
+    - _ShadowBands: 4
     - _ShadowHatchAngle: 45
     - _ShadowHatchCross: 1
     - _ShadowHatchCrossThreshold: 1
@@ -234,7 +237,7 @@ Material:
     - _UsePosterize: 0
     - _UseRimBands: 1
     - _UseRimHatch: 0
-    - _UseShadowBands: 0
+    - _UseShadowBands: 1
     - _UseShadowHatch: 0
     - _UseWorldSpaceEdges: 1
     - _WorldUpWeight: 0.5

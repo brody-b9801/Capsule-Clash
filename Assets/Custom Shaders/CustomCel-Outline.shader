@@ -4,18 +4,13 @@ Shader "FlexibleCelShader/Comic Book Style"
     {
         _Color("Global Color Modifier", Color) = (1, 1, 1, 1)
         _MainTex("Texture", 2D) = "white" {}
-        _NormalTex("Normal Map", 2D) = "bump" {}
-        _NormalStrength("Normal Map Strength", Range(0, 2)) = 1
         _EmmisTex("Emission", 2D) = "black" {}
 
-        _RampLevels("Ramp Levels", Range(2, 50)) = 3
         _LightScalar("Light Scalar", Range(0, 10)) = 1
 
         [Header(Indirect Lighting)]
         [Space(10)]
         _IndirectLightIntensity("Indirect Light Intensity", Range(0, 2)) = 1
-
-
 
         [Header(Shadow Transition Bands)]
         [Space(10)]
@@ -32,7 +27,8 @@ Shader "FlexibleCelShader/Comic Book Style"
         _LowIntensity("Unlit Intensity", Range(0, 10)) = 1
 
         _OutlineColor("Outline Color", Color) = (0, 0, 0, 1)
-        _OutlineSize("Outline Size", Range(0, 0.1)) = 0.01
+        _OutlineSize("Outline Size", Range(0, 0.5)) = 0.01
+        [Toggle] _OutlineScreenSpace("Constant Screen-Space Width", Float) = 1
         _OutlineScaleStartDistance("Outline Scale Start Distance", Range(0, 100)) = 10.0
         _OutlineDistanceScale("Outline Distance Scale", Range(0.1, 2)) = 1.0
         [Toggle] _DynamicOutline("Dynamic Outline Thickness", Float) = 1
@@ -45,15 +41,6 @@ Shader "FlexibleCelShader/Comic Book Style"
         _RimPower("Hard Edge Light Size", Range(0, 1)) = 0.5
         _RimDropOff("Hard Edge Light Dropoff", Range(0, 1)) = 0.3
         _RimBands("Hard Edge Light Bands", Range(2, 10)) = 3
-
-        [Header(Specular Highlights)]
-        [Space(10)]
-        _SpecularColor("Specular Color", Color) = (1, 1, 1, 1)
-        _SpecularIntensity("Specular Intensity", Range(0, 2)) = 1
-        _SpecularSize("Specular Size", Range(0, 1)) = 0.2
-        _SpecularSmoothness("Specular Smoothness", Range(1, 100)) = 30
-        _SpecularBands("Specular Bands", Range(1, 10)) = 2
-        _SpecularShadowDropoff("Specular Shadow Dropoff", Range(0, 1)) = 0.5
     }
 
     SubShader
@@ -63,14 +50,16 @@ Shader "FlexibleCelShader/Comic Book Style"
         // ═══════════════════════════════════════════════════════════════════
         Pass
         {
+            Name "Outline"
             Tags { "LightMode" = "Always" }
             Cull Front
+            ZWrite On
 
             CGPROGRAM
-            #pragma vertex vert
+            #pragma vertex   vert
             #pragma fragment frag
+            #pragma multi_compile_fog
             #include "UnityCG.cginc"
-            #include "Lighting.cginc"
 
             struct appdata
             {
@@ -80,12 +69,12 @@ Shader "FlexibleCelShader/Comic Book Style"
 
             struct v2f
             {
-                float4 pos         : SV_POSITION;
-                float3 worldNormal : TEXCOORD0;
-                float3 worldPos    : TEXCOORD1;
+                float4 pos : SV_POSITION;
+                UNITY_FOG_COORDS(0)
             };
 
             float  _OutlineSize;
+            float  _OutlineScreenSpace;
             float  _OutlineScaleStartDistance;
             float  _OutlineDistanceScale;
             float4 _OutlineColor;
@@ -95,46 +84,57 @@ Shader "FlexibleCelShader/Comic Book Style"
             v2f vert(appdata v)
             {
                 v2f o;
-                o.worldNormal = UnityObjectToWorldNormal(v.normal);
-                o.worldPos    = mul(unity_ObjectToWorld, v.vertex).xyz;
 
-                float4 pos      = UnityObjectToClipPos(v.vertex);
-                float3 viewPos  = UnityObjectToViewPos(v.vertex);
-                float  distance = length(viewPos);
+                // Extrude along the world-space normal (lean outline method).
+                float3 positionWS = mul(unity_ObjectToWorld, v.vertex).xyz;
+                float3 normalWS   = normalize(UnityObjectToWorldNormal(v.normal));
 
-                float distanceScale = 1.0;
-                if (distance > _OutlineScaleStartDistance)
+                float width = _OutlineSize;
+
+                // Constant screen-space width: grow with camera distance.
+                if (_OutlineScreenSpace > 0.5)
+                    width *= distance(positionWS, _WorldSpaceCameraPos);
+
+                // Distance-based shrink past a threshold (kept from original).
+                float viewDist = length(UnityObjectToViewPos(v.vertex));
+                if (viewDist > _OutlineScaleStartDistance)
                 {
-                    float excessDistance = distance - _OutlineScaleStartDistance;
-                    distanceScale = 1.0 / max(excessDistance * _OutlineDistanceScale + 1.0, 1.0);
+                    float excess = viewDist - _OutlineScaleStartDistance;
+                    width /= max(excess * _OutlineDistanceScale + 1.0, 1.0);
                 }
 
-                float outlineScale = 1.0;
+                // Light-driven thickness (kept from original).
                 if (_DynamicOutline > 0.5)
                 {
-                    float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
-                    float  NdotL    = dot(o.worldNormal, lightDir);
-                    outlineScale    = lerp(1.8, 0.3, saturate(NdotL * 0.5 + 0.5));
-                    outlineScale    = lerp(1.0, outlineScale, _OutlineLightModulation);
+                    float3 lightDir   = normalize(_WorldSpaceLightPos0.xyz);
+                    float  NdotL      = dot(normalWS, lightDir);
+                    float  lightScale = lerp(1.8, 0.3, saturate(NdotL * 0.5 + 0.5));
+                    width *= lerp(1.0, lightScale, _OutlineLightModulation);
                 }
 
-                float3 norm   = normalize(mul((float3x3)UNITY_MATRIX_IT_MV, v.normal));
-                float2 offset = TransformViewToProjection(norm.xy);
-                pos.xy += offset * pos.w * _OutlineSize * distanceScale * outlineScale;
+                positionWS += normalWS * width;
 
-                o.pos = pos;
+                o.pos = mul(UNITY_MATRIX_VP, float4(positionWS, 1.0));
+                UNITY_TRANSFER_FOG(o, o.pos);
                 return o;
             }
 
             fixed4 frag(v2f i) : SV_Target
             {
-                return _OutlineColor;
+                fixed4 col = _OutlineColor;
+                UNITY_APPLY_FOG(i.fogCoord, col);
+                return col;
             }
             ENDCG
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        //  MAIN CEL PASS  (ForwardBase — handles directional light + lightmaps)
+        //  MAIN CEL PASS  (ForwardBase — directional light + lightmaps)
+        //
+        //  Lean cel model:
+        //      celRamp = ToonRamp( saturate(N·L * _LightScalar) * shadow )
+        //      diffuse = lerp( unlit color , lit color , celRamp )
+        //  plus SH/lightmap indirect and the original banded hard-edge rim.
         // ═══════════════════════════════════════════════════════════════════
         Pass
         {
@@ -157,33 +157,25 @@ Shader "FlexibleCelShader/Comic Book Style"
             {
                 float4 vertex    : POSITION;
                 float3 normal    : NORMAL;
-                float4 tangent   : TANGENT;
                 float2 texcoord  : TEXCOORD0;
                 float2 texcoord1 : TEXCOORD1;
-                float2 texcoord2 : TEXCOORD2;
             };
 
             struct v2f
             {
-                float2 uv             : TEXCOORD0;
+                float2 uv          : TEXCOORD0;
                 SHADOW_COORDS(1)
-                float3 worldNormal    : TEXCOORD2;
-                float3 worldTangent   : TEXCOORD3;
-                float3 worldBitangent : TEXCOORD4;
-                float4 worldPos       : TEXCOORD5;
-                float2 lightmapUV     : TEXCOORD6;
-                float4 pos            : SV_POSITION;
+                float3 worldNormal : TEXCOORD2;
+                float4 worldPos    : TEXCOORD3;
+                float2 lightmapUV  : TEXCOORD4;
+                float4 pos         : SV_POSITION;
             };
 
             float4    _Color;
             sampler2D _MainTex;
             float4    _MainTex_ST;
-            sampler2D _NormalTex;
-            float4    _NormalTex_ST;
-            float     _NormalStrength;
             sampler2D _EmmisTex;
             float4    _EmmisTex_ST;
-            int       _RampLevels;
             float     _LightScalar;
             float     _IndirectLightIntensity;
             float     _HighIntensity;
@@ -198,23 +190,32 @@ Shader "FlexibleCelShader/Comic Book Style"
             float     _UseShadowBands;
             int       _ShadowBands;
             float     _ShadowBandSmoothness;
-            float4    _SpecularColor;
-            float     _SpecularIntensity;
-            float     _SpecularSize;
-            float     _SpecularSmoothness;
-            int       _SpecularBands;
-            float     _SpecularShadowDropoff;
+
+            // Softened N-band staircase in [0,1].  When banding is disabled the
+            // input passes through unchanged (smooth ramp).
+            float ToonRamp(float x)
+            {
+                x = saturate(x);
+                if (_UseShadowBands < 0.5)
+                    return x;
+
+                float steps  = max((float)_ShadowBands - 1.0, 1.0);
+                float scaled = x * steps;
+                float lower  = floor(scaled);
+                float f      = scaled - lower;                       // position within step
+                float w      = max(_ShadowBandSmoothness, 1e-5);
+                float blend  = smoothstep(0.5 - w, 0.5 + w, f);
+                return (lower + blend) / steps;
+            }
 
             v2f vert(appdata v)
             {
                 v2f o;
-                o.uv             = v.texcoord;
-                o.worldPos       = mul(unity_ObjectToWorld, v.vertex);
-                o.pos            = mul(UNITY_MATRIX_VP, o.worldPos);
-                o.worldNormal    = UnityObjectToWorldNormal(v.normal);
-                o.worldTangent   = UnityObjectToWorldDir(v.tangent.xyz);
-                o.worldBitangent = cross(o.worldNormal, o.worldTangent) * v.tangent.w;
-                o.lightmapUV     = v.texcoord1.xy * unity_LightmapST.xy + unity_LightmapST.zw;
+                o.uv          = v.texcoord;
+                o.worldPos    = mul(unity_ObjectToWorld, v.vertex);
+                o.pos         = mul(UNITY_MATRIX_VP, o.worldPos);
+                o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                o.lightmapUV  = v.texcoord1.xy * unity_LightmapST.xy + unity_LightmapST.zw;
 
                 TRANSFER_SHADOW(o);
                 return o;
@@ -222,29 +223,20 @@ Shader "FlexibleCelShader/Comic Book Style"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                int levels = max(_RampLevels - 1, 1);
+                float3 viewDir  = normalize(_WorldSpaceCameraPos.xyz - i.worldPos.xyz);
+                float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
 
-                float3 viewDirection  = normalize(_WorldSpaceCameraPos.xyz - i.worldPos.xyz);
-                float3 lightDirection = normalize(_WorldSpaceLightPos0.xyz);
+                fixed4 albedo   = tex2D(_MainTex,  i.uv * _MainTex_ST.xy  + _MainTex_ST.zw);
+                fixed4 emission = tex2D(_EmmisTex, i.uv * _EmmisTex_ST.xy + _EmmisTex_ST.zw);
 
-                // ── Sample textures ────────────────────────────────────────
-                fixed4 albedo        = tex2D(_MainTex,   i.uv * _MainTex_ST.xy  + _MainTex_ST.zw);
-                fixed3 tangentNormal = UnpackNormal(tex2D(_NormalTex, i.uv * _NormalTex_ST.xy + _NormalTex_ST.zw));
-                fixed4 emission      = tex2D(_EmmisTex,  i.uv * _EmmisTex_ST.xy + _EmmisTex_ST.zw);
-
-                // ── TBN matrix ─────────────────────────────────────────────
-                float3 T = normalize(i.worldTangent);
-                float3 B = normalize(i.worldBitangent);
                 float3 N = normalize(i.worldNormal);
 
-                // ── Normal map ─ Using geometric normals only (normal map disabled) ───────────────────
-                float3 worldNormal = N;
+                // ── Lean cel ramp ─────────────────────────────────────────
+                float shadow    = SHADOW_ATTENUATION(i);
+                float lightTerm = saturate(dot(N, lightDir) * _LightScalar) * shadow;
+                float celRamp   = ToonRamp(lightTerm);
 
-                // ── Indirect / ambient lighting ────────────────────────────
-                // Evaluated against the smooth geometric normal (N) rather
-                // than the bumped one.  This keeps ambient stable at all
-                // distances and prevents lightmap seams from fighting the
-                // normal map.
+                // ── Indirect / ambient ────────────────────────────────────
                 #ifdef LIGHTMAP_ON
                     float3 indirectLight = DecodeLightmap(
                         UNITY_SAMPLE_TEX2D(unity_Lightmap, i.lightmapUV)
@@ -253,83 +245,26 @@ Shader "FlexibleCelShader/Comic Book Style"
                     float3 indirectLight = ShadeSH9(float4(N, 1.0));
                 #endif
 
-                // ── Direct lighting — NdotL uses bumped normal for detail,
-                //    but we keep the raw (unshadowed) NdotL separate so we
-                //    can blend baked + realtime shadows properly below. ─────
-                fixed shadow    = SHADOW_ATTENUATION(i);
-                float NdotL     = dot(worldNormal, lightDirection);
+                // ── Shadow-color → lit-color blend ────────────────────────
+                float3 litColor    = _HighColor.rgb * _HighIntensity * _LightColor0.rgb;
+                float3 shadowColor = _LowColor.rgb  * _LowIntensity;
+                float3 diffuse     = lerp(shadowColor, litColor, celRamp);
 
-                // rawIntensity: purely geometry-driven, no shadow yet.
-                // Saturate NdotL first to preserve normal map detail, then apply
-                // light scalar for overall intensity. This prevents detail loss
-                // when light scalar is high.
-                float rawIntensity = saturate(NdotL) * _LightScalar;
+                float3 baseCol = albedo.rgb * _Color.rgb;
+                fixed4 col     = fixed4(baseCol * diffuse, albedo.a * _Color.a);
 
-                // Blend realtime shadow with baked lightmap contribution.
-                float shadowedIntensity = rawIntensity * shadow;
+                col.rgb += baseCol * indirectLight * _IndirectLightIntensity;
 
-                // ── Banded shadow transition ───────────────────────────────
-                float bandedIntensity = shadowedIntensity;
-                if (_UseShadowBands > 0.5)
-                {
-                    int   shadowBandLevels = max(_ShadowBands - 1, 1);
-                    float bandedValue      = round(shadowedIntensity * float(shadowBandLevels)) / float(shadowBandLevels);
-
-                    if (_ShadowBandSmoothness > 0.0)
-                    {
-                        float bandWidth    = 1.0 / float(shadowBandLevels);
-                        float bandPosition = frac(shadowedIntensity * float(shadowBandLevels));
-                        float smoothFactor = smoothstep(
-                            0.5 - _ShadowBandSmoothness,
-                            0.5 + _ShadowBandSmoothness,
-                            bandPosition
-                        );
-                        float nextBand  = min(bandedValue + bandWidth, 1.0);
-                        bandedIntensity = lerp(bandedValue, nextBand, smoothFactor);
-                    }
-                    else
-                    {
-                        bandedIntensity = bandedValue;
-                    }
-                }
-
-                // ── Quantize lighting intensity ────────────────────────────
-                float rampLevel      = round(bandedIntensity * float(levels));
-                float lightIntensity = rampLevel / float(levels);
-                float lightMultiplier = _LowIntensity + ((_HighIntensity - _LowIntensity) / float(levels)) * rampLevel;
-
-                float4 highColor = (rampLevel / float(levels)) * _HighColor;
-                float4 lowColor  = ((float(levels) - rampLevel) / float(levels)) * _LowColor;
-                float4 mixColor  = (highColor + lowColor) / 2.0;
-
-                // Direct light contribution
-                fixed4 col = albedo * _Color * mixColor * lightMultiplier * float4(_LightColor0.rgb, 1);
-
-                // Indirect light contribution.
-                col.rgb += albedo.rgb * _Color.rgb * indirectLight * _IndirectLightIntensity;
-
-                // ── Rim light ──────────────────────────────────────────────
-                half  factor          = dot(viewDirection, N);
-                float currentRimAlpha = _RimAlpha * (1.0 - ((1.0 - lightIntensity) * (1.0 - _RimDropOff)));
+                // ── Banded hard edge (rim) light ──────────────────────────
+                half  rimDot          = dot(viewDir, N);
+                float currentRimAlpha = _RimAlpha * (1.0 - ((1.0 - celRamp) * (1.0 - _RimDropOff)));
                 float rimRange        = max(_RimPower, 0.0001);
-                float rimFactor       = saturate((rimRange - factor) / rimRange);
-                int rimBandLevels     = max(_RimBands - 1, 1);
+                float rimFactor       = saturate((rimRange - rimDot) / rimRange);
+                int   rimBandLevels   = max(_RimBands - 1, 1);
                 float rimBanded       = round(rimFactor * float(rimBandLevels)) / float(rimBandLevels);
                 col.rgb = lerp(col.rgb, _RimColor.rgb, rimBanded * currentRimAlpha);
 
-                // ── Specular highlights ────────────────────────────────────
-                float3 halfVector      = normalize(lightDirection + viewDirection);
-                float  specularDot     = max(dot(worldNormal, halfVector), 0.0);
-                float  specularRaw     = pow(specularDot, max(_SpecularSmoothness, 1.0));
-                specularRaw            = saturate((specularRaw - (1.0 - _SpecularSize)) / max(_SpecularSize, 0.0001));
-
-                int   specularBandLvls = max(_SpecularBands, 1);
-                float specularBanded   = round(specularRaw * float(specularBandLvls - 1)) / float(max(specularBandLvls - 1, 1));
-
-                float rampPercentSpecular = 1.0 - ((1.0 - lightIntensity) * (1.0 - _SpecularShadowDropoff));
-                col.rgb += _SpecularColor.rgb * specularBanded * _SpecularIntensity * rampPercentSpecular;
-
-                // ── Emission ───────────────────────────────────────────────
+                // ── Emission ──────────────────────────────────────────────
                 half eIntensity = max(max(emission.r, emission.g), emission.b);
                 col.rgb = emission.rgb * eIntensity + col.rgb * (1.0 - eIntensity);
 
@@ -340,6 +275,9 @@ Shader "FlexibleCelShader/Comic Book Style"
 
         // ═══════════════════════════════════════════════════════════════════
         //  FORWARD ADD PASS  (additional lights: point, spot, etc)
+        //
+        //  Same lean ramp, blended up from black so each extra light only
+        //  adds its lit contribution (no unlit color, no ambient, no rim).
         // ═══════════════════════════════════════════════════════════════════
         Pass
         {
@@ -351,123 +289,80 @@ Shader "FlexibleCelShader/Comic Book Style"
             #pragma vertex   vert
             #pragma fragment frag
 
-            #pragma multi_compile_fwdadd
+            #pragma multi_compile_fwdadd_fullshadows
+
             #include "UnityCG.cginc"
             #include "Lighting.cginc"
             #include "AutoLight.cginc"
 
             struct appdata
             {
-                float4 vertex    : POSITION;
-                float3 normal    : NORMAL;
-                float4 tangent   : TANGENT;
-                float2 texcoord  : TEXCOORD0;
+                float4 vertex   : POSITION;
+                float3 normal   : NORMAL;
+                float2 texcoord : TEXCOORD0;
             };
 
             struct v2f
             {
-                float2 uv             : TEXCOORD0;
-                SHADOW_COORDS(1)
-                float3 worldNormal    : TEXCOORD2;
-                float3 worldTangent   : TEXCOORD3;
-                float3 worldBitangent : TEXCOORD4;
-                float4 worldPos       : TEXCOORD5;
-                float4 pos            : SV_POSITION;
+                float2 uv          : TEXCOORD0;
+                float3 worldNormal : TEXCOORD1;
+                float4 worldPos    : TEXCOORD2;
+                float4 pos         : SV_POSITION;
+                LIGHTING_COORDS(3, 4)
             };
 
             float4    _Color;
             sampler2D _MainTex;
             float4    _MainTex_ST;
-            sampler2D _NormalTex;
-            float4    _NormalTex_ST;
-            float     _NormalStrength;
-            int       _RampLevels;
             float     _LightScalar;
             float     _HighIntensity;
             float4    _HighColor;
-            float     _LowIntensity;
-            float4    _LowColor;
             float     _UseShadowBands;
             int       _ShadowBands;
             float     _ShadowBandSmoothness;
 
+            float ToonRamp(float x)
+            {
+                x = saturate(x);
+                if (_UseShadowBands < 0.5)
+                    return x;
+
+                float steps  = max((float)_ShadowBands - 1.0, 1.0);
+                float scaled = x * steps;
+                float lower  = floor(scaled);
+                float f      = scaled - lower;
+                float w      = max(_ShadowBandSmoothness, 1e-5);
+                float blend  = smoothstep(0.5 - w, 0.5 + w, f);
+                return (lower + blend) / steps;
+            }
+
             v2f vert(appdata v)
             {
                 v2f o;
-                o.uv             = v.texcoord;
-                o.worldPos       = mul(unity_ObjectToWorld, v.vertex);
-                o.pos            = mul(UNITY_MATRIX_VP, o.worldPos);
-                o.worldNormal    = UnityObjectToWorldNormal(v.normal);
-                o.worldTangent   = UnityObjectToWorldDir(v.tangent.xyz);
-                o.worldBitangent = cross(o.worldNormal, o.worldTangent) * v.tangent.w;
-
-                TRANSFER_SHADOW(o);
+                o.uv          = v.texcoord;
+                o.worldPos    = mul(unity_ObjectToWorld, v.vertex);
+                o.pos         = mul(UNITY_MATRIX_VP, o.worldPos);
+                o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                TRANSFER_VERTEX_TO_FRAGMENT(o);
                 return o;
             }
 
             fixed4 frag(v2f i) : SV_Target
             {
-                int levels = max(_RampLevels - 1, 1);
-
-                float3 viewDirection  = normalize(_WorldSpaceCameraPos.xyz - i.worldPos.xyz);
-                float3 lightDirection = normalize(UnityWorldSpaceLightDir(i.worldPos));
-
-                // ── Sample textures ────────────────────────────────────────
-                fixed4 albedo        = tex2D(_MainTex,   i.uv * _MainTex_ST.xy  + _MainTex_ST.zw);
-                fixed3 tangentNormal = UnpackNormal(tex2D(_NormalTex, i.uv * _NormalTex_ST.xy + _NormalTex_ST.zw));
-
-                // ── TBN matrix ────────────────────────────────────────────
-                float3 T = normalize(i.worldTangent);
-                float3 B = normalize(i.worldBitangent);
                 float3 N = normalize(i.worldNormal);
+                float3 lightDir = normalize(UnityWorldSpaceLightDir(i.worldPos.xyz));
 
-                // ── Normal map — Using geometric normals only (normal map disabled) ────────────
-                float3 worldNormal = N;
+                UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos.xyz);
 
-                // ── Direct lighting from additional lights ────────────────
-                fixed shadow    = SHADOW_ATTENUATION(i);
-                float NdotL     = dot(worldNormal, lightDirection);
-                float rawIntensity = saturate(NdotL) * _LightScalar;
-                float shadowedIntensity = rawIntensity * shadow;
+                fixed4 albedo = tex2D(_MainTex, i.uv * _MainTex_ST.xy + _MainTex_ST.zw);
 
-                // ── Banded shadow transition ───────────────────────────────
-                float bandedIntensity = shadowedIntensity;
-                if (_UseShadowBands > 0.5)
-                {
-                    int   shadowBandLevels = max(_ShadowBands - 1, 1);
-                    float bandedValue      = round(shadowedIntensity * float(shadowBandLevels)) / float(shadowBandLevels);
+                float lightTerm = saturate(dot(N, lightDir) * _LightScalar) * atten;
+                float celRamp   = ToonRamp(lightTerm);
 
-                    if (_ShadowBandSmoothness > 0.0)
-                    {
-                        float bandWidth    = 1.0 / float(shadowBandLevels);
-                        float bandPosition = frac(shadowedIntensity * float(shadowBandLevels));
-                        float smoothFactor = smoothstep(
-                            0.5 - _ShadowBandSmoothness,
-                            0.5 + _ShadowBandSmoothness,
-                            bandPosition
-                        );
-                        float nextBand  = min(bandedValue + bandWidth, 1.0);
-                        bandedIntensity = lerp(bandedValue, nextBand, smoothFactor);
-                    }
-                    else
-                    {
-                        bandedIntensity = bandedValue;
-                    }
-                }
+                float3 litColor = _HighColor.rgb * _HighIntensity * _LightColor0.rgb;
+                float3 add      = albedo.rgb * _Color.rgb * litColor * celRamp;
 
-                // ── Quantize lighting intensity ────────────────────────────
-                float rampLevel      = round(bandedIntensity * float(levels));
-                float lightIntensity = rampLevel / float(levels);
-                float lightMultiplier = _LowIntensity + ((_HighIntensity - _LowIntensity) / float(levels)) * rampLevel;
-
-                float4 highColor = (rampLevel / float(levels)) * _HighColor;
-                float4 lowColor  = ((float(levels) - rampLevel) / float(levels)) * _LowColor;
-                float4 mixColor  = (highColor + lowColor) / 2.0;
-
-                // ── Accumulate this light's contribution
-                fixed4 col = albedo * _Color * mixColor * lightMultiplier * float4(_LightColor0.rgb, 1);
-
-                return col;
+                return fixed4(add, 1.0);
             }
             ENDCG
         }

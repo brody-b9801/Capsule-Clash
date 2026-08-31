@@ -15,11 +15,13 @@ Material:
   m_InvalidKeywords:
   - _EMISSION
   - _NORMALMAP
+  - _OUTLINESCREENSPACE_ON
   - _SEGMENTED_ON
   - _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
   - _USECROSSHATCH_ON
   - _USEFLATSHADING_ON
   - _USERIMBANDS_ON
+  - _USESHADOWBANDS_ON
   m_LightmapFlags: 1
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -105,7 +107,7 @@ Material:
     - _GlossMapScale: 0.3
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _HighIntensity: 2.5
+    - _HighIntensity: 1.5
     - _HighlightDotDistanceScale: 0.5
     - _HighlightDotIntensity: 0.4
     - _HighlightDotScale: 120
@@ -113,7 +115,7 @@ Material:
     - _HighlightDotThreshold: 0.7
     - _IndirectLightIntensity: 0.3
     - _LightScalar: 1.2
-    - _LowIntensity: 2
+    - _LowIntensity: 1
     - _Lumin: 0
     - _MaxLight: 1
     - _Metallic: 0.1
@@ -128,7 +130,8 @@ Material:
     - _OutlineDistanceScale: 0.1
     - _OutlineLightModulation: 0
     - _OutlineScaleStartDistance: 0
-    - _OutlineSize: 0
+    - _OutlineScreenSpace: 1
+    - _OutlineSize: 0.028
     - _Parallax: 0.02
     - _RampLevels: 4
     - _RimAlpha: 0.5
@@ -144,7 +147,7 @@ Material:
     - _RimPower: 0.7
     - _Segmented: 1
     - _ShadowBandSmoothness: 0
-    - _ShadowBands: 10
+    - _ShadowBands: 4
     - _ShadowHatchAngle: 45
     - _ShadowHatchDistanceScale: 0.5
     - _ShadowHatchIntensity: 0.8
@@ -171,7 +174,7 @@ Material:
     - _UseHighlightDots: 0
     - _UseRimBands: 1
     - _UseRimHatch: 0
-    - _UseShadowBands: 0
+    - _UseShadowBands: 1
     - _UseShadowHatch: 0
     - _ZWrite: 1
     m_Colors:

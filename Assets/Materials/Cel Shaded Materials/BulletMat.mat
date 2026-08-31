@@ -19,6 +19,7 @@ Material:
   - _USEFLATSHADING_ON
   - _USEINKNOISE_ON
   - _USERIMBANDS_ON
+  - _USESHADOWBANDS_ON
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -141,7 +142,7 @@ Material:
     - _RimHatchWidth: 0.3
     - _RimPower: 0.5
     - _ShadowBandSmoothness: 0
-    - _ShadowBands: 2
+    - _ShadowBands: 4
     - _ShadowHatchAngle: 45
     - _ShadowHatchCross: 1
     - _ShadowHatchCrossThreshold: 0.3
@@ -171,7 +172,7 @@ Material:
     - _UsePosterize: 0
     - _UseRimBands: 1
     - _UseRimHatch: 0
-    - _UseShadowBands: 0
+    - _UseShadowBands: 1
     - _UseShadowHatch: 0
     - _ZWrite: 1
     m_Colors:
