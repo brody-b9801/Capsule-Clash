@@ -4,6 +4,7 @@ using UnityEditor.Build.Reporting;
 using UnityEngine;
 using System.Diagnostics;
 using System.IO.Compression;
+using System.IO;
 
 public class PostBuild : IPostprocessBuildWithReport
 {
@@ -20,6 +21,11 @@ public class PostBuild : IPostprocessBuildWithReport
 
     public void OnPostprocessBuild(BuildReport report)
     {
-        ZipFile.CreateFromDirectory("Builds", "Builds.zip");
+        string zip_path = "Builds.zip";
+        if (File.Exists(zip_path))
+        {
+            File.Delete(zip_path);
+        }
+        ZipFile.CreateFromDirectory("Builds", zip_path);
     }
 }
