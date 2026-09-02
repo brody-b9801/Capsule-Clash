@@ -1,0 +1,10 @@
+name: Runner Test
+on: workflow_dispatch
+
+jobs:
+  hello:
+    runs-on: [self-hosted, unity-windows]
+    steps:
+      - run: echo "runner is alive"
+      - run: systeminfo | Select-String "Total Physical Memory"
+        shell: powershell
