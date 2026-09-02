@@ -16,6 +16,7 @@ Material:
   - _DYNAMICOUTLINE_ON
   - _METALLICGLOSSMAP
   - _NORMALMAP
+  - _OUTLINESCREENSPACE_ON
   - _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
   - _USECROSSHATCH_ON
   - _USEFLATSHADING_ON
@@ -129,6 +130,7 @@ Material:
     - _OutlineDistanceScale: 1
     - _OutlineLightModulation: 0
     - _OutlineScaleStartDistance: 0
+    - _OutlineScreenSpace: 1
     - _OutlineSize: 0.004
     - _Parallax: 0.005
     - _RampLevels: 4
