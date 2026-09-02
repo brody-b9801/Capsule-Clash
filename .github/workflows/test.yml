@@ -6,7 +6,6 @@ jobs:
     runs-on: [self-hosted, unity-windows]
     defaults:
       run:
-        shell: powershell
+        shell: pwsh
     steps:
       - run: Write-Host "runner is alive"
-      - run: Get-ComputerInfo | Select-Object CsName, OsName
