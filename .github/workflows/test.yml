@@ -1,11 +1,10 @@
 name: Runner Test
 on: workflow_dispatch
-
 jobs:
   hello:
     runs-on: [self-hosted, unity_windows]
     defaults:
       run:
-        shell: pwsh
+        shell: powershell
     steps:
       - run: Write-Host "runner is alive"
