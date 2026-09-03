@@ -3,8 +3,6 @@ on: workflow_dispatch
 jobs:
   hello:
     runs-on: [self-hosted, unity_windows]
-    defaults:
-      run:
-        shell: powershell
     steps:
-      - run: Write-Host "runner is alive"
+      - run: echo runner is alive
+        shell: cmd
