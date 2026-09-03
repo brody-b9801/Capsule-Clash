@@ -1,0 +1,33 @@
+name: Capsule Clash Build
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: [self-hosted, unity_windows]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-StandaloneWindows64-${{ hashFiles('Packages/packages-lock.json') }}
+          restore-keys: |
+            Library-StandaloneWindows64-
+            Library-
+
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.RUNNER_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: StandaloneWindows64
+          buildMethod: CIBuild.BuildWindows
+          buildPath: build/Client
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client
+          path: build/Client
