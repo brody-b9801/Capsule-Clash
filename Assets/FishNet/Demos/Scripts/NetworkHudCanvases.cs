@@ -58,7 +58,11 @@ namespace FishNet.Example
         /// </summary>
         [Tooltip("Indicator for client state.")]
         [SerializeField]
-        private Image _clientIndicator;
+        private Image _clientJoin;
+        [SerializeField]
+        private GameObject _loadingCanvas;
+        [SerializeField]
+        private Canvas _roomMenu;
         #endregion
 
         #region Private.
@@ -82,22 +86,20 @@ namespace FishNet.Example
 #endif
         #endregion
 
-        private void OnGUI()
+        private string GetNextStateText(LocalConnectionState state)
         {
-
-            string GetNextStateText(LocalConnectionState state)
-            {
-                if (state == LocalConnectionState.Stopped)
-                    return "Start";
-                else if (state == LocalConnectionState.Starting)
-                    return "Starting";
-                else if (state == LocalConnectionState.Stopping)
-                    return "Stopping";
-                else if (state == LocalConnectionState.Started)
-                    return "Stop";
-                else
-                    return "Invalid";
-            }
+            _roomMenu.enabled = state == LocalConnectionState.Stopped;
+            _loadingCanvas.SetActive(state == LocalConnectionState.Starting || state == LocalConnectionState.Stopping);
+            if (state == LocalConnectionState.Stopped) 
+                return "Start";
+            else if (state == LocalConnectionState.Starting)
+                return "Starting";
+            else if (state == LocalConnectionState.Stopping) 
+                return "Stopping";
+            else if (state == LocalConnectionState.Started)                  
+                return "Stop";
+            else
+                return "Invalid";
         }
 
         private void Start()
@@ -111,7 +113,7 @@ namespace FishNet.Example
             else
             {
                 UpdateColor(LocalConnectionState.Stopped, ref _serverIndicator);
-                UpdateColor(LocalConnectionState.Stopped, ref _clientIndicator);
+                UpdateColor(LocalConnectionState.Stopped, ref _clientJoin);
                 _networkManager.ServerManager.OnServerConnectionState += ServerManager_OnServerConnectionState;
                 _networkManager.ClientManager.OnClientConnectionState += ClientManager_OnClientConnectionState;
             }
@@ -121,7 +123,7 @@ namespace FishNet.Example
         {
             if (_networkManager == null)
                 return;
-
+            _loadingCanvas.SetActive(false);
             _networkManager.ServerManager.OnServerConnectionState -= ServerManager_OnServerConnectionState;
             _networkManager.ClientManager.OnClientConnectionState -= ClientManager_OnClientConnectionState;
         }
@@ -134,9 +136,9 @@ namespace FishNet.Example
         private void UpdateColor(LocalConnectionState state, ref Image img)
         {
             Color c;
-            if (state == LocalConnectionState.Started)
+            if (state == LocalConnectionState.Started) {
                 c = _startedColor;
-            else if (state == LocalConnectionState.Stopped)
+            } else if (state == LocalConnectionState.Stopped)
                 c = _stoppedColor;
             else
                 c = _changingColor;
@@ -147,7 +149,7 @@ namespace FishNet.Example
         private void ClientManager_OnClientConnectionState(ClientConnectionStateArgs obj)
         {
             _clientState = obj.ConnectionState;
-            UpdateColor(obj.ConnectionState, ref _clientIndicator);
+            UpdateColor(obj.ConnectionState, ref _clientJoin);
         }
 
         private void ServerManager_OnServerConnectionState(ServerConnectionStateArgs obj)
@@ -168,18 +170,22 @@ namespace FishNet.Example
 
         }
 
-        public void OnClick_Client()
+        public void OnClick_Client_Start()
+        {
+            if (_networkManager == null)
+                return;
+            _networkManager.ClientManager.StartConnection();
+            GetNextStateText(_clientState);
+        }
+
+        public void OnClick_Client_Stop()
         {
             if (_networkManager == null)
                 return;
 
             if (_clientState != LocalConnectionState.Stopped)
                 _networkManager.ClientManager.StopConnection();
-            else
-                _networkManager.ClientManager.StartConnection();
-
+            GetNextStateText(_clientState);
         }
-
-
     }
 }
