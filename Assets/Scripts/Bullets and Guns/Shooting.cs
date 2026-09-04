@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
@@ -10,6 +10,7 @@ using TMPro;
 using NUnit.Framework;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 using NUnit.Framework.Internal;
 using Unity.VisualScripting;
 
@@ -108,7 +109,6 @@ public class Shooting : NetworkBehaviour
     public static float changeOffset;
     public static float changeRotOffset;
     public static bool  playerJoin;
-    public static bool  leaveHover = false;
 
 
     private Transform bulletHole;
@@ -119,6 +119,7 @@ public class Shooting : NetworkBehaviour
     private Material  muzzleFlashCameraMat;
     private float     alphaVal;
     private bool      isFiringBullet = false;
+    private bool      clickStartedOverUI = false;
     private bool      canChangeGun   = true;
     private bool      changingGun    = false;
 
@@ -225,9 +226,16 @@ public class Shooting : NetworkBehaviour
 
         ref int ammo = ref shotgun ? ref shottieNum : ref reloadNum;
 
+            if (Input.GetMouseButtonDown(0))
+                clickStartedOverUI = Cursor.lockState == CursorLockMode.None &&
+                                     EventSystem.current != null &&
+                                     EventSystem.current.IsPointerOverGameObject();
+            else if (Input.GetMouseButtonUp(0))
+                clickStartedOverUI = false;
+
             bool inputCheck = shotgun ? Input.GetMouseButtonDown(0) : Input.GetMouseButton(0);
             if (inputCheck && Time.time >= nextFireTime &&
-                ammo > 0 && !reloading && canShoot && !PlayerMovement.Local.dead && !HoverCheck.isHovering)
+                ammo > 0 && !reloading && canShoot && !PlayerMovement.Local.dead && !clickStartedOverUI)
             {
                 Vector3 useCameraPos = IsValidVector3(cameraPosition) ? cameraPosition : posSave;
                 posSave = useCameraPos;
@@ -510,8 +518,10 @@ public class Shooting : NetworkBehaviour
 
     private void LateUpdate()
     {
-        if (lockCursor && !HoverCheck.isHovering)
+        if (lockCursor && !clickStartedOverUI)
             Cursor.lockState = CursorLockMode.Locked;
+        else
+            lockCursor = false;
     }
 
     [ServerRpc]

@@ -47801,7 +47801,9 @@ MonoBehaviour:
   _changingColor: {r: 1, g: 1, b: 1, a: 0.5019608}
   _startedColor: {r: 0, g: 0.5882353, b: 0.64705884, a: 1}
   _serverIndicator: {fileID: 353666785}
-  _clientIndicator: {fileID: 1458125403}
+  _clientJoin: {fileID: 1458125403}
+  _loadingCanvas: {fileID: 1729782251}
+  _roomMenu: {fileID: 2048291297}
 --- !u!1 &246624359
 GameObject:
   m_ObjectHideFlags: 0
@@ -56380,7 +56382,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7917897916242397274, guid: 4b26ef6c30b044a4fab06b155ab6f08f, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: OnClick_Client
+      value: OnClick_Client_Start
       objectReference: {fileID: 0}
     - target: {fileID: 7917897916242397274, guid: 4b26ef6c30b044a4fab06b155ab6f08f, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
@@ -236989,7 +236991,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3414662637742749596, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -26.659973
+      value: -26.659912
       objectReference: {fileID: 0}
     - target: {fileID: 4393252309867130424, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
@@ -317854,7 +317856,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1729782252
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -332080,7 +332082,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7127484850027464541, guid: 3914713c08630f4489a2d0687a44e381, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -211.49988
+      value: -211.4999
       objectReference: {fileID: 0}
     - target: {fileID: 7345246892319229508, guid: 3914713c08630f4489a2d0687a44e381, type: 3}
       propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
@@ -363434,7 +363436,6 @@ GameObject:
   - component: {fileID: 1994853058}
   - component: {fileID: 1994853057}
   - component: {fileID: 1994853056}
-  - component: {fileID: 1994853059}
   m_Layer: 5
   m_Name: Button
   m_TagString: Untagged
@@ -363545,18 +363546,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1994853054}
   m_CullTransparentMesh: 1
---- !u!114 &1994853059
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1994853054}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 82fc7e4ec1a63f54e9c7266412eb86f6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1996030634
 GameObject:
   m_ObjectHideFlags: 0
