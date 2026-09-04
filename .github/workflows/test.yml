@@ -1,0 +1,8 @@
+name: Runner Test
+on: workflow_dispatch
+jobs:
+  hello:
+    runs-on: [self-hosted, unity_windows]
+    steps:
+      - run: echo runner is alive
+        shell: cmd
