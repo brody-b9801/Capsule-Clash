@@ -9,7 +9,7 @@ using NUnit.Framework;
 using Unity.VisualScripting;
 using Cinemachine.Utility;
 
-[RequireComponent(typeof(MaskController))]
+[RequireComponent(typeof(ServerController))]
 public class PlayerMovement : NetworkBehaviour {
     public static float moveSpeed = 4.0f;
     [SerializeField] private float jumpForce = 8.0f;
@@ -198,7 +198,7 @@ public class PlayerMovement : NetworkBehaviour {
 
     public string currDimension = "Desert";
     private float gravity = 9.81f;
-    private MaskController maskController;
+    private ServerController serverController;
 
     private Material desertSky;
     public Material spaceSky;
@@ -319,7 +319,7 @@ public class PlayerMovement : NetworkBehaviour {
             gunRenderer.enableGun();
             settingsControl = GameObject.Find("Room Menu (1)").GetComponent<SettingsController>();
             leaderboardControl = GetComponent<LeaderboardControl>();
-            maskController = GetComponent<MaskController>();
+            serverController = GetComponent<ServerController>();
             iceSpawnPosContainer = GameObject.Find("IceSpawnContainer").transform;
             spaceSpawnPosContainer = GameObject.Find("VoidSpawnContainer").transform;
             mazeSpawnPosContainer = GameObject.Find("MazeSpawnContainer").transform;
@@ -379,8 +379,8 @@ public class PlayerMovement : NetworkBehaviour {
             username = RoomMenu.TypedUsername;
 
             RetroDither.isTeleporting = true;
-            maskController.Initialize(playerCamera);
-            maskController.BeginOpeningScene();
+            serverController.Initialize(playerCamera);
+            serverController.BeginOpeningScene();
             Camera.main.GetComponent<FogShader>().ChangeDimension("Desert");
 
             desertSky = RenderSettings.skybox;
@@ -437,7 +437,7 @@ public class PlayerMovement : NetworkBehaviour {
     private bool CanJump() { return isGrounded; }
 
     private void Update() {
-        if (!IsOwner || MaskController.maskAnimationPlaying) return;
+        if (!IsOwner || ServerController.serverAnimationPlaying) return;
 
         if (!started) return;
         CacheInputs();
@@ -541,10 +541,10 @@ private void UpdateMovementVector()
     percentAccelerated = Mathf.Clamp01(movement.magnitude / (targetSpeed * 0.8f));    percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f * Time.deltaTime));
 }
     private Vector3 GetJumpAndGravityVector() {
-        if (_jump) maskController.TryFeed();
+        if (_jump) serverController.TryFeed();
         
 
-        if (_jump && isGrounded && !isAiming && !maskController.LookingAtMask) {
+        if (_jump && isGrounded && !isAiming && !serverController.LookingAtServer) {
             if (currDimension == "Maze")
                 newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
             else if (currDimension == "Space")
@@ -790,7 +790,7 @@ private void UpdateMovementVector()
             else if (hitObject == portal2B) HandleTeleportation(portal2A, spaceInfo);
             else if (hitObject == portal3A) HandleTeleportation(portal3B, desertInfo);
             else if (hitObject == portal3B) HandleTeleportation(portal3A, iceInfo);
-            else if (hitObject == portal4 && MaskController.Local.keyCount == 3) {
+            else if (hitObject == portal4 && ServerController.Local.keyCount == 3) {
             }
         }
     }
@@ -885,7 +885,12 @@ private void UpdateMovementVector()
         Cursor.lockState = CursorLockMode.None;
         Shooting.lockCursor = false;
         transform.position = new Vector3(0, -30, 0);
-        RenderSettings.skybox = desertSky;
+        // No skybox change here on purpose. RenderSettings.skybox is global, and
+        // Die() reaches every client through ApplyDamageFeedback's ObserversRpc, so
+        // resetting it dropped the desert sky on the whole lobby whenever anyone died
+        // - and on non-owner instances desertSky is never assigned, so it blanked the
+        // sky outright. Respawn() keeps the player in currDimension, so that
+        // dimension's skybox is already the one that should stay up.
     }
     public void Respawn() {
         DamageControl.Local.health.Value = 180;
@@ -940,7 +945,7 @@ private void UpdateMovementVector()
     public void killHealSync(NetworkObject shooter) {
         if (SettingsController.lifetimeKills == 0)
         {
-            StartCoroutine(maskController.StartFirstKillScene());
+            StartCoroutine(serverController.StartFirstKillScene());
         }
         if (Local != null && Local.NetworkObject == shooter) {
             upgradeManager.Local.killPoints++;
@@ -981,7 +986,7 @@ private void UpdateMovementVector()
         groundDeceleration = target.decel;
         friction = target.fric;
 
-        maskController.DisplayDimension();
+        serverController.DisplayDimension();
         GetComponent<ChangeMat>().dimensionMaterialChange(target.materialName);
         Camera.main.GetComponent<SnowParticles>().toggleParticles(target.snow);
         Camera.main.GetComponent<FogShader>().ChangeDimension(target.name);
@@ -1279,12 +1284,12 @@ private void UpdateMovementVector()
         sideTilt = Mathf.Lerp(sideTilt, targetSideTilt, Time.deltaTime * lerpSpeed);
     }
     private void LateUpdate() {
-        if (!IsOwner || MaskController.maskAnimationPlaying) return;
+        if (!IsOwner || ServerController.serverAnimationPlaying) return;
         if (!Shooting.Local.reloading) {
             akm.localPosition = akmBaseLocalPos;
             akm.localEulerAngles = akmBaseLocalRot;
         }
-        if (!dead && !MaskController.maskAnimationPlaying) {
+        if (!dead && !ServerController.serverAnimationPlaying) {
             //playerCamera.gameObject.transform.position = transform.position + new Vector3(.5f * Mathf.Sin(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad), .75f, .5f * Mathf.Cos(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad)) + landingCameraOffset;
             playerCamera.gameObject.transform.position = transform.position + new Vector3(0, .75f, 0) + landingCameraOffset + 0.4f * transform.forward;
             if (!Shooting.Local.reloading) {

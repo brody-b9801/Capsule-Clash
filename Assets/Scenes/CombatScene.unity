@@ -47803,7 +47803,7 @@ MonoBehaviour:
   _serverIndicator: {fileID: 353666785}
   _clientJoin: {fileID: 1458125403}
   _loadingCanvas: {fileID: 1729782251}
-  _roomMenu: {fileID: 2048291297}
+  _roomMenu: {fileID: 2048291304}
 --- !u!1 &246624359
 GameObject:
   m_ObjectHideFlags: 0
@@ -372453,6 +372453,11 @@ MonoBehaviour:
   titleBg: {fileID: 206699339}
   usernameInput: {fileID: 1731999501}
   instructions: {fileID: 843233339}
+--- !u!223 &2048291304 stripped
+Canvas:
+  m_CorrespondingSourceObject: {fileID: 8763101913705298800, guid: 5a577542a281e0a448dc3b383023e1f2, type: 3}
+  m_PrefabInstance: {fileID: 152497817}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2048504559
 GameObject:
   m_ObjectHideFlags: 0
