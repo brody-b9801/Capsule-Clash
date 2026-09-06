@@ -64,11 +64,11 @@ public class SaveSystem : MonoBehaviour
     static bool pendingSpaceKeyAcquired;
     static bool pendingIceKeyAcquired;
 
-    public static void ApplyPendingMaskData(MaskController mask)
+    public static void ApplyPendingServerData(ServerController server)
     {
-        mask.mazeKeyAcquired = pendingMazeKeyAcquired;
-        mask.spaceKeyAcquired = pendingSpaceKeyAcquired;
-        mask.iceKeyAcquired = pendingIceKeyAcquired;
+        server.mazeKeyAcquired = pendingMazeKeyAcquired;
+        server.spaceKeyAcquired = pendingSpaceKeyAcquired;
+        server.iceKeyAcquired = pendingIceKeyAcquired;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -127,8 +127,8 @@ public class SaveSystem : MonoBehaviour
 
         if (upgradeManager.Local != null)
             ApplyPendingUpgradeData(upgradeManager.Local);
-        if (MaskController.Local != null)
-            ApplyPendingMaskData(MaskController.Local);
+        if (ServerController.Local != null)
+            ApplyPendingServerData(ServerController.Local);
         if (PlayerMovement.Local != null)
             ApplyPendingKillData(PlayerMovement.Local);
     }
@@ -140,10 +140,10 @@ public class SaveSystem : MonoBehaviour
         int savedUpgradePoints = manager != null ? manager.upgradePoints : pendingUpgradePoints;
         int[] savedUpgradesPurchased = manager != null ? manager.upgradesPurchased : pendingUpgradesPurchased;
 
-        MaskController mask = MaskController.Local;
-        bool savedMazeKey = mask != null ? mask.mazeKeyAcquired : pendingMazeKeyAcquired;
-        bool savedSpaceKey = mask != null ? mask.spaceKeyAcquired : pendingSpaceKeyAcquired;
-        bool savedIceKey = mask != null ? mask.iceKeyAcquired : pendingIceKeyAcquired;
+        ServerController server = ServerController.Local;
+        bool savedMazeKey = server != null ? server.mazeKeyAcquired : pendingMazeKeyAcquired;
+        bool savedSpaceKey = server != null ? server.spaceKeyAcquired : pendingSpaceKeyAcquired;
+        bool savedIceKey = server != null ? server.iceKeyAcquired : pendingIceKeyAcquired;
 
         PlayerData playerData = new PlayerData(
             SettingsController.volumePercent,
