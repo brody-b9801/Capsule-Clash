@@ -63,6 +63,8 @@ namespace FishNet.Example
         private GameObject _loadingCanvas;
         [SerializeField]
         private Canvas _roomMenu;
+        [SerializeField]
+        private Canvas _gameHUD;
         #endregion
 
         #region Private.
@@ -78,6 +80,7 @@ namespace FishNet.Example
         /// Current state of server socket.
         /// </summary>
         private LocalConnectionState _serverState = LocalConnectionState.Stopped;
+        private bool checkStateChange = false;
 #if !ENABLE_INPUT_SYSTEM
         /// <summary>
         /// EventSystem for the project.
@@ -86,10 +89,18 @@ namespace FishNet.Example
 #endif
         #endregion
 
+        void Update()
+        {
+            if (checkStateChange) 
+                GetNextStateText(_clientState);
+        }
+
         private string GetNextStateText(LocalConnectionState state)
         {
             _roomMenu.enabled = state == LocalConnectionState.Stopped;
             _loadingCanvas.SetActive(state == LocalConnectionState.Starting || state == LocalConnectionState.Stopping);
+            _gameHUD.enabled = state == LocalConnectionState.Started;
+            checkStateChange = _loadingCanvas.activeSelf;
             if (state == LocalConnectionState.Stopped) 
                 return "Start";
             else if (state == LocalConnectionState.Starting)
