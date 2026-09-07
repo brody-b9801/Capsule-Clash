@@ -8,7 +8,6 @@ public class ServerController : MonoBehaviour {
 
     public static ServerController Local { get; private set; }
 
-    public int keyCount = 0;
     [SerializeField] private GameObject keyPrefab;
 
     private Camera playerCamera;
@@ -49,6 +48,14 @@ public class ServerController : MonoBehaviour {
     public bool LookingAtServer => seeingMazeServer || seeingSpaceServer || seeingIceServer;
     private bool AllKeysAcquired => mazeKeyAcquired && spaceKeyAcquired && iceKeyAcquired;
 
+    /// <summary>
+    /// Derived from the key flags rather than counted alongside them. Only the
+    /// three flags are persisted, so a separately incremented counter came back
+    /// as 0 for a player who reloaded with keys already earned, and portal4's
+    /// keyCount == 3 gate could never open even though AllKeysAcquired was true.
+    /// </summary>
+    public int keyCount => (mazeKeyAcquired ? 1 : 0) + (spaceKeyAcquired ? 1 : 0) + (iceKeyAcquired ? 1 : 0);
+
     private void Awake() {
         SaveSystem.ApplyPendingServerData(this);
     }
@@ -86,7 +93,6 @@ public class ServerController : MonoBehaviour {
         mazeServerTransform = GameObject.Find("MaskMaze").transform;
         spaceServerTransform = GameObject.Find("MaskSpace").transform;
         iceServerTransform = GameObject.Find("MaskIce").transform;
-        keyCount = 0;
         ui = GameObject.FindObjectsByType<BuildUI>(FindObjectsSortMode.None)[0];
         gun = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
     }
@@ -245,7 +251,6 @@ public class ServerController : MonoBehaviour {
         if (upgradeManager.Local.killPoints >= 5) {
             upgradeManager.Local.killPoints -= 5;
             keyAcquired = true;
-            keyCount++;
             ResetServerState();
             activeSceneCoroutine = StartCoroutine(cutscene);
             SaveSystem.SavePlayerData();
