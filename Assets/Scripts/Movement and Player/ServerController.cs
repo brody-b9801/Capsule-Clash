@@ -372,7 +372,6 @@ public class ServerController : MonoBehaviour {
 
     IEnumerator StartIceScene() {
         while (ServerSpeaking) yield return null;
-        iceKeyAcquired = false;
         if (iceEntered) {
             StartServerSpeak("Welcome back to the Tundra");
         } else {
