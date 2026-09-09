@@ -10,6 +10,9 @@ public class DamageControl : NetworkBehaviour
     public readonly SyncVar<float> health = new SyncVar<float>(
         180f, new SyncTypeSettings(WritePermission.ClientUnsynchronized, ReadPermission.Observers));
 
+    public readonly SyncVar<float> damageMultiplier = new SyncVar<float>(
+        1f, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.Observers));
+
     [SerializeField] private int damage = 18;
 
     public static DamageControl Local { get; private set; }
@@ -21,7 +24,14 @@ public class DamageControl : NetworkBehaviour
         if (IsOwner)
         {
             Local = this;
+            SetDamageMultiplier(upgradeManager.Local != null ? upgradeManager.Local.getDamageMulti() : 1f);
         }
+    }
+
+    [ServerRpc]
+    public void SetDamageMultiplier(float multiplier)
+    {
+        damageMultiplier.Value = Mathf.Clamp(multiplier, 1f, 4f);
     }
 
     public override void OnStopClient()
@@ -30,14 +40,14 @@ public class DamageControl : NetworkBehaviour
         base.OnStopClient();
     }
 
-    [ServerRpc(RequireOwnership = false)]
     public void ControlDamage(NetworkObject shooter, bool shotgun, float dist)
     {
         Debug.Log("Control damage reached");
         PlayerMovement victimMovement = GetComponent<PlayerMovement>();
         if (victimMovement == null || !victimMovement.canTakeDamage) return;
     
-        float damageMultiplier = upgradeManager.Local != null ? upgradeManager.Local.damageMultiplier : 1f;
+        DamageControl shooterDamage = shooter != null ? shooter.gameObject.GetComponent<DamageControl>() : null;
+        float damageMultiplier = shooterDamage != null ? shooterDamage.damageMultiplier.Value : 1f;
 
         float damageDealt;
         if (!shotgun) {
