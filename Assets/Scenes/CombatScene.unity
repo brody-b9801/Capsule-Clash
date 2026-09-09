@@ -47797,15 +47797,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _autoStartType: 0
-  _stoppedColor: {r: 0, g: 0, b: 0, a: 0.5019608}
-  _changingColor: {r: 1, g: 1, b: 1, a: 0.5019608}
-  _startedColor: {r: 0, g: 0.5882353, b: 0.64705884, a: 1}
+  _stoppedColor: {r: 1, g: 0.60784316, b: 0.4117647, a: 1}
+  _changingColor: {r: 1, g: 0.7809224, b: 0.6713836, a: 1}
+  _startedColor: {r: 0.72327036, g: 0.39802617, b: 0.23540403, a: 1}
   _serverIndicator: {fileID: 353666785}
   _clientJoin: {fileID: 1458125403}
   _loadingCanvas: {fileID: 1729782251}
   _roomMenu: {fileID: 2048291304}
   _gameHUD: {fileID: 1161048979}
-  _startScreenUI: {fileID: 0}
+  _startScreenUI: {fileID: 1280286209}
 --- !u!1 &246624359
 GameObject:
   m_ObjectHideFlags: 0
@@ -115431,7 +115431,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 2147483647
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &621015502
 RectTransform:
   m_ObjectHideFlags: 0
@@ -121752,6 +121752,14 @@ PrefabInstance:
       propertyPath: m_Material
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 2315591678967816037, guid: 03c5f820b878a204d94ccb95a9760034, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -11.700027
+      objectReference: {fileID: 0}
+    - target: {fileID: 2315591678967816037, guid: 03c5f820b878a204d94ccb95a9760034, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -2
+      objectReference: {fileID: 0}
     - target: {fileID: 2315591678967816038, guid: 03c5f820b878a204d94ccb95a9760034, type: 3}
       propertyPath: m_Layer
       value: 5
@@ -121819,6 +121827,10 @@ PrefabInstance:
     - target: {fileID: 2315591679308571054, guid: 03c5f820b878a204d94ccb95a9760034, type: 3}
       propertyPath: m_Material
       value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2315591679321644208, guid: 03c5f820b878a204d94ccb95a9760034, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 10.500023
       objectReference: {fileID: 0}
     - target: {fileID: 2315591679321644209, guid: 03c5f820b878a204d94ccb95a9760034, type: 3}
       propertyPath: m_Layer
@@ -124047,6 +124059,10 @@ PrefabInstance:
     - target: {fileID: 5056048407099785369, guid: 03c5f820b878a204d94ccb95a9760034, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 2147483647
+      objectReference: {fileID: 0}
+    - target: {fileID: 5070553561237767864, guid: 03c5f820b878a204d94ccb95a9760034, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 10.500023
       objectReference: {fileID: 0}
     - target: {fileID: 5099910801877368216, guid: 03c5f820b878a204d94ccb95a9760034, type: 3}
       propertyPath: cullingMode
@@ -241562,6 +241578,11 @@ MonoBehaviour:
 --- !u!224 &1280286206 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 6084670147135438173, guid: 3914713c08630f4489a2d0687a44e381, type: 3}
+  m_PrefabInstance: {fileID: 1805452667}
+  m_PrefabAsset: {fileID: 0}
+--- !u!223 &1280286209 stripped
+Canvas:
+  m_CorrespondingSourceObject: {fileID: 4224005066619617697, guid: 3914713c08630f4489a2d0687a44e381, type: 3}
   m_PrefabInstance: {fileID: 1805452667}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1280329081
@@ -363508,7 +363529,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1994853057}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 246362508}
+        m_TargetAssemblyTypeName: FishNet.Example.NetworkHudCanvases, FishNet.Demos
+        m_MethodName: OnClick_Client_Stop
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1994853057
 MonoBehaviour:
   m_ObjectHideFlags: 0
