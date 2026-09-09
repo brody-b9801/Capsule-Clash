@@ -13,16 +13,13 @@ public class GunRotation : NetworkBehaviour
     private Transform c1;
     [SerializeField] private Transform gunMag;
 
-    void Start() {
-        g1 = SceneLookup.FindInactive("CamAKM").transform;
-        gm1 = SceneLookup.FindInactive("MC.Magazine").transform;
-        c1 = SceneLookup.FindInactive("CamCasing").transform;
-    }
-
     public override void OnStartClient() {
         base.OnStartClient();
 
         if (IsOwner) {
+            g1 = SceneLookup.FindInactive("CamAKM").transform;
+            gm1 = SceneLookup.FindInactive("MC.Magazine").transform;
+            c1 = SceneLookup.FindInactive("CamCasing").transform;
             Transform rendererContainer = transform.GetChild(0);
             for (int i = 0; i < rendererContainer.childCount; i++)
             {
