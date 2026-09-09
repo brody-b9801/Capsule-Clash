@@ -41,6 +41,17 @@ public class upgradeManager : MonoBehaviour
     public int[] upgradesPurchased = new int[9];
     private RectTransform[] upgradeRects = new RectTransform[9];
 
+    public float getDamageMulti()
+    {
+        return damageMultiplier;
+    }
+
+    private void SyncDamageMultiplier()
+    {
+        if (DamageControl.Local != null)
+            DamageControl.Local.SetDamageMultiplier(damageMultiplier);
+    }
+
     void Awake()
     {
         Local = this;
@@ -54,6 +65,8 @@ public class upgradeManager : MonoBehaviour
 
     void Start()
     {
+        SyncDamageMultiplier();
+
         upgradeWindowRect = upgradeWindow.GetComponent<RectTransform>();
         if (inventoryWindow != null)
             inventoryWindowRect = inventoryWindow.GetComponent<RectTransform>();
@@ -129,6 +142,7 @@ public class upgradeManager : MonoBehaviour
                     damageMultiplier += upgradeFactor;
                     upgradePoints -= (int)upgradeCost;
                     upgradesPurchased[7]++;
+                    SyncDamageMultiplier();
                     SaveSystem.SavePlayerData();
                 } else if (upgradesPurchased[8] < 4 && Input.GetKeyDown(KeyCode.Alpha9)) {
                     reloadSpeedMultiplier += upgradeFactor;
