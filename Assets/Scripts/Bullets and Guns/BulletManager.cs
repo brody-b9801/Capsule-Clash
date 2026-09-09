@@ -17,9 +17,7 @@ public class BulletManager : NetworkBehaviour
         public bool isShotgun;
         public NetworkObject shooter;
         public bool hitPrev;
-        public Vector3 hitPoint;
-        public Vector3 hitNormal;
-    } 
+    }
 
     private LayerMask layerMask;
 
@@ -67,8 +65,6 @@ public class BulletManager : NetworkBehaviour
 
             if (!bullet.hitPrev)
             {
-                Debug.DrawRay(bullet.previousPosition, currentPosition - bullet.previousPosition, Color.cyan);
-
                 if (rb != null && rb.linearVelocity.sqrMagnitude > 0f)
                     rb.rotation = Quaternion.LookRotation(rb.linearVelocity.normalized);
 
@@ -82,7 +78,7 @@ public class BulletManager : NetworkBehaviour
 
             if (bullet.hitPrev || (bullet.isShotgun && bulletDist > 20f) || bullet.timeActive > 7.5f)
             {
-                DestroyBullet(bullet);
+                DestroyBullet(i, bullet);
             }
             else
             {
@@ -120,21 +116,20 @@ public class BulletManager : NetworkBehaviour
                 if (damage != null)
                     damage.ControlDamage(bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
                 
-                if (bulletData.shooter.Owner != null)
+                if (bulletData.shooter != null && bulletData.shooter.Owner != null)
                     SetDamageCross(bulletData.shooter.Owner);
             }
             impactPrefabInstance(hit.point, hit.normal);
             bulletData.hitPrev = true;
-            DestroyBullet(bulletData);
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    private void DestroyBullet(BulletData bullet)
+    private void DestroyBullet(int index, BulletData bullet)
     {
-        ServerManager.Despawn(bullet.bulletObject);
-        CollisionControl.SpawnImpact(bullet.hitPoint, bullet.hitNormal);
-        activeBullets.Remove(bullet);
+        activeBullets.RemoveAt(index);
+
+        if (bullet.bulletObject != null && bullet.bulletObject.IsSpawned)
+            ServerManager.Despawn(bullet.bulletObject);
     }
     
     [ObserversRpc]
