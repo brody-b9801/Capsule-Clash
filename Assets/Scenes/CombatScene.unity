@@ -47804,6 +47804,8 @@ MonoBehaviour:
   _clientJoin: {fileID: 1458125403}
   _loadingCanvas: {fileID: 1729782251}
   _roomMenu: {fileID: 2048291304}
+  _gameHUD: {fileID: 1161048979}
+  _startScreenUI: {fileID: 0}
 --- !u!1 &246624359
 GameObject:
   m_ObjectHideFlags: 0
@@ -222706,7 +222708,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0c2601bdafc4d7897967dd95229819e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  keyCount: 0
   keyPrefab: {fileID: 0}
   mazeKeyAcquired: 0
   spaceKeyAcquired: 0
@@ -332082,7 +332083,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7127484850027464541, guid: 3914713c08630f4489a2d0687a44e381, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -211.4999
+      value: -211.49986
       objectReference: {fileID: 0}
     - target: {fileID: 7345246892319229508, guid: 3914713c08630f4489a2d0687a44e381, type: 3}
       propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
