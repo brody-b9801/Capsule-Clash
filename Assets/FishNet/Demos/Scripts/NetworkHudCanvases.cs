@@ -67,6 +67,8 @@ namespace FishNet.Example
         private Canvas _gameHUD;
         [SerializeField]
         private Canvas _startScreenUI;
+        [SerializeField]
+        private GameObject _startDecorations;
         #endregion
 
         #region Private.
@@ -104,6 +106,7 @@ namespace FishNet.Example
             _gameHUD.enabled = state == LocalConnectionState.Started;
             checkStateChange = _loadingCanvas.activeSelf;
             _startScreenUI.enabled = _roomMenu.enabled;
+            _startDecorations.SetActive(state != LocalConnectionState.Started);
             if (state == LocalConnectionState.Stopped) 
                 return "Start";
             else if (state == LocalConnectionState.Starting)
