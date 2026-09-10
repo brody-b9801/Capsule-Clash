@@ -33,7 +33,8 @@ public class GunRotation : NetworkBehaviour
     }
 
     void Update()
-    {
+    {   
+        if (!IsOwner) return;
         if (g1 != null && IsValidVector3(g1.transform.position) && IsValidQuaternion(g1.transform.rotation))
             gunPosition(g1.transform.position - new Vector3(0, 0.35f, 0), g1.transform.rotation, "gun", true);
         if (gm1 != null && IsValidVector3(gm1.transform.localPosition))
@@ -42,7 +43,8 @@ public class GunRotation : NetworkBehaviour
             gunPosition(c1.transform.localPosition, Quaternion.identity, "casing", c1.GetComponent<MeshRenderer>().enabled);
         Debug.Log(c1.transform.localPosition);
     }
-
+    
+    [ObserversRpc]
     private void gunPosition(Vector3 pos, Quaternion rot, string type, bool enabled)
     {
         ref Transform thingToPosition = ref gun;
