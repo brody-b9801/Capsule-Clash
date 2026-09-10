@@ -6,7 +6,6 @@ public class ReloadAnimation : MonoBehaviour
 {
     private static Animator animator;
     public static bool ShootState = false;
-    private static ReloadAnimation instance;
     private GameObject camCasing;
     private MeshRenderer casingRenderer;
 
@@ -18,19 +17,24 @@ public class ReloadAnimation : MonoBehaviour
 
     void OnEnable()
     {
-        animator = GetComponent<Animator>();
+        Animator ownAnimator = GetComponent<Animator>();
+        if (ownAnimator == null) return;
+
+        animator = ownAnimator;
         animator.SetTrigger("NoReload");
 
-        camCasing = GameObject.Find("CamCasing");
+        camCasing = SceneLookup.FindInactive("CamCasing");
         if (camCasing != null)
             casingRenderer = camCasing.GetComponent<MeshRenderer>();
     }
     public static void PlayReload()
     {
+        if (animator == null) return;
+
         ShootState = false;
         animator.ResetTrigger("Shoot");
         animator.ResetTrigger("NoReload");
-        animator.speed = upgradeManager.Local.reloadSpeedMultiplier;
+        animator.speed = upgradeManager.Local != null ? upgradeManager.Local.reloadSpeedMultiplier : 1f;
         animator.SetTrigger("Reload");
     }
 
@@ -44,6 +48,8 @@ public class ReloadAnimation : MonoBehaviour
 
     public static void PlayAnim()
     {
+        if (animator == null) return;
+
         animator.SetTrigger("Shoot");
         ShootState = true;
     }
@@ -55,7 +61,7 @@ public class ReloadAnimation : MonoBehaviour
             animator.SetTrigger("NoReload");
             ShootState = false;
         }
-        else if (!Shooting.Local.reloading)
+        else if (Shooting.Local != null && !Shooting.Local.reloading)
         {
             animator.SetTrigger("Reload");
         }
@@ -69,14 +75,15 @@ public class ReloadAnimation : MonoBehaviour
 
     public void enable()
     {
-        if (Shooting.Local.shotgun)
+        if (Shooting.Local != null && Shooting.Local.shotgun)
             SetCasingVisible(true);
     }
 
     public void enable2()
     {
-        Debug.Log(Shooting.Local.shottieNum);
-        if (Shooting.Local.shotgun && Shooting.Local.shottieNum == 0) 
+        if (Shooting.Local == null) return;
+
+        if (Shooting.Local.shotgun && Shooting.Local.shottieNum == 0)
             SetCasingVisible(true);
         else if (Shooting.Local.shotgun)
             pendingSkip = true;
@@ -101,6 +108,7 @@ public class ReloadAnimation : MonoBehaviour
     {
         if (!pendingSkip) return;
         pendingSkip = false;
+        if (animator == null) return;
 
         AnimatorStateInfo state = animator.IsInTransition(SkipLayer)
             ? animator.GetNextAnimatorStateInfo(SkipLayer)

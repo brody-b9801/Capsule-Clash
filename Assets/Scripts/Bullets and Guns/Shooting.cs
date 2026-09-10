@@ -144,7 +144,6 @@ public class Shooting : NetworkBehaviour
 
     void Awake()
     {
-        Local = this;
         bulletManager = FindFirstObjectByType<BulletManager>();
     }
 
@@ -159,6 +158,7 @@ public class Shooting : NetworkBehaviour
         base.OnStartClient();
 
         if (!IsOwner) return;
+        Local = this;
 
         alphaVal = 0;
 
