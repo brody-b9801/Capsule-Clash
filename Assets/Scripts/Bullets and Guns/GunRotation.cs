@@ -13,7 +13,10 @@ public class GunRotation : NetworkBehaviour
     private Transform g1;
     private Transform gm1;
     private Transform c1;
-
+    Vector3 magPos;
+    Vector3 magPosPrev;
+    Vector3 casingPos;
+    Vector3 casingPosPrev;
     public override void OnStartClient() {
         base.OnStartClient();
 
@@ -36,12 +39,25 @@ public class GunRotation : NetworkBehaviour
     void Update()
     {
         positionGun();
-        
-        if (gm1 != null && IsValidVector3(gm1.transform.localPosition))
-            gunPosition(gm1.transform.localPosition, Quaternion.identity, "magazine", gm1.gameObject.activeSelf);
-        if (c1 != null && IsValidVector3(c1.transform.position))
-            gunPosition(c1.transform.localPosition, Quaternion.identity, "casing", c1.GetComponent<MeshRenderer>().enabled);
-        Debug.Log(c1.transform.localPosition);
+
+        casingPos = c1.transform.localPosition;
+        if (casingPos != casingPosPrev)
+        {
+            
+        }
+        casingPosPrev = casingPos;
+
+        magPos = gm1.transform.localPosition;
+        if (casingPos != casingPosPrev)
+        {
+            //Server RPC to sync mag pos
+        }
+        magPosPrev = magPos;
+        // if (gm1 != null && IsValidVector3(gm1.transform.localPosition))
+        //     gunPosition(gm1.transform.localPosition, Quaternion.identity, "magazine", gm1.gameObject.activeSelf);
+        // if (c1 != null && IsValidVector3(c1.transform.position))
+        //     gunPosition(c1.transform.localPosition, Quaternion.identity, "casing", c1.GetComponent<MeshRenderer>().enabled);
+        // Debug.Log(c1.transform.localPosition);
     }
     
     private void positionGun()
