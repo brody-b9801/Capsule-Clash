@@ -49,7 +49,7 @@ MonoBehaviour:
   _addedNetworkObject: {fileID: 0}
   _networkObjectCache: {fileID: 0}
   gr: {fileID: 2253834035685955736}
-  gun: {fileID: 3519931097519917165}
+  gun: {fileID: 0}
   casing: {fileID: 0}
   gunMag: {fileID: 0}
 --- !u!1001 &2112826592600839259
