@@ -43,21 +43,16 @@ public class GunRotation : NetworkBehaviour
         casingPos = c1.transform.localPosition;
         if (casingPos != casingPosPrev)
         {
-            
+            syncCasingServer(c1.transform.localPosition, c1.GetComponent<MeshRenderer>().enabled);
         }
         casingPosPrev = casingPos;
 
         magPos = gm1.transform.localPosition;
-        if (casingPos != casingPosPrev)
+        if (magPos != magPosPrev)
         {
-            //Server RPC to sync mag pos
+            syncMagServer(gm1.transform.localPosition, gm1.GetComponent<MeshRenderer>().enabled);
         }
         magPosPrev = magPos;
-        // if (gm1 != null && IsValidVector3(gm1.transform.localPosition))
-        //     gunPosition(gm1.transform.localPosition, Quaternion.identity, "magazine", gm1.gameObject.activeSelf);
-        // if (c1 != null && IsValidVector3(c1.transform.position))
-        //     gunPosition(c1.transform.localPosition, Quaternion.identity, "casing", c1.GetComponent<MeshRenderer>().enabled);
-        // Debug.Log(c1.transform.localPosition);
     }
     
     private void positionGun()
@@ -68,43 +63,28 @@ public class GunRotation : NetworkBehaviour
     }
 
     [ServerRpc]
-    private void sdzg()
+    private void syncCasingServer(Vector3 pos, bool enabled)
     {
-        
+        syncCasing(pos, enabled);
     }
 
     [ObserversRpc]
-
-    private void gunPosition(Vector3 pos, Quaternion rot, string type, bool enabled)
+    private void syncCasing(Vector3 pos, bool enabled)
     {
-        Transform thingToPosition = gun;
-        switch (type)
-        {
-            case "magazine":
-                thingToPosition = gunMag;
-                break;
-            case "gun":
-                break;
-            case "casing":
-                thingToPosition = casing;
-                break;
-            default:
-                return;
-        }
-        if (thingToPosition != null && IsValidVector3(pos) && IsValidQuaternion(rot))
-        {
-            if (type == "gun")
-            {
-                thingToPosition.transform.position = pos;
-                thingToPosition.transform.rotation = rot;
-            }
-            //thingToPosition.transform.localEulerAngles = thingToPosition.transform.localEulerAngles - new Vector3(0, 0, 0); 
-            if (type == "casing" || type == "magazine") thingToPosition.GetComponent<MeshRenderer>().enabled = enabled;
-            if (type == "magazine" || type == "casing")
-                thingToPosition.transform.localPosition = pos;
-            else
-                thingToPosition.transform.localPosition = IsOwner ? new Vector3(0.6f, thingToPosition.transform.localPosition.y - 0.1f, thingToPosition.transform.localPosition.z - 0.5f) : new Vector3(0.6f, thingToPosition.transform.localPosition.y - 0.1f, thingToPosition.transform.localPosition.z - 0.25f);
-        }
+        casing.localPosition = pos;
+        casing.GetComponent<MeshRenderer>().enabled = enabled;
+    }
+    [ServerRpc]
+    private void syncMagServer(Vector3 pos, bool enabled)
+    {
+        syncMag(pos, enabled);
+    }
+
+    [ObserversRpc]
+    private void syncMag(Vector3 pos, bool enabled)
+    {
+        gunMag.localPosition = pos;
+        gunMag.GetComponent<MeshRenderer>().enabled = enabled;
     }
     private bool IsValidVector3(Vector3 vector)
     {
