@@ -2,16 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using FishNet.Object;
+using FishNet.Object.Synchronizing;
 
 public class GunRotation : NetworkBehaviour
 {
     [SerializeField] private Transform gr;
     [SerializeField] private Transform gun;
-    [SerializeField] private Transform casing;
+    [SerializeField] private Transform casing;       
+    [SerializeField] private Transform gunMag;
     private Transform g1;
     private Transform gm1;
     private Transform c1;
-    [SerializeField] private Transform gunMag;
 
     public override void OnStartClient() {
         base.OnStartClient();
@@ -33,10 +34,9 @@ public class GunRotation : NetworkBehaviour
     }
 
     void Update()
-    {   
-        if (!IsOwner) return;
-        if (g1 != null && IsValidVector3(g1.transform.position) && IsValidQuaternion(g1.transform.rotation))
-            gunPosition(g1.transform.position - new Vector3(0, 0.35f, 0), g1.transform.rotation, "gun", true);
+    {
+        positionGun();
+        
         if (gm1 != null && IsValidVector3(gm1.transform.localPosition))
             gunPosition(gm1.transform.localPosition, Quaternion.identity, "magazine", gm1.gameObject.activeSelf);
         if (c1 != null && IsValidVector3(c1.transform.position))
@@ -44,19 +44,33 @@ public class GunRotation : NetworkBehaviour
         Debug.Log(c1.transform.localPosition);
     }
     
+    private void positionGun()
+    {
+        if (g1 != null && IsValidVector3(g1.transform.position) && IsValidQuaternion(g1.transform.rotation))
+            gun.transform.position = g1.transform.position - new Vector3(0, 0.35f, 0);
+            gun.transform.rotation = g1.transform.rotation;
+    }
+
+    [ServerRpc]
+    private void sdzg()
+    {
+        
+    }
+
     [ObserversRpc]
+
     private void gunPosition(Vector3 pos, Quaternion rot, string type, bool enabled)
     {
-        ref Transform thingToPosition = ref gun;
+        Transform thingToPosition = gun;
         switch (type)
         {
             case "magazine":
-                thingToPosition = ref gunMag;
+                thingToPosition = gunMag;
                 break;
             case "gun":
                 break;
             case "casing":
-                thingToPosition = ref casing;
+                thingToPosition = casing;
                 break;
             default:
                 return;
