@@ -83,7 +83,7 @@ public class CameraZoom : MonoBehaviour
     private void Update()
     {
         // The local player is spawned by FishNet after this component starts.
-        if (PlayerMovement.Local == null) return;
+        if (PlayerMovement.Local == null || Shooting.Local == null) return;
 
         if (shot) {
             zoomCHFov += 5;

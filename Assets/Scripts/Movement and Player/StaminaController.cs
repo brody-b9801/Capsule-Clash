@@ -21,9 +21,8 @@ public class StaminaController : NetworkBehaviour
     private Color red;
     private bool lowStaminaWarningPlayed = false;
 
-    public override void OnStartClient()
+    private void Awake()
     {
-        base.OnStartClient();
         Local = this;
         currentStamina = maxStamina;
         yellow = new Color32(255, 220, 105, 255);
@@ -32,10 +31,9 @@ public class StaminaController : NetworkBehaviour
         UpdateStaminaBar();
     }
 
-    public override void OnStopClient()
+    private void OnDestroy()
     {
         if (Local == this) Local = null;
-        base.OnStopClient();
     }
 
     private void Update()
