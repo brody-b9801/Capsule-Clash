@@ -5,7 +5,7 @@ using FishNet.Transporting;
 public class GunRotation : NetworkBehaviour
 {
     [SerializeField] private Transform gr;
-    [SerializeField] private Transform gun;    
+    [SerializeField] private Transform gun;   
     [SerializeField] private Transform casing;
     [SerializeField] private Transform gunMag;
 
@@ -30,12 +30,10 @@ public class GunRotation : NetworkBehaviour
 
         casingRenderer = casing.GetComponent<MeshRenderer>();
         magRenderer = gunMag.GetComponent<MeshRenderer>();
-
-        if (!IsOwner) return;
-
         g1 = SceneLookup.FindInactive("CamAKM").transform;
         gm1 = SceneLookup.FindInactive("MC.Magazine").transform;
         c1 = SceneLookup.FindInactive("CamCasing").transform;
+        if (!IsOwner) return;
 
         c1Renderer = c1.GetComponent<MeshRenderer>();
         gm1Renderer = gm1.GetComponent<MeshRenderer>();

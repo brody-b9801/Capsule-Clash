@@ -1017,6 +1017,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2780891342004292468, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7178964074723126432}
+    - targetCorrespondingSourceObject: {fileID: 2780891342004292468, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1522175987901386802}
     - targetCorrespondingSourceObject: {fileID: 997453898723747241, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3624032357215528197}
@@ -1029,9 +1032,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 8817178322116648399, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 9146832561924185666}
-    - targetCorrespondingSourceObject: {fileID: 8817178322116648399, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2126151758881397278}
   m_SourcePrefab: {fileID: 100100000, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
 --- !u!4 &297485254485252709 stripped
 Transform:
@@ -1105,52 +1105,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3368015021342264296}
   m_Mesh: {fileID: -8401218714792031518, guid: 19b3217a01ed3df42b30c781edabc747, type: 3}
---- !u!114 &2126151758881397278
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3368015021342264296}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a2836e36774ca1c4bbbee976e17b649c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Component.Transforming.NetworkTransform
-  _componentIndexCache: 255
-  _addedNetworkObject: {fileID: 1447310636841987035}
-  _networkObjectCache: {fileID: 0}
-  _componentConfiguration: 0
-  _synchronizeParent: 0
-  _packing:
-    Position: 1
-    Rotation: 1
-    Scale: 0
-  _useScaledTime: 1
-  _interpolation: 2
-  _extrapolation: 2
-  _enableTeleport: 0
-  _teleportThreshold: 1
-  _clientAuthoritative: 1
-  _sendToOwner: 1
-  _interval: 1
-  _synchronizePosition: 1
-  _positionSensitivity: 0.001
-  _positionSnapping:
-    X: 0
-    Y: 0
-    Z: 0
-  _synchronizeRotation: 1
-  _rotationSnapping:
-    X: 0
-    Y: 0
-    Z: 0
-  _synchronizeScale: 1
-  _scaleSensitivity: 0.001
-  _scaleSnapping:
-    X: 0
-    Y: 0
-    Z: 0
 --- !u!4 &4271767593703292456 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8046000523938441231, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
@@ -1268,6 +1222,52 @@ MonoBehaviour:
   OnlySyncFromRoomOwner: 0
   refreshRate: 60
   SyncedAxes: 62
+--- !u!114 &1522175987901386802
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8248002795116993875}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2836e36774ca1c4bbbee976e17b649c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Component.Transforming.NetworkTransform
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 1447310636841987035}
+  _networkObjectCache: {fileID: 0}
+  _componentConfiguration: 0
+  _synchronizeParent: 0
+  _packing:
+    Position: 1
+    Rotation: 1
+    Scale: 0
+  _useScaledTime: 1
+  _interpolation: 2
+  _extrapolation: 2
+  _enableTeleport: 0
+  _teleportThreshold: 1
+  _clientAuthoritative: 1
+  _sendToOwner: 1
+  _interval: 1
+  _synchronizePosition: 1
+  _positionSensitivity: 0.001
+  _positionSnapping:
+    X: 0
+    Y: 0
+    Z: 0
+  _synchronizeRotation: 1
+  _rotationSnapping:
+    X: 0
+    Y: 0
+    Z: 0
+  _synchronizeScale: 1
+  _scaleSensitivity: 0.001
+  _scaleSnapping:
+    X: 0
+    Y: 0
+    Z: 0
 --- !u!1 &9158388258354048699 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3168386515307706524, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
