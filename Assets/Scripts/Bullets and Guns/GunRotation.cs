@@ -10,13 +10,16 @@ public class GunRotation : NetworkBehaviour
     [SerializeField] private Transform gun;
     [SerializeField] private Transform casing;       
     [SerializeField] private Transform gunMag;
+
     private Transform g1;
     private Transform gm1;
     private Transform c1;
+
     Vector3 magPos;
     Vector3 magPosPrev;
     Vector3 casingPos;
     Vector3 casingPosPrev;
+
     public override void OnStartClient() {
         base.OnStartClient();
 
@@ -40,19 +43,23 @@ public class GunRotation : NetworkBehaviour
     {
         positionGun();
 
-        casingPos = c1.transform.localPosition;
-        if (casingPos != casingPosPrev)
-        {
-            syncCasingServer(c1.transform.localPosition, c1.GetComponent<MeshRenderer>().enabled);
+        if (c1 != null && IsValidVector3(c1.transform.position) && IsValidQuaternion(c1.transform.rotation)) {
+            casingPos = c1.transform.localPosition;
+            if (casingPos != casingPosPrev)
+            {
+                syncCasingServer(c1.transform.localPosition, c1.GetComponent<MeshRenderer>().enabled);
+            }
+            casingPosPrev = casingPos;
         }
-        casingPosPrev = casingPos;
 
-        magPos = gm1.transform.localPosition;
-        if (magPos != magPosPrev)
-        {
-            syncMagServer(gm1.transform.localPosition, gm1.GetComponent<MeshRenderer>().enabled);
+        if (gm1 != null && IsValidVector3(gm1.transform.position) && IsValidQuaternion(gm1.transform.rotation)) {
+            magPos = gm1.transform.localPosition;
+            if (magPos != magPosPrev)
+            {
+                syncMagServer(gm1.transform.localPosition, gm1.GetComponent<MeshRenderer>().enabled);
+            }
+            magPosPrev = magPos;
         }
-        magPosPrev = magPos;
     }
     
     private void positionGun()
@@ -74,6 +81,7 @@ public class GunRotation : NetworkBehaviour
         casing.localPosition = pos;
         casing.GetComponent<MeshRenderer>().enabled = enabled;
     }
+
     [ServerRpc]
     private void syncMagServer(Vector3 pos, bool enabled)
     {
@@ -86,10 +94,12 @@ public class GunRotation : NetworkBehaviour
         gunMag.localPosition = pos;
         gunMag.GetComponent<MeshRenderer>().enabled = enabled;
     }
+
     private bool IsValidVector3(Vector3 vector)
     {
         return !(float.IsNaN(vector.x) || float.IsNaN(vector.y) || float.IsNaN(vector.z));
     }
+
     private bool IsValidQuaternion(Quaternion quaternion)
     {
         return !(float.IsNaN(quaternion.x) || float.IsNaN(quaternion.y) || float.IsNaN(quaternion.z) || float.IsNaN(quaternion.w));
