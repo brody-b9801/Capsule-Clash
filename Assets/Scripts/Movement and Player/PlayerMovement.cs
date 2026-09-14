@@ -127,6 +127,7 @@ public class PlayerMovement : NetworkBehaviour {
     private Coroutine dashRoutine;
     private RectTransform dashIcon;
     public bool canTakeDamage = true;
+    private Coroutine invulnerableRoutine;
     [SerializeField] private LayerMask collisionMask;
     [SerializeField] private LayerMask collisionMask2;
     public float unstuckDistance = 0.1f;
@@ -305,7 +306,8 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void Awake() {
-        SaveSystem.ApplyPendingKillData(this);
+        // Saved kill data is applied in OnStartClient for the owner only; doing it
+        // here stamped the local save's lifetime kills onto every remote player.
     }
 
     public override void OnStartClient() {
@@ -315,6 +317,7 @@ public class PlayerMovement : NetworkBehaviour {
 
         if (IsOwner) {
             Local = this;
+            SaveSystem.ApplyPendingKillData(this);
             gunRenderer = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
             gunRenderer.enableGun();
             settingsControl = GameObject.Find("Room Menu (1)").GetComponent<SettingsController>();
@@ -629,7 +632,7 @@ private void UpdateMovementVector()
                 lastGroundedHeight = transform.position.y;
             }
         }
-        if (!canTakeDamage) StartCoroutine(Invulnerable());
+        if (!canTakeDamage && invulnerableRoutine == null) invulnerableRoutine = StartCoroutine(Invulnerable());
         CameraZoom.moving = (Mathf.Abs(_horizontal) > 0.01f || Mathf.Abs(_vertical) > 0.01f);
     }
 
@@ -812,10 +815,10 @@ private void UpdateMovementVector()
                 if (heightChange > 0) {
                     float shakeMagnitude = Mathf.Min(heightChange / 20f, 1f);
                     StartCoroutine(ApplyLandingShake(shakeMagnitude));
-                    DamageControl.Local.health.Value -= ((int)(heightChange / 4)) * 12;
+
+                    int fallDamage = ((int)(heightChange / 4)) * 12;
+                    if (fallDamage > 0 && DamageControl.Local != null) DamageControl.Local.ServerApplyFallDamage(fallDamage);
                 }
-                if (DamageControl.Local.health.Value <= 0) Die();
-                HealthController.updateHealth();
             }
     }
         private void setFrictionIce(bool onIce) {
@@ -878,10 +881,16 @@ private void UpdateMovementVector()
             _borderRenderers[i].sharedMaterial.color = borderColor;
     }
 
-    public void Die() {             
+    public void Die() {
+        // Die() reaches every client through DamageControl.ApplyDamageFeedback. Everything
+        // here is local-player state: characterController is only assigned for the owner
+        // (remote copies threw a NullReferenceException), and the cursor unlock would have
+        // freed every client's mouse whenever anyone died. The dead check stops a second
+        // respawn screen if two lethal hits land together.
+        if (!IsOwner || dead) return;
         characterController.enabled = false;
         dead = true;
-        if (IsOwner) respawnInit = Instantiate(respawnScreen);
+        respawnInit = Instantiate(respawnScreen);
         Cursor.lockState = CursorLockMode.None;
         Shooting.lockCursor = false;
         transform.position = new Vector3(0, -30, 0);
@@ -893,14 +902,20 @@ private void UpdateMovementVector()
         // dimension's skybox is already the one that should stay up.
     }
     public void Respawn() {
-        DamageControl.Local.health.Value = 180;
+        // Health and spawn protection are server-authoritative; writing
+        // DamageControl.Local.health here never reached the server. The health bar
+        // refreshes from the SyncVar OnChange when the server's 180 arrives.
+        if (DamageControl.Local != null) DamageControl.Local.ServerRespawn();
         canTakeDamage = false;
-        HealthController.updateHealth();
+        if (invulnerableRoutine != null) {
+            StopCoroutine(invulnerableRoutine);
+            invulnerableRoutine = null;
+        }
         // Own siblings, not the statics — these resets apply to this player.
         if (localShooting != null) localShooting.reloadNum = 30;
         GunThingAnim.movingState = false;
         dashes = 0;
-        if (localSpawner != null) localSpawner.buildNum = 25;
+        // Builds are refilled to 25 on the server in DamageControl.ServerRespawn.
         transform.localEulerAngles = Vector3.zero;
         newVelocity = Vector3.zero;
         characterController.enabled = false;
@@ -943,24 +958,28 @@ private void UpdateMovementVector()
 
     [ObserversRpc]
     public void killHealSync(NetworkObject shooter) {
-        if (SettingsController.lifetimeKills == 0)
-        {
-            StartCoroutine(serverController.StartFirstKillScene());
-        }
-        if (Local != null && Local.NetworkObject == shooter) {
-            upgradeManager.Local.killPoints++;
-            killCount++;
-            DamageControl.Local.health.Value = 180;
-            HealthController.updateHealth();
-            HealthController.healAnim = true;
-            SaveSystem.SavePlayerData();
-        }
+        // Runs on the victim's object on every client; only the shooter's client acts.
+        // The heal to full is applied on the server in DamageControl.ApplyDamage.
+        // Previously the first-kill scene ran on whichever client had 0 lifetime kills
+        // (using the victim's serverController, null on non-owners), and killCount was
+        // incremented on the victim's instance instead of the shooter's.
+        if (Local == null || Local.NetworkObject != shooter) return;
+
+        if (Local.killCount == 0 && Local.serverController != null)
+            Local.StartCoroutine(Local.serverController.StartFirstKillScene());
+
+        upgradeManager.Local.killPoints++;
+        Local.killCount++;
+        HealthController.healAnim = true;
+        SaveSystem.SavePlayerData();
     }
 
     IEnumerator Invulnerable() {
         yield return new WaitForSeconds(0.1f);
         while (!isGround()) yield return null;
         canTakeDamage = true;
+        invulnerableRoutine = null;
+        if (DamageControl.Local != null) DamageControl.Local.ServerEndSpawnProtection();
     }
 
     private void HandleTeleportation(GameObject endPortal, DimensionInfo target) {
@@ -1081,8 +1100,7 @@ private void UpdateMovementVector()
             yield return null;
         }
         healParticles.healing = false;
-        DamageControl.Local.health.Value = Mathf.Clamp(DamageControl.Local.health.Value + 45.0f, 0.0f, 180.0f);
-        HealthController.updateHealth();
+        if (DamageControl.Local != null) DamageControl.Local.ServerHeal(45.0f);
         HealthController.healAnim = true;
     }
 
