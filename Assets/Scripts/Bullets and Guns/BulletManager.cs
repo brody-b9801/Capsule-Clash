@@ -113,10 +113,10 @@ public class BulletManager : NetworkBehaviour
                 Debug.Log("early return did not terminate");
 
                 DamageControl damage = victim.gameObject.GetComponent<DamageControl>();
-                if (damage != null)
-                    damage.ControlDamage(bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
-                
-                if (bulletData.shooter != null && bulletData.shooter.Owner != null)
+                bool damageApplied = damage != null
+                    && damage.ControlDamage(bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
+
+                if (damageApplied && bulletData.shooter != null && bulletData.shooter.Owner != null && bulletData.shooter.Owner.IsValid)
                     SetDamageCross(bulletData.shooter.Owner);
             }
             impactPrefabInstance(hit.point, hit.normal);
