@@ -13,6 +13,9 @@ public class ChangeMat : NetworkBehaviour
     public Material nails;
     public Material gun;
 
+    [Tooltip("How long a player shows the damaged material after being hit.")]
+    [SerializeField] private float damageFlashDuration = 0.05f;
+
     [Header("Desert Colors")]
     public Color desertLitColor = Color.white;
     public Color desertUnlitColor = Color.white;
@@ -43,6 +46,7 @@ public class ChangeMat : NetworkBehaviour
 
     private Renderer player;
     private PlayerMovement movement;
+    private Coroutine damageFlashRoutine;
 
     public static ChangeMat Local { get; private set; }
 
@@ -50,18 +54,27 @@ public class ChangeMat : NetworkBehaviour
     {
         player = GetComponent<Renderer>();
         movement = GetComponent<PlayerMovement>();
-        dimensionMaterialChange("Desert");
     }
 
     public override void OnStartClient()
     {
         base.OnStartClient();
-        if (IsOwner) Local = this;
+        if (IsOwner)
+        {
+            Local = this;
+            dimensionMaterialChange("Desert");
+        }
+        ApplyBaseMaterial();
     }
 
     public override void OnStopClient()
     {
         if (Local == this) Local = null;
+        if (damageFlashRoutine != null)
+        {
+            StopCoroutine(damageFlashRoutine);
+            damageFlashRoutine = null;
+        }
         base.OnStopClient();
     }
 
@@ -97,36 +110,24 @@ public class ChangeMat : NetworkBehaviour
         if (mat.HasProperty(HardEdgeLightColorID)) mat.SetColor(HardEdgeLightColorID, hardEdgeLight);
     }
 
-    public void TakeDamage(NetworkObject shot, NetworkObject shooter, bool shotgun, float dist)
+    public void FlashDamaged()
     {
-        StartCoroutine(endDamaged());
+        if (player == null || damaged == null) return;
+        if (damageFlashRoutine != null) StopCoroutine(damageFlashRoutine);
+        damageFlashRoutine = StartCoroutine(DamageFlash());
     }
 
-    [ObserversRpc]
-    private void SetMaterialNormal()
+    private void ApplyBaseMaterial()
     {
-        if (IsOwner)
-        {
-            player.sharedMaterial = self;
-        } else{
-            player.sharedMaterial = normal;
-        }
+        if (player == null) return;
+        Material baseMaterial = IsOwner ? self : normal;
+        if (baseMaterial != null) player.sharedMaterial = baseMaterial;
     }
 
-    [ObserversRpc]
-    private void SetMaterialDamaged()
-    {
-        if (IsOwner)
-        {
-            player.sharedMaterial = self;
-        } else{
-            player.sharedMaterial = normal;
-        }
-    }
-
-    IEnumerator endDamaged() {
-        SetMaterialDamaged();
-        yield return new WaitForSeconds(0.05f);
-        SetMaterialNormal();
+    IEnumerator DamageFlash() {
+        player.sharedMaterial = damaged;
+        yield return new WaitForSeconds(damageFlashDuration);
+        ApplyBaseMaterial();
+        damageFlashRoutine = null;
     }
 }
