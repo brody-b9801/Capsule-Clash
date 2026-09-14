@@ -51,16 +51,22 @@ public class BuildHealth : NetworkBehaviour
     public void TakeDamage(bool shotgun, float dist)
     {
         Debug.Log($"Taking damage: shotgun={shotgun}, dist={dist}");
-        ServerTakeDamage(shotgun, dist);
+        if (IsServerStarted)
+            ApplyDamage(shotgun, dist);
+        else
+            ServerTakeDamage(shotgun, dist);
     }
+
+    [ServerRpc(RequireOwnership = false, RunLocally = false)]
+    private void ServerTakeDamage(bool shotgun, float dist) => ApplyDamage(shotgun, dist);
 
     /// <summary>
     /// Applies the health change on the server only, then tells observers to play
     /// the visual reaction. Despawning happens here — once, on the authority —
     /// rather than inside the observers RPC where every client raced to do it.
     /// </summary>
-    [ServerRpc(RequireOwnership = false, RunLocally = false)]
-    private void ServerTakeDamage(bool shotgun, float dist) {
+    [Server]
+    private void ApplyDamage(bool shotgun, float dist) {
         Debug.Log($"Server received damage: shotgun={shotgun}, dist={dist}");
 
         // Already dead and awaiting despawn — ignore further hits so a burst of
@@ -75,7 +81,7 @@ public class BuildHealth : NetworkBehaviour
             currentHealth.Value -= Mathf.Clamp((1 - ((dist - 5) * 0.1f)) * .25f, 0.075f, 0.5f);
         }
 
-        RpcBuildDamage();
+        RpcBuildDamage(currentHealth.Value);
 
         if (currentHealth.Value <= 0f)
             ObjectSpawner.DespawnObject(build);
@@ -83,12 +89,12 @@ public class BuildHealth : NetworkBehaviour
 
     /// <summary>Visual reaction only — no health arithmetic, no despawn.</summary>
     [ObserversRpc(ExcludeServer = false)]
-    private void RpcBuildDamage()
+    private void RpcBuildDamage(float health)
     {
-        ApplyDamageVisuals();
+        ApplyDamageVisuals(health);
     }
 
-    private void ApplyDamageVisuals() {
+    private void ApplyDamageVisuals(float health) {
         WallFinished wallFinished = build.GetComponent<WallFinished>();
         if (wallFinished == null)
             wallFinished = build.GetComponentInParent<WallFinished>(); // Try parent
@@ -114,6 +120,6 @@ public class BuildHealth : NetworkBehaviour
         }
 
         if (anim != null)
-            anim.SetInteger("Health", (int)currentHealth.Value);
+            anim.SetInteger("Health", (int)health);
     }
 }
