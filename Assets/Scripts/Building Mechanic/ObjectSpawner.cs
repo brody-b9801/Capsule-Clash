@@ -162,6 +162,12 @@ public class ObjectSpawner : NetworkBehaviour
     }
 
     [ServerRpc]
+    public void RequestBuildRegen()
+    {
+        if (buildNum < 25) buildNum++;
+    }
+
+    [ServerRpc]
     private void CmdSpawnBuild(BuildType type, Vector3 cameraPosition, Vector3 cameraForward)
     {
         if (buildNum <= 0) return;
