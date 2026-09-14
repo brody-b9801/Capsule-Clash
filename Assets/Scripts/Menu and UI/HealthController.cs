@@ -14,9 +14,7 @@ public class HealthController : MonoBehaviour
     public static bool healAnim;
     public static bool noFDAnim;
     public static bool tpAnim;
-    private float health;
     private float healthPrev;
-    private float lastHealth;
 
     private static bool PlayerReady =>
         DamageControl.Local != null && PlayerMovement.Local != null;
@@ -24,31 +22,26 @@ public class HealthController : MonoBehaviour
     private void Start() {
         healthBar = h1;
         healthBlack = healthBlackRef;
-        health = healthPrev = lastHealth = 180.0f;
+        healthPrev = DamageControl.MaxHealth;
+        updateHealth();
     }
 
     void Update() {
         if (!PlayerReady) return;
 
         float current = DamageControl.Local.health.Value;
-
-        if (!PlayerMovement.Local.canTakeDamage) {
-            health = lastHealth;
-        } else {
-            health = current;
-            lastHealth = health;
-        }
-
-        if (health < healthPrev)
+        if (current < healthPrev)
             damageAnim = true;
 
         healthPrev = current;
+
+        if (current != h) updateHealth();
     }
 
     public static void updateHealth() {
         if (DamageControl.Local == null || healthBar == null) return;
 
         h = DamageControl.Local.health.Value;
-        healthBar.sizeDelta = new Vector2(h, healthBar.sizeDelta.y);
+        healthBar.sizeDelta = new Vector2(Mathf.Max(0f, h), healthBar.sizeDelta.y);
     }
 }
