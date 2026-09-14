@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using FishNet.Object;
+using FishNet.Transporting;
 using TMPro;
 using NUnit.Framework;
 using Unity.VisualScripting;
@@ -305,6 +306,7 @@ public class PlayerMovement : NetworkBehaviour {
         }
     }
 
+
     private void Awake() {
         // Saved kill data is applied in OnStartClient for the owner only; doing it
         // here stamped the local save's lifetime kills onto every remote player.
@@ -414,6 +416,10 @@ public class PlayerMovement : NetworkBehaviour {
     {
         if (Local == this) Local = null;
         base.OnStopClient();
+        for (int i = 0; i < allDimensions.Length; i++) {
+            GameObject root = allDimensions[i].root;
+            if (root != null) root.SetActive(true);
+        }
     }
     
     public bool isGround() {

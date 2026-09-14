@@ -112639,7 +112639,7 @@ GameObject:
   m_Component:
   - component: {fileID: 609164736}
   m_Layer: 0
-  m_Name: Ice
+  m_Name: asdf
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -237067,6 +237067,10 @@ PrefabInstance:
       propertyPath: _spawnablePrefabs
       value: 
       objectReference: {fileID: 11400000, guid: 5c4b4deedb55204458196f4ef88c7189, type: 2}
+    - target: {fileID: 7443408887813606050, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
+      propertyPath: _refreshDefaultPrefabs
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7443408887813606051, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
       propertyPath: m_Name
       value: NetworkManager
@@ -332105,7 +332109,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7127484850027464541, guid: 3914713c08630f4489a2d0687a44e381, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -211.49986
+      value: -211.49988
       objectReference: {fileID: 0}
     - target: {fileID: 7345246892319229508, guid: 3914713c08630f4489a2d0687a44e381, type: 3}
       propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
