@@ -396,6 +396,7 @@ public class PlayerMovement : NetworkBehaviour {
                 if (child.name == "RenderedBody") child.gameObject.SetActive(false);
             }
         }
+        if (!IsOwner) GetComponent<PlayerMovement>().enabled = false;
 
     }
 
@@ -440,7 +441,7 @@ public class PlayerMovement : NetworkBehaviour {
     private bool CanJump() { return isGrounded; }
 
     private void Update() {
-        if (!IsOwner || ServerController.serverAnimationPlaying) return;
+        if (ServerController.serverAnimationPlaying) return;
 
         if (!started) return;
         CacheInputs();

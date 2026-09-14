@@ -21,6 +21,13 @@ public class StaminaController : NetworkBehaviour
     private Color red;
     private bool lowStaminaWarningPlayed = false;
 
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+        if (!IsOwner) GetComponent<StaminaController>().enabled = false;
+    }
+
+
     private void Awake()
     {
         Local = this;
