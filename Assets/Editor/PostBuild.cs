@@ -10,6 +10,9 @@ using System.IO;
 
 public class PostBuild
 {
+    // Shared with CIBuild so local and CI builds ship the same scenes
+    public static readonly string[] Scenes = { "Assets/Scenes/CombatScene.unity" }; //Change when boss scene added
+
     [MenuItem("Build/Windows Client Server")]
     public static void Build()
     {
@@ -17,12 +20,12 @@ public class PostBuild
         string buildPath = "Builds/WindowsClient/Client.exe";
         buildPlayerOptions.locationPathName = buildPath;
         buildPlayerOptions.target = BuildTarget.StandaloneWindows64;
-        buildPlayerOptions.scenes = new[] { "Assets/Scenes/CombatScene.unity" }; //Change when boss scene added
-        
+        buildPlayerOptions.scenes = Scenes;
+
         BuildPlayerOptions serverPlayerOptions = new BuildPlayerOptions();
         string serverPath = "Builds/LinuxServer/Server.exe";
         serverPlayerOptions.locationPathName = serverPath;
-        serverPlayerOptions.scenes = new[] { "Assets/Scenes/CombatScene.unity" };
+        serverPlayerOptions.scenes = Scenes;
         serverPlayerOptions.target = BuildTarget.StandaloneLinux64; 
         serverPlayerOptions.subtarget = (int)StandaloneBuildSubtarget.Server; 
 

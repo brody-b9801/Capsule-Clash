@@ -112639,7 +112639,7 @@ GameObject:
   m_Component:
   - component: {fileID: 609164736}
   m_Layer: 0
-  m_Name: asdf
+  m_Name: Ice
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

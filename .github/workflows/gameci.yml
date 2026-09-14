@@ -16,7 +16,8 @@ jobs:
         with:
           targetPlatform: StandaloneWindows64
           buildMethod: CIBuild.BuildWindows
-          buildPath: build/Client
+          buildName: Client
+          buildsPath: build/Client
 
       # - uses: game-ci/unity-builder@v4
       #   env:
@@ -25,16 +26,18 @@ jobs:
       #     UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
       #   with:
       #     targetPlatform: StandaloneWindows64
-      #     customParameters: -standaloneBuildSubtarget Server
-      #     buildMethod: CIBuild.BuildWindows
-      #     buildPath: build/Server
+      #     buildMethod: CIBuild.BuildServer
+      #     buildName: Server
+      #     buildsPath: build/Server
 
       - uses: actions/upload-artifact@v4
         with:
           name: client
           path: build/Client
+          if-no-files-found: error
 
       # - uses: actions/upload-artifact@v4
       #   with:
       #     name: server
       #     path: build/Server
+      #     if-no-files-found: error
