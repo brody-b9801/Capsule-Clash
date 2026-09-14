@@ -364,7 +364,7 @@ public class PlayerMovement : NetworkBehaviour {
             foreach (Transform s in desertContainer) 
                 desertSpawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
             foreach (Transform s in mazeSpawnPosContainer)
-                mazeSpawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
+                mazeSpawnVectors.Add(new Vector3(s.position.x, s.position.y + 5.0f, s.position.z));
             foreach (Transform s in spaceSpawnPosContainer)
                 spaceSpawnVectors.Add(new Vector3(s.position.x, s.position.y + 5.0f, s.position.z));
             foreach (Transform s in iceSpawnPosContainer)
@@ -889,11 +889,6 @@ private void UpdateMovementVector()
     }
 
     public void Die() {
-        // Die() reaches every client through DamageControl.ApplyDamageFeedback. Everything
-        // here is local-player state: characterController is only assigned for the owner
-        // (remote copies threw a NullReferenceException), and the cursor unlock would have
-        // freed every client's mouse whenever anyone died. The dead check stops a second
-        // respawn screen if two lethal hits land together.
         if (!IsOwner || dead) return;
         characterController.enabled = false;
         dead = true;
@@ -901,28 +896,18 @@ private void UpdateMovementVector()
         Cursor.lockState = CursorLockMode.None;
         Shooting.lockCursor = false;
         transform.position = new Vector3(0, -30, 0);
-        // No skybox change here on purpose. RenderSettings.skybox is global, and
-        // Die() reaches every client through ApplyDamageFeedback's ObserversRpc, so
-        // resetting it dropped the desert sky on the whole lobby whenever anyone died
-        // - and on non-owner instances desertSky is never assigned, so it blanked the
-        // sky outright. Respawn() keeps the player in currDimension, so that
-        // dimension's skybox is already the one that should stay up.
+
     }
     public void Respawn() {
-        // Health and spawn protection are server-authoritative; writing
-        // DamageControl.Local.health here never reached the server. The health bar
-        // refreshes from the SyncVar OnChange when the server's 180 arrives.
         if (DamageControl.Local != null) DamageControl.Local.ServerRespawn();
         canTakeDamage = false;
         if (invulnerableRoutine != null) {
             StopCoroutine(invulnerableRoutine);
             invulnerableRoutine = null;
         }
-        // Own siblings, not the statics — these resets apply to this player.
         if (localShooting != null) localShooting.reloadNum = 30;
         GunThingAnim.movingState = false;
         dashes = 0;
-        // Builds are refilled to 25 on the server in DamageControl.ServerRespawn.
         transform.localEulerAngles = Vector3.zero;
         newVelocity = Vector3.zero;
         characterController.enabled = false;
@@ -965,11 +950,6 @@ private void UpdateMovementVector()
 
     [ObserversRpc]
     public void killHealSync(NetworkObject shooter) {
-        // Runs on the victim's object on every client; only the shooter's client acts.
-        // The heal to full is applied on the server in DamageControl.ApplyDamage.
-        // Previously the first-kill scene ran on whichever client had 0 lifetime kills
-        // (using the victim's serverController, null on non-owners), and killCount was
-        // incremented on the victim's instance instead of the shooter's.
         if (Local == null || Local.NetworkObject != shooter) return;
 
         if (Local.killCount == 0 && Local.serverController != null)
