@@ -93,8 +93,8 @@ public class BuildUI : MonoBehaviour
         }   
 
         lerpingBuild = false;
-        // The spawner can despawn while this coroutine is mid-wait.
-        if (objectSpawner != null) objectSpawner.buildNum++;
+
+        if (objectSpawner != null) objectSpawner.RequestBuildRegen();
         yield break;
 
     }
