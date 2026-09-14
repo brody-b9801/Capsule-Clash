@@ -12,16 +12,32 @@ public class Username : NetworkBehaviour
     public float killCount;
     public string username;
 
+    private PlayerMovement player;
+    private string sentName;
+    private float sentKills = -1f;
+
+    void Awake()
+    {
+        player = GetComponentInParent<PlayerMovement>();
+    }
+
     void Update()
     {
         setRotation();
         GetInfo();
     }
 
+
     public void GetInfo() {
-        if (IsOwner && PlayerMovement.Local.username != null) {
-            ServerSetName(PlayerMovement.Local.username);
-            ServerSetKills(PlayerMovement.Local.killCount);
+        if (!IsOwner || player == null || player.username == null) return;
+
+        if (player.username != sentName) {
+            sentName = player.username;
+            ServerSetName(sentName);
+        }
+        if (player.killCount != sentKills) {
+            sentKills = player.killCount;
+            ServerSetKills(sentKills);
         }
     }
 
@@ -31,6 +47,9 @@ public class Username : NetworkBehaviour
     [ObserversRpc(BufferLast = true)]
     private void RpcSetName(string usernameRef) {
         username = usernameRef;
+        if (usernameDisplay != null) usernameDisplay.text = usernameRef;
+        if (!IsOwner && player != null) player.username = usernameRef;
+        //RefreshLeaderboard();
     }
 
     [ServerRpc]
@@ -39,11 +58,22 @@ public class Username : NetworkBehaviour
     [ObserversRpc(BufferLast = true)]
     private void RpcSetKills(float killRef) {
         killCount = killRef;
+        if (!IsOwner && player != null) player.killCount = (int)killRef;
+        //RefreshLeaderboard();
     }
+
+    // private void RefreshLeaderboard()
+    // {
+    //     if (player == null) return;
+    //     LeaderboardControl lb = player.GetComponent<LeaderboardControl>();
+    //     if (lb != null) lb.UpdateLB();
+    // }
 
     public void setRotation()
     {
-        transform.LookAt(Camera.main.transform);
+        Camera cam = Camera.main;
+        if (cam == null) return;
+        transform.LookAt(cam.transform);
 
         Vector3 adjustedRotation = transform.eulerAngles;
         transform.eulerAngles = new Vector3(-adjustedRotation.x, adjustedRotation.y - 180, adjustedRotation.z);
