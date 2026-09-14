@@ -518,6 +518,7 @@ public class Shooting : NetworkBehaviour
 
     private void LateUpdate()
     {
+        if (!IsOwner) return;
         if (lockCursor && !clickStartedOverUI)
             Cursor.lockState = CursorLockMode.Locked;
         else
