@@ -12,6 +12,7 @@ Shader "Hidden/RetroDither"
         _ChromaticAberration ("Chromatic Aberration", Range(0, 0.02)) = 0.002
         _ScanlineFrequency ("Scanline Frequency", Range(0, 10000)) = 2150
         _ScanlineDarkness ("Scanline Darkness", Range(0, 1)) = 1
+        _EdgeFade ("Edge Fade Width", Range(0, 0.5)) = 0
         _RefHeight ("Reference Height", Float) = 1080
         _BloomTex ("Bloom", 2D) = "black" {}
         _BloomThreshold ("Bloom Threshold", Range(0, 1)) = 0.7
@@ -63,6 +64,7 @@ Shader "Hidden/RetroDither"
     float _ShakeFrequency;
     float _ScanlineFrequency;
     float _ScanlineDarkness;
+    float _EdgeFade;
     sampler2D _BloomTex;
     float _BloomThreshold;
     float _BloomKnee;
@@ -238,7 +240,8 @@ Shader "Hidden/RetroDither"
                     col.rgb *= mask;
                 }
 
-                float2 edge = smoothstep(0., 0.02, sampleUV)*(1.-smoothstep(1.-0.02, 1., sampleUV));
+                float fade = max(_EdgeFade, 1e-5);
+                float2 edge = smoothstep(0., fade, sampleUV)*(1.-smoothstep(1.-fade, 1., sampleUV));
                 col.rgb *= edge.x * edge.y;
 
                 col.rgb = saturate(col.rgb);
