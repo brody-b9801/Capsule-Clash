@@ -15,7 +15,7 @@ public static class PlayerSceneTransfer {
             Debug.LogWarning($"[PlayerSceneTransfer] Ignored '{sceneName}'; only the server may load networked scenes.");
             return;
         }
-
+        Debug.Log(sceneName);
         List<NetworkObject> players = new List<NetworkObject>() {player};
         SceneLoadData sld = new SceneLoadData(sceneName) {
             MovedNetworkObjects = players.ToArray(),
