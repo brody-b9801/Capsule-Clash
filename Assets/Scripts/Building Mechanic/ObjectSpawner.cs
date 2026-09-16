@@ -43,6 +43,28 @@ public class ObjectSpawner : NetworkBehaviour
 
     private enum BuildType : byte { Floor = 0, Wall = 1, Ramp = 2 }
 
+    // TEMPORARY diagnostic for the client build-count bug. Fires on both sides:
+    // asServer=True on the server's copy, asServer=False when the replicated
+    // value lands on a client. If a client never logs asServer=False, the
+    // SyncVar is not reaching it; if it does, the HUD is reading the wrong
+    // spawner or something is regenerating the count.
+    private void Awake()
+    {
+        _buildNum.OnChange += OnBuildNumChanged;
+    }
+
+    private void OnDestroy()
+    {
+        _buildNum.OnChange -= OnBuildNumChanged;
+    }
+
+    private void OnBuildNumChanged(float prev, float next, bool asServer)
+    {
+        Debug.Log($"[ObjectSpawner] buildNum {prev} -> {next} asServer={asServer} IsOwner={IsOwner} " +
+                  $"IsServerStarted={IsServerStarted} obj={gameObject.name} " +
+                  $"isHudSpawner={BuildUI.objectSpawner == this}");
+    }
+
     public override void OnStartServer()
     {
         base.OnStartServer();
@@ -89,6 +111,11 @@ public class ObjectSpawner : NetworkBehaviour
         {
             Local = this;
             BuildUI.objectSpawner = this;
+
+            // The HUD used to wait on RoomMenu, which only exists in TitleScene, so
+            // playing CombatScene directly left the build counter frozen forever.
+            // The local player existing is the real signal that the HUD is live.
+            BuildUI.started = true;
         }
     }
 

@@ -23,10 +23,29 @@ public class BuildUI : MonoBehaviour
 
     public static bool isHost => InstanceFinder.IsServerStarted;
 
+    // TEMPORARY diagnostic: the HUD counter sits at its authored value with no
+    // warning logged, so Update either never runs or bails at one of the gates
+    // below. Logs once per state change rather than every frame.
+    private string _lastGate;
+
+    private void LogGate(string gate)
+    {
+        if (gate == _lastGate) return;
+        _lastGate = gate;
+        Debug.Log($"[BuildUI] gate={gate} obj='{gameObject.name}' " +
+                  $"enabled={enabled} activeInHierarchy={gameObject.activeInHierarchy}", this);
+    }
+
+    private void OnEnable()
+    {
+        Debug.Log($"[BuildUI] OnEnable on '{gameObject.name}'", this);
+    }
+
     void Update()
     {
         if (!started)
         {
+            LogGate("not-started");
             totalBuildTime = 0;
             return;
         }
@@ -34,14 +53,42 @@ public class BuildUI : MonoBehaviour
         // started is set by RoomMenu when the room UI opens, which is independent
         // of player spawn — under FishNet the player arrives later, so the spawner
         // reference can still be null here.
-        if (objectSpawner == null) return;
+        if (objectSpawner == null)
+        {
+            // ObjectSpawner.OnStartClient assigns this for the owner. If that
+            // callback is missed — an exception in an earlier NetworkBehaviour's
+            // OnStartClient aborts the rest of them — the HUD would sit frozen
+            // with no complaint, so recover it from the local player instead.
+            if (PlayerMovement.Local == null)
+            {
+                LogGate("no-local-player");
+                return;
+            }
+
+            objectSpawner = PlayerMovement.Local.GetComponent<ObjectSpawner>();
+            if (objectSpawner == null)
+            {
+                LogGate("player-has-no-spawner");
+                return;
+            }
+
+            Debug.LogWarning("[BuildUI] objectSpawner was never assigned by " +
+                             "ObjectSpawner.OnStartClient; recovered it from PlayerMovement.Local.");
+        }
+
+        LogGate("running");
 
         if (objectSpawner.buildNum < 25 && !lerpingBuild)
             StartCoroutine(lerpBuild());
 
         builds.text = objectSpawner.buildNum.ToString();
-        timer.fillAmount = (buildResetTime / 100);
-        arrow.localEulerAngles = new Vector3(0, 0, 360 * (buildResetTime / 100));
+
+        // timer and arrow are optional on some HUD prefabs; dereferencing a missing
+        // one threw every frame and aborted the rest of Update, which is what froze
+        // the reset ring and the build clock below.
+        if (timer != null) timer.fillAmount = (buildResetTime / 100);
+        if (arrow != null) arrow.localEulerAngles = new Vector3(0, 0, 360 * (buildResetTime / 100));
+        WarnMissingRefsOnce();
 
         // The server owns the clock and replicates it on the spawner; a client
         // ticking its own copy would just sit at zero and freeze the ring.
@@ -54,6 +101,20 @@ public class BuildUI : MonoBehaviour
         buildResetTimePrev = buildResetTime;
 
 
+    }
+
+    private bool warnedMissingRefs;
+
+    private void WarnMissingRefsOnce()
+    {
+        if (warnedMissingRefs) return;
+        if (timer != null && arrow != null) return;
+
+        warnedMissingRefs = true;
+        Debug.LogWarning($"[BuildUI] on '{gameObject.name}': " +
+                         $"timer={(timer == null ? "MISSING" : "ok")}, " +
+                         $"arrow={(arrow == null ? "MISSING" : "ok")}. " +
+                         "Assign them on the HUD prefab this scene actually uses.", this);
     }
 
     public void enableUI()

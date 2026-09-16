@@ -26,7 +26,7 @@ Material:
   stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: _BandSmoothness _DistanceFadeEnd _LowColor _NormalMapShadowIntensity
-    _OutlineSize _RimPower _ShadowBands
+    _OutlineSize _RimAlpha _RimPower _ShadowBands
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:

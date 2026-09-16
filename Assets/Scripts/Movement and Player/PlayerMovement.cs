@@ -61,6 +61,8 @@ public class PlayerMovement : NetworkBehaviour {
     private GameObject portal3A;
     private GameObject portal3B;
     private GameObject portal4;
+    [SerializeField] private string bossSceneName = "BossScene";
+    private bool bossTransferRequested;
     private bool canTeleport = true;
     private bool checkTele = true;
     [SerializeField] private float launchForce;
@@ -310,6 +312,15 @@ public class PlayerMovement : NetworkBehaviour {
     private void Awake() {
         // Saved kill data is applied in OnStartClient for the owner only; doing it
         // here stamped the local save's lifetime kills onto every remote player.
+    }
+
+    /// <summary>
+    /// Called by the owning client (portal trigger, boss door, etc.) to send every player
+    /// to another scene. The server performs the load; each player's state carries over.
+    /// </summary>
+    [ServerRpc]
+    public void TransferEveryoneToScene(string sceneName) {
+        PlayerSceneTransfer.MoveAllPlayersTo(sceneName);
     }
 
     public override void OnStartClient() {
@@ -801,10 +812,23 @@ private void UpdateMovementVector()
             else if (hitObject == portal3A) HandleTeleportation(portal3B, desertInfo);
             else if (hitObject == portal3B) HandleTeleportation(portal3A, iceInfo);
             else if (hitObject == portal4 && ServerController.Local.keyCount == 3) {
+                EnterBossScene();
             }
         }
     }
     
+    /// <summary>
+    /// Owner-only. Asks the server to pull every player into the boss scene; the collision
+    /// callback can fire on consecutive frames, so the request is sent once.
+    /// </summary>
+    private void EnterBossScene() {
+        if (!IsOwner || bossTransferRequested) return;
+        bossTransferRequested = true;
+        canTeleport = false;
+        RetroDither.isTeleporting = true;
+        TransferEveryoneToScene(bossSceneName);
+    }
+
     private void VelocityResetCheck(Vector3 hitNormal) {
         if (Vector3.Angle(dashVector, hitNormal) > 90f) { //check to reset dash if hit wall
             dashVector = Vector3.zero;
@@ -896,7 +920,16 @@ private void UpdateMovementVector()
         Cursor.lockState = CursorLockMode.None;
         Shooting.lockCursor = false;
         transform.position = new Vector3(0, -30, 0);
+    }
 
+    public void EnterDataCenter() {
+        if (!IsOwner || dead) return;
+        characterController.enabled = false;
+        dead = true;
+        respawnInit = Instantiate(respawnScreen);
+        Cursor.lockState = CursorLockMode.None;
+        Shooting.lockCursor = false;
+        transform.position = new Vector3(0, -30, 0);
     }
     public void Respawn() {
         if (DamageControl.Local != null) DamageControl.Local.ServerRespawn();
