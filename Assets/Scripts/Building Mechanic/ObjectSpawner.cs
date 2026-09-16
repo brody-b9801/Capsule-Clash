@@ -164,6 +164,7 @@ public class ObjectSpawner : NetworkBehaviour
     [ServerRpc]
     public void RequestBuildRegen()
     {
+        Debug.Log("request received");
         if (buildNum < 25) buildNum++;
     }
 

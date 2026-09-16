@@ -19,6 +19,8 @@ public class RetroDither : MonoBehaviour
     [Range(0, 0.02f)] public float chromaticAberration = 0.002f;
     [Tooltip("Width of the fade to black at the screen edges, in UV units. 0 = hard edge.")]
     [Range(0, 0.5f)] public float edgeFade = 0f;
+    [Tooltip("Fraction of the edge fade width that is a gradient; the rest is solid black. 1 = gradient across the full width, 0 = hard cut.")]
+    [Range(0, 1)] public float edgeSoftness = 1f;
     [Tooltip("Posterization edge softness, in level-units. 0 = hard steps.")]
     [Range(0, 1)] public float minHW = 0.1f;
     [Tooltip("Upper clamp on posterization edge softness.")]
@@ -158,6 +160,7 @@ public class RetroDither : MonoBehaviour
         _mat.SetFloat("_ShakeFrequency", shakeFrequency);
         _mat.SetFloat("_ChromaticAberration", chromaticAberration);
         _mat.SetFloat("_EdgeFade", edgeFade);
+        _mat.SetFloat("_EdgeSoftness", edgeSoftness);
         _mat.SetFloat("_RefHeight", refHeight);
         _mat.SetVector("_Resolution", new Vector2(src.width, src.height));
         _mat.SetFloat("_MinHW", minHW);
