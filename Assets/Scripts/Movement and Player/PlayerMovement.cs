@@ -321,8 +321,8 @@ public class PlayerMovement : NetworkBehaviour {
     /// to another scene. The server performs the load; each player's state carries over.
     /// </summary>
     [ServerRpc]
-    public void TransferEveryoneToScene(string sceneName) {
-        PlayerSceneTransfer.MoveAllPlayersTo(sceneName);
+    public void TransferToScene(string sceneName) {
+        PlayerSceneTransfer.MovePlayerToScene(GetComponent<NetworkObject>(), sceneName);
     }
 
     public override void OnStartClient() {
@@ -857,7 +857,7 @@ private void UpdateMovementVector()
         bossTransferRequested = true;
         canTeleport = false;
         RetroDither.isTeleporting = true;
-        TransferEveryoneToScene(bossSceneName);
+        TransferToScene(bossSceneName);
     }
 
     private void VelocityResetCheck(Vector3 hitNormal) {
