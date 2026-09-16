@@ -61,10 +61,9 @@ public class PlayerMovement : NetworkBehaviour {
     private GameObject portal2B;
     private GameObject portal3A;
     private GameObject portal3B;
-    private GameObject portal4;
-    [SerializeField] private string bossSceneName = "BossScene";
-    [SerializeField] private Vector3 bossSpawnPosition = new Vector3(0f, 5f, 0f);
-    private bool bossTransferRequested;
+    private GameObject portal4A;
+    [HideInInspector] public GameObject portal4B;
+    bool inCombatScene = true;
     private bool canTeleport = true;
     private bool checkTele = true;
     [SerializeField] private float launchForce;
@@ -350,7 +349,7 @@ public class PlayerMovement : NetworkBehaviour {
             meshCollider = GetComponent<CapsuleCollider>();
             playerCamera = Camera.main;
             // Carry the camera rig (and the RetroDither state on it) into the boss scene.
-            PersistentMainCamera.Ensure(playerCamera);
+            PersistentObjects.Ensure(playerCamera);
 
             // The boss scene ships with no HUD of its own, so the UI root holding
             // upgradeManager has to travel with the player.
@@ -374,7 +373,8 @@ public class PlayerMovement : NetworkBehaviour {
             portal2B = GameObject.Find("portal2A");
             portal3A = GameObject.Find("portal3B");
             portal3B = GameObject.Find("portal3A");
-            portal4 = GameObject.Find("portal4");
+            portal4A = GameObject.Find("portal4A");
+            portal4B = GameObject.Find("portal4B");
             characterController = GetComponent<CharacterController>();
             Cursor.lockState = CursorLockMode.Locked;
             lastPosition = playerTransform.position;
@@ -438,11 +438,11 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void OnSceneLoadedAsOwner(Scene scene, LoadSceneMode mode) {
-        if (!IsOwner || scene.name != bossSceneName) return;
+        if (!IsOwner) return;
 
         // The controller overwrites direct transform writes while it is enabled.
         characterController.enabled = false;
-        transform.position = bossSpawnPosition;
+        //transform.position = bossSpawnPosition;
         characterController.enabled = true;
 
         newVelocity = Vector3.zero;
@@ -504,7 +504,7 @@ public class PlayerMovement : NetworkBehaviour {
         lastFrameMovement = movement;
         HandleCameraRotation();
         UpdateMovementVector();
-        characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
+        if (characterController.enabled) characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
         wasGrounded = isGrounded;
         SetExtraneousStates(); //needs cleanup
         HandleLaunch();
@@ -842,8 +842,15 @@ private void UpdateMovementVector()
             else if (hitObject == portal2B) HandleTeleportation(portal2A, spaceInfo);
             else if (hitObject == portal3A) HandleTeleportation(portal3B, desertInfo);
             else if (hitObject == portal3B) HandleTeleportation(portal3A, iceInfo);
-            else if (hitObject == portal4) {
-                EnterBossScene();
+            else if (hitObject == portal4A) {
+                inCombatScene = false;
+                ChangeScene("BossScene");
+                HandleTeleportation(portal4B, desertInfo);
+            }
+            else if (hitObject == portal4B) {
+                inCombatScene = true;
+                ChangeScene("CombatScene");
+                HandleTeleportation(portal4A, desertInfo);
             }
         }
     }
@@ -852,12 +859,11 @@ private void UpdateMovementVector()
     /// Owner-only. Asks the server to pull every player into the boss scene; the collision
     /// callback can fire on consecutive frames, so the request is sent once.
     /// </summary>
-    private void EnterBossScene() {
-        if (!IsOwner || bossTransferRequested) return;
-        bossTransferRequested = true;
+    private void ChangeScene(string name) {
+        if (!IsOwner) return;
         canTeleport = false;
         RetroDither.isTeleporting = true;
-        TransferToScene(bossSceneName);
+        TransferToScene(name);
     }
 
     private void VelocityResetCheck(Vector3 hitNormal) {
@@ -911,6 +917,7 @@ private void UpdateMovementVector()
     }
 
     private void BorderWarning() {
+        if (!inCombatScene) return;
         float horizontalDistanceFromOrigin;
         float absX = Mathf.Abs(transform.position.x) - 60; //60 = x size of bounds
         float absZ = Mathf.Abs(transform.position.z) - 90; //90 = z size of bounds
@@ -1036,7 +1043,8 @@ private void UpdateMovementVector()
     private void HandleTeleportation(GameObject endPortal, DimensionInfo target) {
         characterController.enabled = false;
         SetActiveDimension(target);
-        GameObject.Find("Scene Light").transform.localScale = (target.name == "Desert") ? Vector3.one * 150f : Vector3.zero;
+        if (endPortal != portal4B)
+            GameObject.Find("Scene Light").transform.localScale = (target.name == "Desert") ? Vector3.one * 150f : Vector3.zero;
         canTeleport = false;
         StartCoroutine(teleTrue());
         RetroDither.isTeleporting = true;
