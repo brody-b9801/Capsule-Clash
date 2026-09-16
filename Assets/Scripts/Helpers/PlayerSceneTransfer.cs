@@ -16,18 +16,15 @@ public static class PlayerSceneTransfer {
     /// <summary>
     /// Server only. Loads sceneName for every client and moves all player objects into it.
     /// </summary>
-    public static void MoveAllPlayersTo(string sceneName) {
+    public static void MovePlayerToScene(NetworkObject player, string sceneName) {
         if (!InstanceFinder.IsServerStarted) {
             Debug.LogWarning($"[PlayerSceneTransfer] Ignored '{sceneName}'; only the server may load networked scenes.");
             return;
         }
 
         List<NetworkObject> players = new List<NetworkObject>();
-        foreach (NetworkConnection conn in InstanceFinder.ServerManager.Clients.Values) {
-            foreach (NetworkObject nob in conn.Objects) {
-                if (nob.GetComponent<PlayerMovement>() != null) players.Add(nob);
-            }
-        }
+        players.Add(player);
+
 
         SceneLoadData sld = new SceneLoadData(sceneName) {
             // The players ride along instead of being destroyed with the old scene.
