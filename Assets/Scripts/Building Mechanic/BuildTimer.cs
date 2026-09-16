@@ -3,6 +3,10 @@ using FishNet;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 
+// UNUSED. This component is not on any prefab or scene object, so Instance was
+// always null and BuildUI silently fell back to a host-only clock, freezing the
+// build ring on clients. The clock now rides on ObjectSpawner's _buildTime
+// SyncVar. Do not wire this up alongside it — pick one.
 public class BuildTimer : NetworkBehaviour
 {
     public static BuildTimer Instance { get; private set; }
