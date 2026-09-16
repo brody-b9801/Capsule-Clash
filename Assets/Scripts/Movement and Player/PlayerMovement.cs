@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using FishNet.Object;
 using FishNet.Transporting;
+using UnityEngine.SceneManagement;
 using TMPro;
 using NUnit.Framework;
 using Unity.VisualScripting;
@@ -62,6 +63,7 @@ public class PlayerMovement : NetworkBehaviour {
     private GameObject portal3B;
     private GameObject portal4;
     [SerializeField] private string bossSceneName = "BossScene";
+    [SerializeField] private Vector3 bossSpawnPosition = new Vector3(0f, 5f, 0f);
     private bool bossTransferRequested;
     private bool canTeleport = true;
     private bool checkTele = true;
@@ -347,6 +349,18 @@ public class PlayerMovement : NetworkBehaviour {
             sceneLight = GameObject.Find("DynamicLight");
             meshCollider = GetComponent<CapsuleCollider>();
             playerCamera = Camera.main;
+            // Carry the camera rig (and the RetroDither state on it) into the boss scene.
+            PersistentMainCamera.Ensure(playerCamera);
+
+            // The boss scene ships with no HUD of its own, so the UI root holding
+            // upgradeManager has to travel with the player.
+            upgradeManager[] upgradeManagers = FindObjectsByType<upgradeManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (upgradeManagers.Length > 0) PersistentSceneObject.Keep(upgradeManagers[0].gameObject, "UpgradeUI");
+            else Debug.LogWarning("[PlayerMovement] no upgradeManager found; the HUD will not survive the scene load.");
+
+            // Movement is client authoritative, so the owner has to place itself once
+            // the boss scene finishes loading; a server-side move would be overwritten.
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoadedAsOwner;
             baseFOV = playerCamera.fieldOfView;
             currentFOV = baseFOV;
             cam2 = GameObject.Find("CameraTwo").transform;
@@ -423,9 +437,26 @@ public class PlayerMovement : NetworkBehaviour {
         lastPosition = currentPosition;
     }
 
+    private void OnSceneLoadedAsOwner(Scene scene, LoadSceneMode mode) {
+        if (!IsOwner || scene.name != bossSceneName) return;
+
+        // The controller overwrites direct transform writes while it is enabled.
+        characterController.enabled = false;
+        transform.position = bossSpawnPosition;
+        characterController.enabled = true;
+
+        newVelocity = Vector3.zero;
+        dashVector = Vector3.zero;
+    }
+
+    private void OnDestroy() {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoadedAsOwner;
+    }
+
     public override void OnStopClient()
     {
         if (Local == this) Local = null;
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoadedAsOwner;
         base.OnStopClient();
         for (int i = 0; i < allDimensions.Length; i++) {
             GameObject root = allDimensions[i].root;
@@ -811,7 +842,7 @@ private void UpdateMovementVector()
             else if (hitObject == portal2B) HandleTeleportation(portal2A, spaceInfo);
             else if (hitObject == portal3A) HandleTeleportation(portal3B, desertInfo);
             else if (hitObject == portal3B) HandleTeleportation(portal3A, iceInfo);
-            else if (hitObject == portal4 && ServerController.Local.keyCount == 3) {
+            else if (hitObject == portal4) {
                 EnterBossScene();
             }
         }
