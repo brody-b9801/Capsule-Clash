@@ -13,6 +13,7 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
   m_InvalidKeywords:
+  - _OUTLINESCREENSPACE_ON
   - _SHADOWHATCHCROSS_ON
   - _USECASTSHADOWHATCH_ON
   - _USECROSSHATCH_ON
@@ -104,7 +105,7 @@ Material:
     - _HatchAngle: 45
     - _HatchScale: 40
     - _HatchWidth: 0.4
-    - _HighIntensity: 2
+    - _HighIntensity: 1.5
     - _HighlightDotDistanceScale: 0.5
     - _HighlightDotIntensity: 0.4
     - _HighlightDotScale: 120
@@ -114,7 +115,7 @@ Material:
     - _InkNoiseIntensity: 0.03
     - _InkNoiseScale: 200
     - _LightScalar: 1.5
-    - _LowIntensity: 1.5
+    - _LowIntensity: 1
     - _Metallic: 1
     - _Mode: 0
     - _NormalRampIntensity: 0.3
@@ -125,6 +126,7 @@ Material:
     - _OutlineDistanceScale: 1
     - _OutlineLightModulation: 0
     - _OutlineScaleStartDistance: 0
+    - _OutlineScreenSpace: 1
     - _OutlineSize: 0.004
     - _PanelLineFrequency: 1
     - _PanelLineWidth: 0.005

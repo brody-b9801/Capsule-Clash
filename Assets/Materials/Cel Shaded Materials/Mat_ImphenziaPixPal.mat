@@ -29,6 +29,7 @@ Material:
   - _EMISSION
   - _GLOSSYREFLECTIONS_OFF
   - _METALLICGLOSSMAP
+  - _OUTLINESCREENSPACE_ON
   m_LightmapFlags: 2
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
@@ -137,10 +138,10 @@ Material:
     - _GlossMapScale: 0.2
     - _Glossiness: 0
     - _GlossyReflections: 0
-    - _HighIntensity: 2.5
+    - _HighIntensity: 1.5
     - _IndirectLightIntensity: 0.3
     - _LightScalar: 1.3
-    - _LowIntensity: 1.8
+    - _LowIntensity: 1
     - _Metallic: 0
     - _Mode: 0
     - _NormalStrength: 1
@@ -148,6 +149,7 @@ Material:
     - _OutlineDistanceScale: 1
     - _OutlineLightModulation: 0
     - _OutlineScaleStartDistance: 0
+    - _OutlineScreenSpace: 1
     - _OutlineSize: 0.004
     - _Parallax: 0.005
     - _QueueControl: 0
