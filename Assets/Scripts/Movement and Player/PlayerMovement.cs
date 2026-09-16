@@ -374,7 +374,7 @@ public class PlayerMovement : NetworkBehaviour {
             if (localShooting != null) localShooting.reloadNum = 30;
             GunThingAnim.movingState = false;
             dashes = 0;
-            if (localSpawner != null) localSpawner.buildNum = 25;
+            if (localSpawner != null) localSpawner.RequestBuildReset();
             lastGroundedHeight = -13;
             currentCameraRotationX = 0;
             currentCameraRotationY = 0;

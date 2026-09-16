@@ -18,12 +18,21 @@ public class ObjectSpawner : NetworkBehaviour
 
     private float gridSize = 5f;
     private readonly SyncVar<float> _buildNum = new SyncVar<float>(25f);
+    private readonly SyncVar<float> _buildTime = new SyncVar<float>(0f);
 
     public float buildNum
     {
         get => _buildNum.Value;
         set { if (IsServerStarted) _buildNum.Value = value; }
     }
+
+    // The build-reset clock is global, but it has to ride on a networked object
+    // the client observes to reach it. The HUD lives in the scene and already
+    // tracks the local player's spawner, so it rides along here.
+    public float buildTime => _buildTime.Value;
+
+    private static float _serverBuildTime;
+    private static int _serverBuildTimeFrame = -1;
     public static List<GameObject> playerSpawnedObjects = new List<GameObject>();
 
     private static bool checkSupportBool = true;
@@ -42,6 +51,8 @@ public class ObjectSpawner : NetworkBehaviour
             _claimedCells.Clear();
             playerSpawnedObjects.Clear();
             checkSupportBool = true;
+            _serverBuildTime = 0f;
+            _serverBuildTimeFrame = -1;
             _claimSetInitialized = true;
         }
 
@@ -129,6 +140,18 @@ public class ObjectSpawner : NetworkBehaviour
 
     private void Update()
     {
+        if (IsServerStarted)
+        {
+            // Advanced once per frame, then mirrored onto every spawner so each
+            // client reads the same clock off its own player object.
+            if (_serverBuildTimeFrame != Time.frameCount)
+            {
+                _serverBuildTimeFrame = Time.frameCount;
+                _serverBuildTime += Time.deltaTime;
+            }
+            _buildTime.Value = _serverBuildTime;
+        }
+
         if (!IsOwner) return;
         if (PlayerMovement.Local == null || PlayerMovement.Local.currDimension == "Maze") return;
         if (Camera.main == null) return;
@@ -159,6 +182,13 @@ public class ObjectSpawner : NetworkBehaviour
                 }
             }
         }
+    }
+
+    // Clients cannot write buildNum directly; the setter drops the write.
+    [ServerRpc]
+    public void RequestBuildReset()
+    {
+        buildNum = 25;
     }
 
     [ServerRpc]

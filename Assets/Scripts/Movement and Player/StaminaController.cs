@@ -1,9 +1,14 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using FishNet.Object;
 
-public class StaminaController : NetworkBehaviour
+// Plain MonoBehaviour: this lives on the HUD in the scene, not on a player
+// prefab, so it has no NetworkObject and no owner. As a NetworkBehaviour its
+// callbacks never ran, and if FishNet ever did attach a NetworkObject to the
+// canvas the ownership guard would disable the bar on every client, since a
+// scene object is owned by nobody. Stamina is driven entirely off the local
+// player's state, so nothing here needs to be networked.
+public class StaminaController : MonoBehaviour
 {
     [SerializeField] private RectTransform staminaBar;
     [SerializeField] private RectTransform staminaBlack;
@@ -20,13 +25,6 @@ public class StaminaController : NetworkBehaviour
     private Color yellow;
     private Color red;
     private bool lowStaminaWarningPlayed = false;
-
-    public override void OnStartClient()
-    {
-        base.OnStartClient();
-        if (!IsOwner) GetComponent<StaminaController>().enabled = false;
-    }
-
 
     private void Awake()
     {

@@ -43,10 +43,9 @@ public class BuildUI : MonoBehaviour
         timer.fillAmount = (buildResetTime / 100);
         arrow.localEulerAngles = new Vector3(0, 0, 360 * (buildResetTime / 100));
 
-        if (BuildTimer.Instance != null)
-            totalBuildTime = BuildTimer.Instance.Tick(totalBuildTime, Time.deltaTime);
-        else if (isHost)
-            totalBuildTime += Time.deltaTime;
+        // The server owns the clock and replicates it on the spawner; a client
+        // ticking its own copy would just sit at zero and freeze the ring.
+        totalBuildTime = objectSpawner.buildTime;
 
         buildResetTime = 100 - (totalBuildTime % 100);
         if (isHost && buildResetTime > buildResetTimePrev) {
