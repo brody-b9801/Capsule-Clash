@@ -155,11 +155,15 @@ namespace FishNet.Example
             Color c;
             if (state == LocalConnectionState.Started) {
                 c = _startedColor;
+                _serverIndicator.transform.gameObject.SetActive(false);
             } else if (state == LocalConnectionState.Stopped)
                 c = _stoppedColor;
             else
                 c = _changingColor;
-
+            if (state != LocalConnectionState.Started)
+            {
+                _serverIndicator.transform.gameObject.SetActive(true);
+            }
             img.color = c;
         }
 
@@ -184,7 +188,6 @@ namespace FishNet.Example
                 _networkManager.ServerManager.StopConnection(true);
             else
                 _networkManager.ServerManager.StartConnection();
-
         }
 
         public void OnClick_Client_Start()

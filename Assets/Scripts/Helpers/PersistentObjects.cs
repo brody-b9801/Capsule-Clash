@@ -42,5 +42,8 @@ public class PersistentObjects : MonoBehaviour {
 
             Destroy(cam.gameObject);
         }
+        GameObject light = GameObject.Find("Scene Light");
+        GameObject portals = GameObject.Find("PortalContainer");
+        
     }
 }
