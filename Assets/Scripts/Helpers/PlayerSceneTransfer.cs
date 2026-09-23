@@ -4,9 +4,9 @@ using FishNet;
 using FishNet.Connection;
 using FishNet.Managing.Scened;
 using FishNet.Object;
+using Unity.VisualScripting;
 
 public static class PlayerSceneTransfer {
-
     public static void MovePlayerToScene(NetworkObject player, string sceneName) {
         if (!InstanceFinder.IsServerStarted) {
             Debug.LogWarning($"[PlayerSceneTransfer] Ignored '{sceneName}'; only the server may load networked scenes.");
