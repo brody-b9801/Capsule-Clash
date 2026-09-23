@@ -311,14 +311,9 @@ public class PlayerMovement : NetworkBehaviour {
 
 
     private void Awake() {
-        // Saved kill data is applied in OnStartClient for the owner only; doing it
-        // here stamped the local save's lifetime kills onto every remote player.
     }
 
-    /// <summary>
-    /// Called by the owning client (portal trigger, boss door, etc.) to send every player
-    /// to another scene. The server performs the load; each player's state carries over.
-    /// </summary>
+
     [ServerRpc]
     public void TransferToScene(string sceneName) {
         PlayerSceneTransfer.MovePlayerToScene(GetComponent<NetworkObject>(), sceneName);
@@ -375,6 +370,7 @@ public class PlayerMovement : NetworkBehaviour {
             portal3B = GameObject.Find("portal3A");
             portal4A = GameObject.Find("portal4A");
             portal4B = GameObject.Find("portal4B");
+            portal4B.SetActive(false);
             characterController = GetComponent<CharacterController>();
             Cursor.lockState = CursorLockMode.Locked;
             lastPosition = playerTransform.position;
@@ -1042,8 +1038,9 @@ private void UpdateMovementVector()
 
     private void HandleTeleportation(GameObject endPortal, DimensionInfo target) {
         characterController.enabled = false;
+        bool movingToBossScene = endPortal == portal4B;
         SetActiveDimension(target);
-        if (endPortal != portal4B)
+        if (!movingToBossScene)
             GameObject.Find("Scene Light").transform.localScale = (target.name == "Desert") ? Vector3.one * 150f : Vector3.zero;
         canTeleport = false;
         StartCoroutine(teleTrue());
@@ -1068,6 +1065,16 @@ private void UpdateMovementVector()
         GetComponent<ChangeMat>().dimensionMaterialChange(target.materialName);
         Camera.main.GetComponent<SnowParticles>().toggleParticles(target.snow);
         Camera.main.GetComponent<FogShader>().ChangeDimension(target.name);
+
+
+        portal1A.SetActive(!movingToBossScene);
+        portal1B.SetActive(!movingToBossScene);
+        portal2A.SetActive(!movingToBossScene);
+        portal2B.SetActive(!movingToBossScene);
+        portal3A.SetActive(!movingToBossScene);
+        portal3B.SetActive(!movingToBossScene);
+        portal4A.SetActive(!movingToBossScene);
+        portal4B.SetActive(movingToBossScene);
     }
 
     IEnumerator teleTrue() {
