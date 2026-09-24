@@ -343,17 +343,12 @@ public class PlayerMovement : NetworkBehaviour {
             sceneLight = GameObject.Find("DynamicLight");
             meshCollider = GetComponent<CapsuleCollider>();
             playerCamera = Camera.main;
-            // Carry the camera rig (and the RetroDither state on it) into the boss scene.
             PersistentObjects.Ensure(playerCamera);
 
-            // The boss scene ships with no HUD of its own, so the UI root holding
-            // upgradeManager has to travel with the player.
             upgradeManager[] upgradeManagers = FindObjectsByType<upgradeManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (upgradeManagers.Length > 0) PersistentSceneObject.Keep(upgradeManagers[0].gameObject, "UpgradeUI");
             else Debug.LogWarning("[PlayerMovement] no upgradeManager found; the HUD will not survive the scene load.");
 
-            // Movement is client authoritative, so the owner has to place itself once
-            // the boss scene finishes loading; a server-side move would be overwritten.
             UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoadedAsOwner;
             baseFOV = playerCamera.fieldOfView;
             currentFOV = baseFOV;
@@ -436,9 +431,7 @@ public class PlayerMovement : NetworkBehaviour {
     private void OnSceneLoadedAsOwner(Scene scene, LoadSceneMode mode) {
         if (!IsOwner) return;
 
-        // The controller overwrites direct transform writes while it is enabled.
         characterController.enabled = false;
-        //transform.position = bossSpawnPosition;
         characterController.enabled = true;
 
         newVelocity = Vector3.zero;
