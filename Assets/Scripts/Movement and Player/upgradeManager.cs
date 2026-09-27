@@ -15,6 +15,8 @@ public class upgradeManager : MonoBehaviour
 
     public static upgradeManager Local { get; private set; }
 
+    public bool UpgradeWindowOpen => upgradeWindow != null && upgradeWindow.activeSelf;
+
     public int killPoints = 100;
     public int upgradePoints = 0;
 

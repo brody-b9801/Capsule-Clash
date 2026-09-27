@@ -155,7 +155,7 @@ public class CameraZoom : MonoBehaviour
         aimZoomOffset = targetZoom - baseFOVTarget;
         
         // Crosshair positioning
-        if (!Shooting.Local.shotgun) {
+        if (Shooting.Local.currentGun != Shooting.currGun.Shotgun) {
             if (!_leftImg.enabled) {
                 _leftImg.enabled = true;
                 _rightImg.enabled = true;

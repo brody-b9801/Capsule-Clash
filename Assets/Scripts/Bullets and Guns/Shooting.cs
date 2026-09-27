@@ -74,6 +74,8 @@ public class Shooting : NetworkBehaviour
     [SerializeField] private MeshFilter     playerMesh;
     [SerializeField] private Mesh           shotgunMesh;
     [SerializeField] private Mesh           M4Mesh;
+    [SerializeField] private Mesh           sniperMesh;
+    [SerializeField] private Mesh           sniperMagMesh;
 
     private const int MuzzlePoolSize  = 10;
     private const int CasingPoolSize  = 30;
@@ -93,13 +95,20 @@ public class Shooting : NetworkBehaviour
 
     public int  reloadNum  = 30;
     public int shottieNum = 2;
+    public int sniperNum  = 5;
     public bool reloading  = false;
 
     public bool playerShot;
     public bool isShooting;
     public bool canShoot   = true;
     public static bool lockCursor = false;
-    public bool shotgun    = false;
+    public enum currGun
+    {
+        AR,
+        Shotgun,
+        Sniper
+    }
+    public currGun currentGun;
     public static float distance;
     public static Vector3 deltaPosition;
     public static float spread;
@@ -137,6 +146,11 @@ public class Shooting : NetworkBehaviour
     private GameObject bulletSpawn;
     public  GameObject playerMag;
 
+    private MeshFilter magFilter;
+    private MeshFilter playerMagFilter;
+    private Mesh       defaultMagMesh;
+    private Mesh       defaultPlayerMagMesh;
+
     private BulletManager bulletManager;
 
 
@@ -145,6 +159,9 @@ public class Shooting : NetworkBehaviour
     void Awake()
     {
         bulletManager = FindFirstObjectByType<BulletManager>();
+
+        playerMagFilter = playerMag.GetComponent<MeshFilter>();
+        defaultPlayerMagMesh = playerMagFilter.sharedMesh;
     }
 
     public override void OnStopClient()
@@ -159,6 +176,7 @@ public class Shooting : NetworkBehaviour
 
         if (!IsOwner) return;
         Local = this;
+        currentGun = currGun.AR;
 
         alphaVal = 0;
 
@@ -177,6 +195,8 @@ public class Shooting : NetworkBehaviour
         gunMesh     = SceneLookup.FindInactive("CamAKM").GetComponent<MeshFilter>();
         CamAKM      = SceneLookup.FindInactive("CamAKM");
         mag         = SceneLookup.FindInactive("MC.Magazine");
+        magFilter      = mag.GetComponent<MeshFilter>();
+        defaultMagMesh = magFilter.sharedMesh;
         camCasing   = SceneLookup.FindInactive("CamCasing");
         gunThing_g1 = SceneLookup.FindInactive("CamAKM").transform;
 
@@ -224,7 +244,7 @@ public class Shooting : NetworkBehaviour
         Vector3 cameraPosition = mainCameraTransform.position;
         Vector3 cameraForward  = mainCameraTransform.forward;
 
-        ref int ammo = ref shotgun ? ref shottieNum : ref reloadNum;
+        ref int ammo = ref CurrentAmmo();
 
             if (Input.GetMouseButtonDown(0))
                 clickStartedOverUI = Cursor.lockState == CursorLockMode.None &&
@@ -233,7 +253,8 @@ public class Shooting : NetworkBehaviour
             else if (Input.GetMouseButtonUp(0))
                 clickStartedOverUI = false;
 
-            bool inputCheck = shotgun ? Input.GetMouseButtonDown(0) : Input.GetMouseButton(0);
+            // Only the AR is full-auto; shotgun and sniper fire once per click.
+            bool inputCheck = currentGun == currGun.AR ? Input.GetMouseButton(0) : Input.GetMouseButtonDown(0);
             if (inputCheck && Time.time >= nextFireTime &&
                 ammo > 0 && !reloading && canShoot && !PlayerMovement.Local.dead && !clickStartedOverUI)
             {
@@ -243,11 +264,17 @@ public class Shooting : NetworkBehaviour
                 isShooting = true;
                 
 
-                float spreadMulti = shotgun ? 10f : 1f;
-                for (int i = 0; i < (shotgun ? 9 : 1); i++)
+                float spreadMulti = currentGun switch
+                {
+                    currGun.Shotgun => 10f,
+                    currGun.Sniper  => CameraZoom.isAiming ? 0f : 3f,
+                    _               => 1f,
+                };
+                float range = currentGun == currGun.Sniper ? 150f : 25f;
+                for (int i = 0; i < (currentGun == currGun.Shotgun ? 9 : 1); i++)
                 {
                     FireBullet(useCameraPos, cameraForward,
-                        bulletSpawn.transform.position, 25f, 15f,
+                        bulletSpawn.transform.position, range, 15f,
                         bulletHole.position, bH.transform.position,
                         Random.Range(-spread * spreadMulti, spread * spreadMulti),
                         Random.Range(-spread * spreadMulti, spread * spreadMulti),
@@ -258,8 +285,8 @@ public class Shooting : NetworkBehaviour
                 Shaker.shooting = true;
                 Shaker.StopShake();
                 Shaker.Instance.Shake();
-                if (shotgun) RetroDither.shotgunFired = true;
-                else        RetroDither.shotFired    = true;
+                if (currentGun != currGun.AR) RetroDither.shotgunFired = true;
+                else                          RetroDither.shotFired    = true;
                 ReloadAnimation.PlayAnim();
                 StartCoroutine(EnableDisable());
                 nextFireTime = Time.time + 1f / fireRate * upgradeManager.Local.fireRateMultiplier;
@@ -272,7 +299,7 @@ public class Shooting : NetworkBehaviour
 
         if (Input.GetKeyDown(KeyCode.R))
         {
-            if (canChangeGun && ((!shotgun && !reloading && reloadNum != 30) || (shotgun && !reloading && shottieNum != 2)))
+            if (canChangeGun && !reloading && CurrentAmmo() != MaxAmmo(currentGun))
             {
                 ReloadAnimation.PlayReload();
                 StartCoroutine(waitReload());
@@ -280,9 +307,35 @@ public class Shooting : NetworkBehaviour
             }
         }
 
-        if (Input.GetKeyDown(KeyCode.E) && !reloading && canChangeGun && !isShooting)
-            StartCoroutine(gunChangeAnim());
+        bool upgradeWindowOpen = upgradeManager.Local != null && upgradeManager.Local.UpgradeWindowOpen;
+        if (!upgradeWindowOpen && !reloading && canChangeGun && !isShooting)
+        {
+            currGun? selectedGun = null;
+            if      (Input.GetKeyDown(KeyCode.Alpha1)) selectedGun = currGun.AR;
+            else if (Input.GetKeyDown(KeyCode.Alpha2)) selectedGun = currGun.Shotgun;
+            else if (Input.GetKeyDown(KeyCode.Alpha3)) selectedGun = currGun.Sniper;
+
+            if (selectedGun.HasValue && selectedGun.Value != currentGun)
+                StartCoroutine(gunChangeAnim(selectedGun.Value));
+        }
     }
+
+    private ref int CurrentAmmo()
+    {
+        switch (currentGun)
+        {
+            case currGun.Shotgun: return ref shottieNum;
+            case currGun.Sniper:  return ref sniperNum;
+            default:              return ref reloadNum;
+        }
+    }
+
+    public static int MaxAmmo(currGun gun) => gun switch
+    {
+        currGun.Shotgun => 2,
+        currGun.Sniper  => 5,
+        _               => 30,
+    };
 
     private void FireBullet(
         Vector3 origin, Vector3 direction, Vector3 bS,
@@ -306,7 +359,7 @@ public class Shooting : NetworkBehaviour
             randomX: randomX, randomY: randomY, randomZ: randomZ,
             camPosition: mainCameraTransform.position,
             camForward: mainCameraTransform.forward,
-            isShotgun: shotgun,
+            gunType: currentGun,
             shooterVelocity: shooterVelocity);
 
         lockCursor = true;
@@ -357,7 +410,7 @@ public class Shooting : NetworkBehaviour
     private void ServerBulletLogic(
         Vector3 spawnPosition, Vector3 direction, float force, Vector3 origin,
         float randomX, float randomY, float randomZ,
-        Vector3 camPosition, Vector3 camForward, bool isShotgun, Vector3 shooterVelocity,
+        Vector3 camPosition, Vector3 camForward, currGun gunType, Vector3 shooterVelocity,
         NetworkConnection conn = null)
     {
         NetworkObject shooterObj = conn != null ? conn.FirstObject : NetworkObject;
@@ -385,7 +438,8 @@ public class Shooting : NetworkBehaviour
         targetPoint += spreadVector * distanceFromCamera;
 
         Vector3 fireDirection = (targetPoint - origin).normalized;
-        Vector3 velocity      = fireDirection * bulletSpeed + shooterVelocity;
+        float   speed         = gunType == currGun.Sniper ? snipeSpeed : bulletSpeed;
+        Vector3 velocity      = fireDirection * speed + shooterVelocity;
 
         GameObject    bulletGO  = Instantiate(bulletPrefab, bulletPosition, Quaternion.LookRotation(fireDirection));
         Rigidbody     bulletRb  = bulletGO.GetComponent<Rigidbody>();
@@ -397,7 +451,7 @@ public class Shooting : NetworkBehaviour
 
         if (bulletManager != null)
         {
-            bulletManager.AddBulletData(bulletNob, origin, isShotgun, shooterObj);
+            bulletManager.AddBulletData(bulletNob, origin, gunType, shooterObj);
             Debug.Log("Bullet added to BulletManager");
         } else
         {
@@ -415,7 +469,7 @@ public class Shooting : NetworkBehaviour
             _muzzlePool.Return(ps, _muzzlePoolRoot);
     }
 
-    public IEnumerator gunChangeAnim()
+    public IEnumerator gunChangeAnim(currGun newGun)
     {
         isShooting      = false;
         Shaker.shooting = false;
@@ -432,30 +486,42 @@ public class Shooting : NetworkBehaviour
             yield return null;
         }
 
-        shotgun = !shotgun;
+        currentGun = newGun;
 
-        if (shotgun)
+        float muzzleZ;
+        switch (currentGun)
         {
-            fireRate = 3.5f;
-            CamAKM.transform.localScale = new Vector3(1.075f, 1.075f, 1.075f);
-            gunMesh.mesh = shotgunMesh;
-            mag.GetComponent<MeshRenderer>().enabled    = false;
-            camCasing.GetComponent<MeshRenderer>().enabled = true;
-            bulletHole.transform.localPosition = new Vector3(bulletHole.transform.localPosition.x, bulletHole.transform.localPosition.y, 0.36f);
-            bH.transform.localPosition         = new Vector3(bH.transform.localPosition.x, bH.transform.localPosition.y, 0.36f);
+            case currGun.Shotgun:
+                fireRate = 3.5f;
+                CamAKM.transform.localScale = new Vector3(1.075f, 1.075f, 1.075f);
+                gunMesh.mesh = shotgunMesh;
+                mag.GetComponent<MeshRenderer>().enabled    = false;
+                camCasing.GetComponent<MeshRenderer>().enabled = true;
+                muzzleZ = 0.36f;
+                break;
+            case currGun.Sniper:
+                fireRate = 1.25f;
+                CamAKM.transform.localScale = new Vector3(1f, 1f, 1f);
+                gunMesh.mesh = sniperMesh != null ? sniperMesh : M4Mesh;
+                // Show the magazine so the sniper uses the AR's mag-swap reload.
+                mag.GetComponent<MeshRenderer>().enabled    = true;
+                camCasing.GetComponent<MeshRenderer>().enabled = false;
+                muzzleZ = 0.8f;
+                break;
+            default:
+                fireRate = 10f;
+                CamAKM.transform.localScale = new Vector3(1.25f, 1f, 1f);
+                gunMesh.mesh = M4Mesh;
+                mag.GetComponent<MeshRenderer>().enabled    = true;
+                camCasing.GetComponent<MeshRenderer>().enabled = false;
+                muzzleZ = 0.6f;
+                break;
         }
-        else
-        {
-            fireRate = 10f;
-            CamAKM.transform.localScale = new Vector3(1.25f, 1f, 1f);
-            gunMesh.mesh = M4Mesh;
-            mag.GetComponent<MeshRenderer>().enabled    = true;
-            camCasing.GetComponent<MeshRenderer>().enabled = false;
-            bulletHole.transform.localPosition = new Vector3(bulletHole.transform.localPosition.x, bulletHole.transform.localPosition.y, 0.6f);
-            bH.transform.localPosition         = new Vector3(bH.transform.localPosition.x, bH.transform.localPosition.y, 0.6f);
-        }
+        magFilter.sharedMesh = currentGun == currGun.Sniper && sniperMagMesh != null ? sniperMagMesh : defaultMagMesh;
+        bulletHole.transform.localPosition = new Vector3(bulletHole.transform.localPosition.x, bulletHole.transform.localPosition.y, muzzleZ);
+        bH.transform.localPosition         = new Vector3(bH.transform.localPosition.x, bH.transform.localPosition.y, muzzleZ);
 
-        ServerGunSkin(shotgun,
+        ServerGunSkin(currentGun,
             gunThing_g1.transform.position - new Vector3(0f, 0.35f, 0f),
             gunThing_g1.transform.rotation, false);
 
@@ -500,9 +566,12 @@ public class Shooting : NetworkBehaviour
 
     public const float ReloadDuration = 2.01f;
     public const float ShotgunSingleShellReloadDuration = 1.31f;
+    public const float SniperReloadDuration = 2.01f;
 
     public static float CurrentReloadDuration =>
-        ((Local.shotgun && Local.shottieNum == 1) ? ShotgunSingleShellReloadDuration : ReloadDuration)
+        (Local.currentGun == currGun.Sniper ? SniperReloadDuration
+            : (Local.currentGun == currGun.Shotgun && Local.shottieNum == 1) ? ShotgunSingleShellReloadDuration
+            : ReloadDuration)
         / upgradeManager.Local.reloadSpeedMultiplier;
 
     IEnumerator waitReload()
@@ -510,8 +579,7 @@ public class Shooting : NetworkBehaviour
         reloading = true;
         yield return new WaitForSeconds(CurrentReloadDuration);
 
-        if (shotgun) shottieNum = 2;
-        else         reloadNum  = 30;
+        CurrentAmmo() = MaxAmmo(currentGun);
 
         reloading = false;
     }
@@ -526,29 +594,36 @@ public class Shooting : NetworkBehaviour
     }
 
     [ServerRpc]
-    private void ServerGunSkin(bool sg, Vector3 pos, Quaternion rot, bool networkedCall)
-        => RpcGunSkin(sg, pos, rot, networkedCall);
+    private void ServerGunSkin(currGun gun, Vector3 pos, Quaternion rot, bool networkedCall)
+        => RpcGunSkin(gun, pos, rot, networkedCall);
 
     [ObserversRpc(BufferLast = true)]
-    private void RpcGunSkin(bool sg, Vector3 pos, Quaternion rot, bool networkedCall)
-        => gunSkinSync(sg, pos, rot, networkedCall);
+    private void RpcGunSkin(currGun gun, Vector3 pos, Quaternion rot, bool networkedCall)
+        => gunSkinSync(gun, pos, rot, networkedCall);
 
-    public void gunSkinSync(bool sg, Vector3 pos, Quaternion rot, bool networkedCall)
+    public void gunSkinSync(currGun gun, Vector3 pos, Quaternion rot, bool networkedCall)
     {
         if (!networkedCall)
         {
-            if (sg)
+            switch (gun)
             {
-                playerMesh.mesh                         = shotgunMesh;
-                playerMesh.transform.localScale         = new Vector3(1.2f, 1.2f, 1.2f);
-                playerMag.SetActive(false);
+                case currGun.Shotgun:
+                    playerMesh.mesh                         = shotgunMesh;
+                    playerMesh.transform.localScale         = new Vector3(1.2f, 1.2f, 1.2f);
+                    playerMag.SetActive(false);
+                    break;
+                case currGun.Sniper:
+                    playerMesh.mesh                         = sniperMesh != null ? sniperMesh : M4Mesh;
+                    playerMesh.transform.localScale         = new Vector3(1f, 1f, 1f);
+                    playerMag.SetActive(true);
+                    break;
+                default:
+                    playerMesh.mesh                         = M4Mesh;
+                    playerMesh.transform.localScale         = new Vector3(1f, 1f, 1f);
+                    playerMag.SetActive(true);
+                    break;
             }
-            else
-            {
-                playerMesh.mesh                         = M4Mesh;
-                playerMesh.transform.localScale         = new Vector3(1f, 1f, 1f);
-                playerMag.SetActive(true);
-            }
+            playerMagFilter.sharedMesh = gun == currGun.Sniper && sniperMagMesh != null ? sniperMagMesh : defaultPlayerMagMesh;
         }
     }
 

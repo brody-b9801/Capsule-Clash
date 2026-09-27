@@ -72,7 +72,7 @@ public class Shaker : MonoBehaviour
 
         if (upRot && !fovChanged) {
             fovChanged = true;
-            if (Shooting.Local.shotgun) {
+            if (Shooting.Local.currentGun != Shooting.currGun.AR) {
                 FOVModRef = FOVMod*10;
             } else {
                 FOVModRef = FOVMod*2;
@@ -117,7 +117,7 @@ public class Shaker : MonoBehaviour
     {
         elapsed = 0.0f;
         if (!CameraZoom.isAiming) {
-            if (Shooting.Local.shotgun) {
+            if (Shooting.Local.currentGun != Shooting.currGun.AR) {
                 rotationAmountX = previousERC + (rotMod * 2 * Random.Range(0.9f, 1f));
             } else if (CameraZoom.moving) {
                 rotationAmountX = previousERC + (rotMod * 1.2f * Random.Range(0.9f, 1f));
