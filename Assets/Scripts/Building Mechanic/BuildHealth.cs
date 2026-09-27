@@ -48,17 +48,17 @@ public class BuildHealth : NetworkBehaviour
         if (transMesh != null)
             transMesh.enabled = false;
     }
-    public void TakeDamage(bool shotgun, float dist)
+    public void TakeDamage(Shooting.currGun gun, float dist)
     {
-        Debug.Log($"Taking damage: shotgun={shotgun}, dist={dist}");
+        Debug.Log($"Taking damage: gun={gun}, dist={dist}");
         if (IsServerStarted)
-            ApplyDamage(shotgun, dist);
+            ApplyDamage(gun, dist);
         else
-            ServerTakeDamage(shotgun, dist);
+            ServerTakeDamage(gun, dist);
     }
 
     [ServerRpc(RequireOwnership = false, RunLocally = false)]
-    private void ServerTakeDamage(bool shotgun, float dist) => ApplyDamage(shotgun, dist);
+    private void ServerTakeDamage(Shooting.currGun gun, float dist) => ApplyDamage(gun, dist);
 
     /// <summary>
     /// Applies the health change on the server only, then tells observers to play
@@ -66,14 +66,16 @@ public class BuildHealth : NetworkBehaviour
     /// rather than inside the observers RPC where every client raced to do it.
     /// </summary>
     [Server]
-    private void ApplyDamage(bool shotgun, float dist) {
-        Debug.Log($"Server received damage: shotgun={shotgun}, dist={dist}");
+    private void ApplyDamage(Shooting.currGun gun, float dist) {
+        Debug.Log($"Server received damage: gun={gun}, dist={dist}");
 
         // Already dead and awaiting despawn — ignore further hits so a burst of
         // shots cannot despawn the same build more than once.
         if (currentHealth.Value <= 0f) return;
 
-        if (!shotgun) {
+        if (gun == Shooting.currGun.Sniper) {
+            currentHealth.Value -= 2f;
+        } else if (gun != Shooting.currGun.Shotgun) {
             currentHealth.Value--;
         } else if (dist < 3) {
             currentHealth.Value -= 0.5f;

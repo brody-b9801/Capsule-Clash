@@ -72,7 +72,7 @@ public class DamageControl : NetworkBehaviour
 
     // Server only. Called by BulletManager when a bullet hits this player's DamageCollider.
     // Returns true if damage was applied.
-    public bool ControlDamage(NetworkObject shooter, bool shotgun, float dist)
+    public bool ControlDamage(NetworkObject shooter, Shooting.currGun gun, float dist)
     {
         if (!IsServerInitialized || !CanBeDamaged()) return false;
 
@@ -80,7 +80,9 @@ public class DamageControl : NetworkBehaviour
         float damageMultiplier = shooterDamage != null ? shooterDamage.damageMultiplier.Value : 1f;
 
         float damageDealt;
-        if (!shotgun) {
+        if (gun == Shooting.currGun.Sniper) {
+            damageDealt = 90 * damageMultiplier;
+        } else if (gun != Shooting.currGun.Shotgun) {
             damageDealt = 18 * damageMultiplier;
         } else {
             if (dist < 3) {

@@ -16,17 +16,23 @@ public class BulletText : MonoBehaviour
     void Update()
     {
     if (Shooting.Local == null) return;
-    if (!Shooting.Local.shotgun)
+    switch (Shooting.Local.currentGun)
     {
-      text.text = Shooting.Local.reloadNum.ToString();
-      bullet.SetActive(true);
-      shotgun.SetActive(false);
-    }
-    else
-    {
-      text.text = Shooting.Local.shottieNum.ToString();
-      shotgun.SetActive(true);
-      bullet.SetActive(false);
+      case Shooting.currGun.Shotgun:
+        text.text = Shooting.Local.shottieNum.ToString();
+        shotgun.SetActive(true);
+        bullet.SetActive(false);
+        break;
+      case Shooting.currGun.Sniper:
+        text.text = Shooting.Local.sniperNum.ToString();
+        bullet.SetActive(true);
+        shotgun.SetActive(false);
+        break;
+      default:
+        text.text = Shooting.Local.reloadNum.ToString();
+        bullet.SetActive(true);
+        shotgun.SetActive(false);
+        break;
     }
     if (roomText != null)
            roomText.text = "In Room: " + roomName;

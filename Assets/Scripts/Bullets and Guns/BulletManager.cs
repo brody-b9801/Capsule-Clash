@@ -14,7 +14,7 @@ public class BulletManager : NetworkBehaviour
         public Vector3 previousPosition;
         public Vector3 startPosition;
         public float timeActive;
-        public bool isShotgun;
+        public Shooting.currGun gunType;
         public NetworkObject shooter;
         public bool hitPrev;
     }
@@ -26,7 +26,7 @@ public class BulletManager : NetworkBehaviour
 
     private List<BulletData> activeBullets = new List<BulletData>();
 
-    public void AddBulletData(NetworkObject bulletGO, Vector3 origin, bool shotgun, NetworkObject shooterObj)
+    public void AddBulletData(NetworkObject bulletGO, Vector3 origin, Shooting.currGun gun, NetworkObject shooterObj)
     {
         activeBullets.Add(new BulletData
         {
@@ -34,7 +34,7 @@ public class BulletManager : NetworkBehaviour
             previousPosition = origin,
             startPosition = origin,
             timeActive = 0f,
-            isShotgun = shotgun,
+            gunType = gun,
             shooter = shooterObj,
             hitPrev = false
         });
@@ -76,7 +76,7 @@ public class BulletManager : NetworkBehaviour
 
             float bulletDist = (currentPosition - bullet.startPosition).magnitude;
 
-            if (bullet.hitPrev || (bullet.isShotgun && bulletDist > 20f) || bullet.timeActive > 7.5f)
+            if (bullet.hitPrev || (bullet.gunType == Shooting.currGun.Shotgun && bulletDist > 20f) || bullet.timeActive > 7.5f)
             {
                 DestroyBullet(i, bullet);
             }
@@ -101,7 +101,7 @@ public class BulletManager : NetworkBehaviour
             BuildHealth buildHealth = hitObject.GetComponent<BuildHealth>();
             if (buildHealth != null)
             {
-                buildHealth.TakeDamage(bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
+                buildHealth.TakeDamage(bulletData.gunType, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
             }
 
             if (hitObject.CompareTag("DamageCollider"))
@@ -114,7 +114,7 @@ public class BulletManager : NetworkBehaviour
 
                 DamageControl damage = victim.gameObject.GetComponent<DamageControl>();
                 bool damageApplied = damage != null
-                    && damage.ControlDamage(bulletData.shooter, bulletData.isShotgun, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
+                    && damage.ControlDamage(bulletData.shooter, bulletData.gunType, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
 
                 if (damageApplied && bulletData.shooter != null && bulletData.shooter.Owner != null && bulletData.shooter.Owner.IsValid)
                     SetDamageCross(bulletData.shooter.Owner);

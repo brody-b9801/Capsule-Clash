@@ -205,7 +205,7 @@ public class ObjectSpawner : NetworkBehaviour
                 if (buildHealth != null)
                 {
                     for (int i = 0; i < 4; i++)
-                        buildHealth.TakeDamage(false, 0);
+                        buildHealth.TakeDamage(Shooting.currGun.AR, 0);
                 }
             }
         }
