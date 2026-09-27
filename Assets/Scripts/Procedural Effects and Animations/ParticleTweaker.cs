@@ -68,11 +68,11 @@ public class ParticleTweaker : MonoBehaviour
 
         if (player.isGrounded && !player.onSlope)
         {
-            velocityVec = new UnityEngine.Vector3(player.newVelocity.x + player.dashVector.x, deltaY, player.newVelocity.z + player.dashVector.z);
+            velocityVec = new UnityEngine.Vector3(player.movement.x + player.dashVector.x, deltaY, player.movement.z + player.dashVector.z);
         }
         else
         {
-            velocityVec = new UnityEngine.Vector3(8.5f/7.5f*player.newVelocity.x + player.dashVector.x, 0, 8.5f/7.5f*player.newVelocity.z + player.dashVector.z);
+            velocityVec = new UnityEngine.Vector3(8.5f/7.5f*player.movement.x + player.dashVector.x, 0, 8.5f/7.5f*player.movement.z + player.dashVector.z);
         }
 
         velocity = velocityVec.magnitude;
@@ -81,7 +81,7 @@ public class ParticleTweaker : MonoBehaviour
         yVelo = player.newVelocity.y + player.dashVector.y;
 
         float theta = Mathf.Clamp(Mathf.Cos(UnityEngine.Vector3.SignedAngle(vec1, vec2, new UnityEngine.Vector3(0, 1, 0))), 0, 1);
-        float val = Mathf.Clamp(15 * (velocity - 9f), 0, 50);
+        float val = Mathf.Clamp(15 * (velocity - 10f), 0, 50);
         targetIntensity = val;
 
         emission.rateOverTime = targetIntensity;

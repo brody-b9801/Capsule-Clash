@@ -13,13 +13,11 @@ using Cinemachine.Utility;
 
 [RequireComponent(typeof(ServerController))]
 public class PlayerMovement : NetworkBehaviour {
-    public static float moveSpeed = 4.0f;
     [SerializeField] private float jumpForce = 8.0f;
+    [SerializeField] private float jumpBufferTime = 0.1f; // a jump pressed this long before landing still fires
     public static float rotationSpeed = 10.0f;
     [SerializeField] private float maxLookUpAngle = 80.0f;
     [SerializeField] private float maxLookDownAngle = 80.0f;
-    [SerializeField] private float airSpeed = 8.0f;
-    [SerializeField] private float sprintSpeed = 8.0f;
     private Camera playerCamera;
     [SerializeField] private Transform gun;
     public static Vector3 gunRotation;
@@ -76,7 +74,9 @@ public class PlayerMovement : NetworkBehaviour {
     public bool jumpedLast = false;
     public bool isTeleporting = false;
     public Vector3 newVelocity;
-    private bool groundedPrev;
+    private bool groundedPrev; // isGrounded as of the previous frame
+    private bool pendingLanding; // airborne since the last grounded collision; the next one applies fall damage
+    private float jumpBufferTimer;
     private bool groundBeneath;
     private bool sprintingPrev;
     private CharacterController characterController;
@@ -180,8 +180,8 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float friction = 8f;
     [SerializeField] private float sprintAccelerationMultiplier = 1.5f;
     [SerializeField] private float airControlMultiplier = 0.5f;
+    [SerializeField] private float overspeedDamping = 10f; // how quickly speed above the current cap bleeds off
 
-    private Vector3 currentVelocity = Vector3.zero;
     private Vector3 wishDir = Vector3.zero;
     public static float percentAccelerated;
 
@@ -209,8 +209,9 @@ public class PlayerMovement : NetworkBehaviour {
     public Material spaceSky;
     public Material iceSky;
     public Vector3 shotBoost;
-    private bool wasGrounded;
     private GunThingAnim gunRenderer;
+    private MeshRenderer usernameRenderer;
+    private int displayedDashes = -1;
 
     public static PlayerMovement Local {get; private set;}
     private Shooting localShooting;
@@ -218,14 +219,16 @@ public class PlayerMovement : NetworkBehaviour {
 
     private float _getHorizontal() => Input.GetAxisRaw("Horizontal");
     private float _getVertical() => Input.GetAxisRaw("Vertical");
-    private bool _getJump() => Input.GetKey(KeyCode.Space);
+    private bool _getJump() => Input.GetKeyDown(KeyCode.Space);
     private bool _getDash() => Input.GetKeyDown(KeyCode.Space);
-    
+
     private void CacheInputs() {
         _horizontal = _getHorizontal();
         _vertical = _getVertical();
         _jump = _getJump();
         _dash = _getDash();
+        if (_jump) jumpBufferTimer = jumpBufferTime;
+        else jumpBufferTimer = Mathf.Max(jumpBufferTimer - Time.deltaTime, 0f);
     }
 
     public static Vector3 getVelocity() { return Local != null ? Local.velocityTransform : Vector3.zero; }
@@ -300,6 +303,13 @@ public class PlayerMovement : NetworkBehaviour {
             root = GameObject.Find("Ice")
         };
         allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo };
+    }
+
+    private void ApplyDimensionPhysics(DimensionInfo target) {
+        gravity = target.gravity;
+        groundAcceleration = target.accel;
+        groundDeceleration = target.decel;
+        friction = target.fric;
     }
 
     private void SetActiveDimension(DimensionInfo target) {
@@ -407,6 +417,8 @@ public class PlayerMovement : NetworkBehaviour {
             desertSky = RenderSettings.skybox;
             InitializeDimensions();
             SetActiveDimension(desertInfo);
+            ApplyDimensionPhysics(desertInfo);
+            usernameRenderer = usernameDisplay.GetComponent<MeshRenderer>();
             GetComponent<MeshRenderer>().enabled = false;
             started = true;
         } else {
@@ -422,9 +434,10 @@ public class PlayerMovement : NetworkBehaviour {
         return Local != null && avatar1 == Local.NetworkObject && Local.canTakeDamage;
     }
 
-    private void FixedUpdate() {
+    // Sampled right after Move so the displacement and Time.deltaTime come from the same frame
+    private void UpdateVelocityEstimate() {
         Vector3 currentPosition = playerTransform.position;
-        velocityTransform = (currentPosition - lastPosition) / Time.deltaTime;
+        if (Time.deltaTime > 0f) velocityTransform = (currentPosition - lastPosition) / Time.deltaTime;
         lastPosition = currentPosition;
     }
 
@@ -436,6 +449,8 @@ public class PlayerMovement : NetworkBehaviour {
 
         newVelocity = Vector3.zero;
         dashVector = Vector3.zero;
+        lastPosition = playerTransform.position;
+        lastGroundedHeight = transform.position.y;
     }
 
     private void OnDestroy() {
@@ -444,9 +459,13 @@ public class PlayerMovement : NetworkBehaviour {
 
     public override void OnStopClient()
     {
-        if (Local == this) Local = null;
+        if (Local == this) {
+            Local = null;
+            started = false;
+        }
         UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoadedAsOwner;
         base.OnStopClient();
+        if (allDimensions == null) return; // only the owner's instance set up dimensions
         for (int i = 0; i < allDimensions.Length; i++) {
             GameObject root = allDimensions[i].root;
             if (root != null) root.SetActive(true);
@@ -478,23 +497,31 @@ public class PlayerMovement : NetworkBehaviour {
     private bool CanJump() { return isGrounded; }
 
     private void Update() {
-        if (ServerController.serverAnimationPlaying) return;
-
-        if (!started) return;
+        if (ServerController.serverAnimationPlaying || !started) {
+            // keep the velocity estimate from spiking on the first frame back
+            lastPosition = playerTransform.position;
+            velocityTransform = Vector3.zero;
+            return;
+        }
         CacheInputs();
 
         IsOnSlope();
         CheckIfStuckAndMoveUp();
-        dt.text = dashes.ToString();
+        if (dashes != displayedDashes) {
+            displayedDashes = dashes;
+            dt.text = dashes.ToString();
+        }
 
-        usernameDisplay.transform.gameObject.GetComponent<MeshRenderer>().enabled = false;
+        if (usernameRenderer != null) usernameRenderer.enabled = false;
 
+        // Snapshot before refreshing so groundedPrev really is last frame's state during Move's collision callbacks
+        groundedPrev = isGrounded;
         isGrounded = isGround();
         lastFrameMovement = movement;
         HandleCameraRotation();
         UpdateMovementVector();
         if (characterController.enabled) characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
-        wasGrounded = isGrounded;
+        UpdateVelocityEstimate();
         SetExtraneousStates(); //needs cleanup
         HandleLaunch();
         KeyEvents();
@@ -506,86 +533,103 @@ public class PlayerMovement : NetworkBehaviour {
         UpdateDynamicFOV();
     }
 
-    private float SetTargetSpeed()
+    private float GetBaseSpeed()
     {
-        float baseSpeed;
-        if (isAiming)
-            baseSpeed = 2.5f;
-        else if (isSprinting && isGrounded)
-            baseSpeed = 12.0f;
-        else if (isSprinting && fastAir)
-            baseSpeed = 10.0f;
-        else if (!isGrounded)
-            baseSpeed = 7.5f;
-        else
-            baseSpeed = 8.5f;
-
-        return baseSpeed * upgradeManager.Local.speedMultiplier;
+        if (isAiming) return 2.5f;
+        if (isSprinting && isGrounded) return 12.0f;
+        if (isSprinting && fastAir) return 10.0f;
+        if (!isGrounded) return 7.5f;
+        return 8.5f;
     }
 
-private void UpdateMovementVector()
-{
-    Vector3 inputDirection = new Vector3(_horizontal, 0, _vertical);
-    if (inputDirection.magnitude > 1f) inputDirection.Normalize();
+    private float SetTargetSpeed() => GetBaseSpeed() * upgradeManager.Local.speedMultiplier;
 
-    Vector3 forward = transform.forward;
-    Vector3 right = transform.right;
-    forward.y = 0f;
-    right.y = 0f;
-    float targetSpeed = SetTargetSpeed();
-    float baseSpeed = targetSpeed / upgradeManager.Local.speedMultiplier;
-    Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
-    if (moveDirection.magnitude > 1f) moveDirection.Normalize();
-    if (isGrounded) {
-        moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
-        moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
-    }
-    if (moveDirection.magnitude > characterController.minMoveDistance)
+    private void UpdateMovementVector()
     {
-        Vector3 projectedMoveDirection = Vector3.Project(movement, moveDirection);
-        Vector3 perpendicularMovement = movement - projectedMoveDirection;
-        float perpendicularSpeed = perpendicularMovement.magnitude;
-        if (perpendicularSpeed > characterController.minMoveDistance)
-        {   
-            float turnFrictionScale = 3f; //Used for tuning how snappy turns feel
-            float frictionDrop = perpendicularSpeed * friction * turnFrictionScale * Time.deltaTime;
-            perpendicularMovement *= Mathf.Max(perpendicularSpeed - frictionDrop, 0f) / perpendicularSpeed;
-        }
-        movement = projectedMoveDirection + perpendicularMovement;
-        projectedMoveDirection = Vector3.Project(movement, moveDirection);
-        float currentSpeed = projectedMoveDirection.magnitude * Mathf.Sign(Vector3.Dot(projectedMoveDirection, moveDirection));
-        float alignment = Vector3.Dot(moveDirection.normalized, movement.normalized);
-        float accelRate = (alignment < 0.5f) ? groundDeceleration : groundAcceleration;
-        if (isSprinting) accelRate *= sprintAccelerationMultiplier;
+        Vector3 inputDirection = new Vector3(_horizontal, 0, _vertical);
+        if (inputDirection.magnitude > 1f) inputDirection.Normalize();
 
-        float addSpeed = baseSpeed - currentSpeed;
-        if (addSpeed > 0) {
-            float accelSpeed = Mathf.Min(accelRate * Time.deltaTime, addSpeed);
-            movement += moveDirection * accelSpeed;
-        }
+        Vector3 forward = transform.forward;
+        Vector3 right = transform.right;
+        forward.y = 0f;
+        right.y = 0f;
+        float baseSpeed = GetBaseSpeed();
+        float targetSpeed = baseSpeed * upgradeManager.Local.speedMultiplier;
+        Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
+        if (moveDirection.magnitude > 1f) moveDirection.Normalize();
 
-        float currentMag = movement.magnitude;
-        if (currentMag > baseSpeed && currentMag < targetSpeed)
-            movement = movement.normalized * Mathf.Lerp(currentMag, targetSpeed, Time.deltaTime * 5f);
-    } else {
-        float speed = movement.magnitude;
-        if (speed > 0.01f) {
-            float drop = speed * friction * Time.deltaTime;
-            movement *= Mathf.Max(speed - drop, 0) / speed;
+        // Flat heading used by the desert step-offset probe; falls back to momentum when there's no input
+        Vector3 flatMovement = new Vector3(movement.x, 0f, movement.z);
+        wishDir = moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : flatMovement.normalized;
+
+        if (isGrounded) {
+            moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
+            moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
         } else {
-            movement = Vector3.zero;
+            // Vertical motion in the air belongs to newVelocity; don't carry slope-walking Y off a ramp
+            movement.y = 0f;
         }
-    }
-    float maxAllowedSpeed = targetSpeed * 1.1f;
-    if (movement.magnitude > maxAllowedSpeed) movement = movement.normalized * maxAllowedSpeed;
 
-    percentAccelerated = Mathf.Clamp01(movement.magnitude / (targetSpeed * 0.8f));    percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f * Time.deltaTime));
-}
+        if (moveDirection.magnitude > characterController.minMoveDistance)
+        {
+            Vector3 projectedMoveDirection = Vector3.Project(movement, moveDirection);
+            Vector3 perpendicularMovement = movement - projectedMoveDirection;
+            float perpendicularSpeed = perpendicularMovement.magnitude;
+            if (perpendicularSpeed > characterController.minMoveDistance)
+            {
+                float turnFrictionScale = 3f; //Used for tuning how snappy turns feel
+                if (!isGrounded) turnFrictionScale *= airControlMultiplier;
+                float frictionDrop = perpendicularSpeed * friction * turnFrictionScale * Time.deltaTime;
+                perpendicularMovement *= Mathf.Max(perpendicularSpeed - frictionDrop, 0f) / perpendicularSpeed;
+            }
+            movement = projectedMoveDirection + perpendicularMovement;
+            projectedMoveDirection = Vector3.Project(movement, moveDirection);
+            float currentSpeed = projectedMoveDirection.magnitude * Mathf.Sign(Vector3.Dot(projectedMoveDirection, moveDirection));
+            // Starting from rest counts as accelerating, not reversing
+            bool reversing = movement.sqrMagnitude > 1e-4f && Vector3.Dot(moveDirection.normalized, movement.normalized) < 0.5f;
+            float accelRate;
+            if (isGrounded) accelRate = reversing ? groundDeceleration : groundAcceleration;
+            else accelRate = reversing ? airDeceleration : airAcceleration;
+            if (isSprinting) accelRate *= sprintAccelerationMultiplier;
+
+            // Accelerate up to the un-upgraded speed (or the upgraded one, if the multiplier is below 1)
+            float addSpeed = Mathf.Min(baseSpeed, targetSpeed) - currentSpeed;
+            if (addSpeed > 0) {
+                float accelSpeed = Mathf.Min(accelRate * Time.deltaTime, addSpeed);
+                movement += moveDirection * accelSpeed;
+            }
+
+            // Then ease into the speed upgrade; the tolerance matters because acceleration lands exactly on baseSpeed
+            float currentMag = movement.magnitude;
+            if (currentMag >= baseSpeed * 0.99f && currentMag < targetSpeed)
+                movement = movement.normalized * Mathf.Lerp(currentMag, targetSpeed, Time.deltaTime * 5f);
+        } else {
+            float speed = movement.magnitude;
+            if (speed > 0.01f) {
+                // Ground friction stops the player quickly; in the air momentum only bleeds off slowly
+                float drop = isGrounded ? speed * friction * Time.deltaTime : airDeceleration * Time.deltaTime;
+                movement *= Mathf.Max(speed - drop, 0) / speed;
+            } else {
+                movement = Vector3.zero;
+            }
+        }
+
+        // Bleed off excess speed (leaving the ground, starting to aim) instead of hard-clamping it in one frame
+        float maxAllowedSpeed = targetSpeed * 1.1f;
+        float movementMag = movement.magnitude;
+        if (movementMag > maxAllowedSpeed) {
+            float dampedMag = Mathf.Lerp(movementMag, maxAllowedSpeed, 1f - Mathf.Exp(-overspeedDamping * Time.deltaTime));
+            movement *= dampedMag / movementMag;
+        }
+
+        percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
+    }
     private Vector3 GetJumpAndGravityVector() {
         if (_jump) serverController.TryFeed();
         
 
-        if (_jump && isGrounded && !isAiming && !serverController.LookingAtServer) {
+        if (jumpBufferTimer > 0f && isGrounded && !isAiming && !serverController.LookingAtServer) {
+            jumpBufferTimer = 0f;
             if (currDimension == "Maze")
                 newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
             else if (currDimension == "Space")
@@ -600,13 +644,12 @@ private void UpdateMovementVector()
         if (isGrounded && !jumpedLast && newVelocity.y <= 0f) {
             newVelocity.y = -2;
         } else {
-            groundingForce = wasGrounded && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed() * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
+            groundingForce = groundedPrev && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed() * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
             newVelocity.y = Mathf.Max(newVelocity.y - gravity * Time.deltaTime, -50f);
         }
 
         Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
 
-        groundedPrev = isGrounded;
         return (verticalVelo + groundingForce) * Time.deltaTime;
     }
 
@@ -617,7 +660,8 @@ private void UpdateMovementVector()
         rotationY = mouseX * rotationSpeed;
 
         currentCameraRotationX += rotationX;
-        currentCameraRotationX = Mathf.Clamp(currentCameraRotationX, -maxLookDownAngle, maxLookUpAngle);
+        // negative X pitches the camera up
+        currentCameraRotationX = Mathf.Clamp(currentCameraRotationX, -maxLookUpAngle, maxLookDownAngle);
         currentCameraRotationY += rotationY;
         transform.localEulerAngles = new Vector3(0.0f, currentCameraRotationY, 0.0f);
     }
@@ -640,9 +684,8 @@ private void UpdateMovementVector()
                     if (hitName.Contains("Tree")) {
                         noStep = true;
                     } else if (hitName.Contains("Building")) {
-                        string input = hitName.Substring(9, 1);
-                        int outVal;
-                        int.TryParse(input, out outVal);
+                        int outVal = 0;
+                        if (hitName.Length > 9) int.TryParse(hitName.Substring(9, 1), out outVal);
                         if ((outVal < 5 && outVal > 0) || outVal == 8) noStep = true;
                     } else if (hitName.Contains("MarketplaceTop")) {
                         noStep = true;
@@ -666,6 +709,7 @@ private void UpdateMovementVector()
         } else {
             characterController.stepOffset = 0f;
             groundBeneath = false;
+            pendingLanding = true;
             if (groundedPrev) {
                 lastGroundedHeight = transform.position.y;
             }
@@ -683,25 +727,27 @@ private void UpdateMovementVector()
                          + (playerCamera.transform.forward * dashForce);
             newVelocity.y = 0;
             jumpedLast = true;
-            dashFOV = Mathf.Clamp(dashFOV, 20, dashFOV + 10);
+            jumpBufferTimer = 0f; // this press was spent on the dash, don't also jump on landing
+            dashFOV = Mathf.Max(dashFOV, 20f);
             lastGroundedHeight = -30;
             if (dashRoutine != null) StopCoroutine(dashRoutine);
             dashRoutine = StartCoroutine(LerpDash());
-        } else {    
-            dashFOV = 0;
+        } else {
+            // ease the kick out rather than dropping it the next frame
+            dashFOV = Mathf.Lerp(dashFOV, 0f, Time.deltaTime * 5f);
         }
 
-        if (!resettingDashes) StartCoroutine(addDash());
+        if (!resettingDashes && dashes < 3) StartCoroutine(addDash());
     }
 
     private void HandleLaunch()
     {
         if (launch) {
+            launch = false;
             newVelocity.y = launchForce;
             jumpedLast = true;
             resetPrev = false;
             HealthController.noFDAnim = true;
-            StartCoroutine(resetLaunch());
         }
     }
     private void KeyEvents()
@@ -802,17 +848,16 @@ private void UpdateMovementVector()
         }
     }
 
-    IEnumerator resetLaunch() {
-        yield return new WaitForSeconds(0.01f);
-        launch = false;
-    }
-
     void OnControllerColliderHit(ControllerColliderHit hit) {
         if (!IsOwner) return;
         
         string hitTag = hit.transform.gameObject.tag;
         if (isGrounded) {
-            HandleFallDamage(hitTag);
+            // first grounded contact after being airborne; not necessarily the frame isGrounded flipped
+            if (pendingLanding) {
+                pendingLanding = false;
+                HandleFallDamage(hitTag);
+            }
             jumpedLast = false;
             fastAir = false;
             resetPrev = false;
@@ -867,16 +912,15 @@ private void UpdateMovementVector()
 
     private void HandleFallDamage(string hitTag)
     {
-        if (!groundedPrev && hitTag != "Launchpad" && hitTag != "Portal") {
-                float heightChange = lastGroundedHeight - transform.position.y - 8;
-                if (heightChange > 0) {
-                    float shakeMagnitude = Mathf.Min(heightChange / 20f, 1f);
-                    StartCoroutine(ApplyLandingShake(shakeMagnitude));
+        if (hitTag == "Launchpad" || hitTag == "Portal") return;
+        float heightChange = lastGroundedHeight - transform.position.y - 8;
+        if (heightChange > 0) {
+            float shakeMagnitude = Mathf.Min(heightChange / 20f, 1f);
+            StartCoroutine(ApplyLandingShake(shakeMagnitude));
 
-                    int fallDamage = ((int)(heightChange / 4)) * 12;
-                    if (fallDamage > 0 && DamageControl.Local != null) DamageControl.Local.ServerApplyFallDamage(fallDamage);
-                }
-            }
+            int fallDamage = ((int)(heightChange / 4)) * 12;
+            if (fallDamage > 0 && DamageControl.Local != null) DamageControl.Local.ServerApplyFallDamage(fallDamage);
+        }
     }
         private void setFrictionIce(bool onIce) {
         groundAcceleration = onIce ? iceInfo.accel : desertInfo.accel;
@@ -949,15 +993,7 @@ private void UpdateMovementVector()
         transform.position = new Vector3(0, -30, 0);
     }
 
-    public void EnterDataCenter() {
-        if (!IsOwner || dead) return;
-        characterController.enabled = false;
-        dead = true;
-        respawnInit = Instantiate(respawnScreen);
-        Cursor.lockState = CursorLockMode.None;
-        Shooting.lockCursor = false;
-        transform.position = new Vector3(0, -30, 0);
-    }
+    public void EnterDataCenter() => Die();
     public void Respawn() {
         if (DamageControl.Local != null) DamageControl.Local.ServerRespawn();
         canTakeDamage = false;
@@ -974,7 +1010,20 @@ private void UpdateMovementVector()
         dead = false;
         lastGroundedHeight = -13;
         movement = Vector3.zero;
-            
+        dashVector = Vector3.zero;
+        if (dashRoutine != null) {
+            StopCoroutine(dashRoutine);
+            dashRoutine = null;
+        }
+        dashFOV = 0f;
+        shotBoost = Vector3.zero;
+        launch = false;
+        jumpedLast = false;
+        fastAir = false;
+        isSprinting = false;
+        pendingLanding = false;
+        jumpBufferTimer = 0f;
+
         List<Vector3> currentSpawns = desertSpawnVectors; // default to desert spawns
         if (currDimension == "Maze" && mazeSpawnVectors.Count > 0)
             currentSpawns = mazeSpawnVectors;
@@ -1040,6 +1089,9 @@ private void UpdateMovementVector()
         RetroDither.isTeleporting = true;
         transform.position = endPortal.transform.position + new Vector3(0f, 3f, 0f);
         characterController.enabled = true;
+        // dimensions sit at different heights; measure the next fall from here, and don't count the jump as velocity
+        lastGroundedHeight = transform.position.y;
+        lastPosition = playerTransform.position;
 
         currDimension = target.name;
         playerCamera.farClipPlane = target.farClip;
@@ -1049,10 +1101,7 @@ private void UpdateMovementVector()
         } else {
             playerCamera.clearFlags = CameraClearFlags.SolidColor;
         }
-        gravity = target.gravity;
-        groundAcceleration = target.accel;
-        groundDeceleration = target.decel;
-        friction = target.fric;
+        ApplyDimensionPhysics(target);
 
         serverController.DisplayDimension();
         GetComponent<ChangeMat>().dimensionMaterialChange(target.materialName);
@@ -1078,7 +1127,13 @@ private void UpdateMovementVector()
         canTeleport = true;
     }
     
+    private static bool IsBuildCollider(Collider col) {
+        return col.CompareTag("Build") || col.CompareTag("Ramp") || col.CompareTag("Wall") || col.CompareTag("Floor");
+    }
+
     void CheckIfStuckAndMoveUp() {
+        if (dead || !characterController.enabled) return;
+
         Vector3 capsuleBottom = transform.position + characterController.center - Vector3.up * (characterController.height / 2 - characterController.radius);
         Vector3 capsuleTop = transform.position + characterController.center + Vector3.up * (characterController.height / 2 - characterController.radius);
 
@@ -1087,12 +1142,14 @@ private void UpdateMovementVector()
 
         bool isBuildCollision = false;
         foreach (var col in hitColliders) {
-            if (col.tag == "Build" || col.tag == "Ramp" || col.tag == "Wall" || col.tag == "Floor") {
+            if (IsBuildCollider(col)) {
                 isBuildCollision = true;
                 break;
             }
         }
         if (!isBuildCollision) return;
+        // only builds may be switched to BuildNoColPlayer; hitColliders also holds terrain on the Default layer
+        Collider[] stuckColliders = hitColliders;
 
         Vector3 start = transform.position;
         Dictionary<Collider, int> originalLayers = new Dictionary<Collider, int>();
@@ -1120,14 +1177,18 @@ private void UpdateMovementVector()
 
             if (unstuckFail) {
                 newVelocity.y = 0;
-                foreach (Collider thing in hitColliders) thing.transform.gameObject.layer = 11;
+                // relayer what we were stuck in at the start, not whatever overlapped at the last probe height
+                foreach (Collider thing in stuckColliders)
+                    if (IsBuildCollider(thing)) thing.transform.gameObject.layer = 11;
                 characterController.enabled = false;
                 transform.position = start;
                 characterController.enabled = true;
             }
+            lastPosition = playerTransform.position; // the unstuck nudge isn't player velocity
         } else {
             foreach (var entry in originalLayers) entry.Key.gameObject.layer = entry.Value;
-            foreach (Collider thing in hitColliders) thing.transform.gameObject.layer = 11;
+            foreach (Collider thing in stuckColliders)
+                if (IsBuildCollider(thing)) thing.transform.gameObject.layer = 11;
         }
     }
 
@@ -1173,7 +1234,7 @@ private void UpdateMovementVector()
 
         while (elapsedTime < duration) {
             if (CameraZoom.isAiming) {
-                targetY = (Shooting.Local.shotgun) ? 0 : 0.085f;
+                targetY = (Shooting.Local.currentGun == Shooting.currGun.Shotgun) ? 0 : 0.085f;
                 aimVectorPos = Vector3.Lerp(startAimVectorPos, new Vector3(targetAimXPos, targetY, targetAimZPos), elapsedTime / duration);
                 aimVectorRot = Vector3.Lerp(startAimVectorRot, new Vector3(targetAimXRot, targetAimYRot, 0), elapsedTime / duration);
                 elapsedTime += Time.deltaTime;
