@@ -47,13 +47,12 @@ public class LeaderboardControl : MonoBehaviour
 
     private GameObject FindObjectByName(string name)
     {
-        // First try GameObject.Find (for root-level objects)
         GameObject result = GameObject.Find(name);
         if (result != null) return result;
         
         foreach (GameObject obj in Resources.FindObjectsOfTypeAll<GameObject>())
         {
-            if (obj.name == name && obj.scene.name != null) // Only active scene objects
+            if (obj.name == name && obj.scene.name != null)
             {
                 return obj;
             }
@@ -84,7 +83,6 @@ public class LeaderboardControl : MonoBehaviour
             Debug.Log("Added " + username + " with KillCount " + killCount);
         }
 
-        // Get a sorted list of keys (kill counts) in descending order (higher kill counts first)
         var sortedKeys = new List<float>(data.Keys);
         sortedKeys.Sort((a, b) => b.CompareTo(a));
 

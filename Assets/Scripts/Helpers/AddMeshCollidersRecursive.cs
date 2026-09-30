@@ -25,11 +25,9 @@ public class AddMeshCollidersRecursive : MonoBehaviour
                 //mc.inflateMesh = false;
                 mc.convex = false;
 
-                // Provide Contacts
                 mc.providesContacts = true;
             }
 
-            // Recurse
             AddToChildren(child);
         }
     }

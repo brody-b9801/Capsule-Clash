@@ -48,12 +48,6 @@ public class ServerController : MonoBehaviour {
     public bool LookingAtServer => seeingMazeServer || seeingSpaceServer || seeingIceServer;
     private bool AllKeysAcquired => mazeKeyAcquired && spaceKeyAcquired && iceKeyAcquired;
 
-    /// <summary>
-    /// Derived from the key flags rather than counted alongside them. Only the
-    /// three flags are persisted, so a separately incremented counter came back
-    /// as 0 for a player who reloaded with keys already earned, and portal4's
-    /// keyCount == 3 gate could never open even though AllKeysAcquired was true.
-    /// </summary>
     public int keyCount => (mazeKeyAcquired ? 1 : 0) + (spaceKeyAcquired ? 1 : 0) + (iceKeyAcquired ? 1 : 0);
 
     private void Awake() {
@@ -64,16 +58,8 @@ public class ServerController : MonoBehaviour {
         TryClaimLocal();
     }
 
-    /// <summary>
-    /// This is a MonoBehaviour on the networked player prefab, so it has no
-    /// IsOwner of its own — ownership is read from the sibling NetworkObject.
-    /// Claiming in Awake unconditionally (as before) let the last player to
-    /// spawn overwrite Local with a remote player's controller.
-    /// </summary>
     private void TryClaimLocal() {
         NetworkObject nob = GetComponentInParent<NetworkObject>();
-        // Ownership is not populated until the object is spawned; Initialize()
-        // re-runs this for the owner once startup has progressed far enough.
         if (nob != null && nob.IsSpawned && !nob.IsOwner) return;
         if (nob == null || nob.IsOwner) Local = this;
     }
@@ -83,8 +69,6 @@ public class ServerController : MonoBehaviour {
     }
 
     public void Initialize(Camera camera) {
-        // Called from PlayerMovement's owner-gated startup — by now ownership is
-        // known for certain, so make sure the local player holds the claim.
         Local = this;
         playerCamera = camera;
         cam = camera.transform;
@@ -101,15 +85,6 @@ public class ServerController : MonoBehaviour {
         activeSceneCoroutine = StartCoroutine(StartDesertScene());
     }
 
-    // -------------------------------------------------------------------------
-    // Server / Cutscene helpers
-    // -------------------------------------------------------------------------
-
-    /// <summary>
-    /// Stops any running server coroutines and resets all related state so the
-    /// next scene can (start cleanly, even if the player switches dimensions
-    /// mid-dialogue.
-    /// </summary>
     private void ResetServerState() {
         if (activeServerCoroutine != null) {
             StopCoroutine(activeServerCoroutine);
@@ -126,7 +101,6 @@ public class ServerController : MonoBehaviour {
         }
     }
 
-    /// <summary>Typewriter effect coroutine. Always go through StartServerSpeak().</summary>
     IEnumerator ServerSpeak(string input) {
         ServerSpeaking = true;
         Color color = serverText.color;
@@ -146,7 +120,6 @@ public class ServerController : MonoBehaviour {
         ServerSpeaking = false;
     }
 
-    /// <summary>Helper that tracks the active server coroutine so it can be cancelled.</summary>
     private void StartServerSpeak(string input) {
         if (activeServerCoroutine != null) StopCoroutine(activeServerCoroutine);
         activeServerCoroutine = StartCoroutine(ServerSpeak(input));
@@ -156,13 +129,8 @@ public class ServerController : MonoBehaviour {
         if (portal4 != null) portal4.transform.GetChild(0).GetComponent<FaceTextToPlayer>().PortalOpen();
     }
 
-    // -------------------------------------------------------------------------
-    // Detection and interaction
-    // -------------------------------------------------------------------------
-
     private void Update() {
         if (playerCamera == null) return;
-        // The local player is spawned by FishNet after this component starts.
         if (PlayerMovement.Local == null) return;
 
         UpdateServerDetection();
@@ -228,11 +196,6 @@ public class ServerController : MonoBehaviour {
         }
     }
 
-    /// <summary>
-    /// Cancels whatever dialogue is currently playing (typically a dimension-entry
-    /// scene) and immediately starts the given server scene. Walking up to a server
-    /// always takes priority over the "Welcome to the ..." sequence.
-    /// </summary>
     private void InterruptWithServerScene(IEnumerator serverScene) {
         ResetServerState();
         activeSceneCoroutine = StartCoroutine(serverScene);
@@ -271,15 +234,6 @@ public class ServerController : MonoBehaviour {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Dimension entry
-    // -------------------------------------------------------------------------
-
-    /// <summary>
-    /// Entry point for all dimension-change scene sequences.
-    /// Always resets server state first so switching dimensions mid-dialogue
-    /// never leaves orphaned coroutines.
-    /// </summary>
     public void DisplayDimension() {
         ResetServerState();
         activeSceneCoroutine = StartCoroutine(DisplayDimensionAfterPixelize(PlayerMovement.Local.currDimension));
@@ -297,10 +251,6 @@ public class ServerController : MonoBehaviour {
         else if (dimension == "Ice")
             yield return StartIceScene();
     }
-
-    // -------------------------------------------------------------------------
-    // Scene coroutines
-    // -------------------------------------------------------------------------
 
     IEnumerator StartDesertScene() {
         while (ServerSpeaking) yield return null;
@@ -454,11 +404,6 @@ public class ServerController : MonoBehaviour {
         activeSceneCoroutine = null;
     }
 
-    // The three key cutscenes were near-identical copies, and the Space one had
-    // drifted: it ran KeyCutsceneEnd twice, so the camera lerped home and then
-    // straight back out again, leaving it stranded until the next LateUpdate
-    // snapped it. Sharing one body means whichever server the player feeds last
-    // ends the same way, and the return lerp can only ever run once.
     IEnumerator StartMazeKeyCutscene() => KeyCutscene(
         "MaskMaze",
         "For your efforts, I reward you with upgrade tokens",
@@ -480,12 +425,6 @@ public class ServerController : MonoBehaviour {
         "Who are you?",
         "I LURK ELSEWHERE, FIND ME, FEED ME, I MUST GROW");
 
-    /// <summary>
-    /// Pans the camera off the player, plays the reward dialogue for one server,
-    /// then lerps the camera back. The dialogue branches on AllKeysAcquired, but
-    /// the camera bookends do not, so the last server fed returns the view exactly
-    /// like the first two.
-    /// </summary>
     private IEnumerator KeyCutscene(string serverName, string rewardLine, string tokenHintLine, string question, string lurkLine) {
         while (ServerSpeaking) yield return null;
 
@@ -586,7 +525,7 @@ public class ServerController : MonoBehaviour {
         Vector3 startPosition = serverPosition;
         Vector3 endPosition = transform.Find("RenderedBody").position;
         Transform keyPrefabInstance = Instantiate(keyPrefab, startPosition, Quaternion.identity).transform;
-        float rotationSpeed = 360f; // degrees per second
+        float rotationSpeed = 360f;
         float lerpTime = 1f;
         float timeAcc = 0f;
         while (timeAcc < lerpTime) {

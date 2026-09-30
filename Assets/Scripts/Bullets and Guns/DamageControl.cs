@@ -70,8 +70,6 @@ public class DamageControl : NetworkBehaviour
         HealthController.updateHealth();
     }
 
-    // Server only. Called by BulletManager when a bullet hits this player's DamageCollider.
-    // Returns true if damage was applied.
     public bool ControlDamage(NetworkObject shooter, Shooting.currGun gun, float dist)
     {
         if (!IsServerInitialized || !CanBeDamaged()) return false;
@@ -128,7 +126,6 @@ public class DamageControl : NetworkBehaviour
         }
     }
 
-    // Server only.
     public void Hit(float damageTaken)
     {
         if (!IsServerInitialized || !CanBeDamaged()) return;
@@ -149,7 +146,6 @@ public class DamageControl : NetworkBehaviour
         health.Value = Mathf.Clamp(health.Value + amount, 0f, MaxHealth);
     }
 
-    // Only honoured while dead, so it can't be used as a free refill / invulnerability.
     [ServerRpc]
     public void ServerRespawn()
     {

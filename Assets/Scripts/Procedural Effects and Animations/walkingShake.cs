@@ -44,7 +44,6 @@ public class walkingShake : MonoBehaviour
 
     void Update()
     {
-        // The local player is spawned by FishNet after this component starts.
         if (PlayerMovement.Local == null) return;
 
         walkFrequency = Mathf.Max(walkFrequency, 0.01f);

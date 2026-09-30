@@ -30,7 +30,6 @@ public class WallMeshBaker : EditorWindow
     {
         int count = 0;
 
-        // Assign on scene instances
         WallFinished[] sceneInstances = Object.FindObjectsOfType<WallFinished>(true);
         foreach (WallFinished wf in sceneInstances)
         {
@@ -45,7 +44,6 @@ public class WallMeshBaker : EditorWindow
             }
         }
 
-        // Assign on prefab assets that have WallFinished
         string[] guids = AssetDatabase.FindAssets("t:Prefab");
         foreach (string guid in guids)
         {

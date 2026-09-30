@@ -154,7 +154,6 @@ public class upgradeManager : MonoBehaviour
                 }
             }
             
-            // Update upgrade bars
             for (int i = 0; i < upgradesPurchased.Length; i++) {
                 float fillAmount = upgradesPurchased[i] / 4f;
                 RectTransform fillBar = upgradeRects[i].GetChild(2).GetComponent<RectTransform>();

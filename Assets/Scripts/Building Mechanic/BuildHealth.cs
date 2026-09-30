@@ -11,9 +11,6 @@ public class BuildHealth : NetworkBehaviour
     public Animator anim;
     public int maxHealth = 4;
 
-    // Server-authoritative: only the server writes health, observers read it.
-    // Previously ClientUnsynchronized, which let every client decrement its own
-    // private copy and decide independently when the build died.
     private readonly SyncVar<float> currentHealth = new SyncVar<float>(
         4f, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.Observers));
     [SerializeField] private GameObject build;
@@ -60,17 +57,10 @@ public class BuildHealth : NetworkBehaviour
     [ServerRpc(RequireOwnership = false, RunLocally = false)]
     private void ServerTakeDamage(Shooting.currGun gun, float dist) => ApplyDamage(gun, dist);
 
-    /// <summary>
-    /// Applies the health change on the server only, then tells observers to play
-    /// the visual reaction. Despawning happens here — once, on the authority —
-    /// rather than inside the observers RPC where every client raced to do it.
-    /// </summary>
     [Server]
     private void ApplyDamage(Shooting.currGun gun, float dist) {
         Debug.Log($"Server received damage: gun={gun}, dist={dist}");
 
-        // Already dead and awaiting despawn — ignore further hits so a burst of
-        // shots cannot despawn the same build more than once.
         if (currentHealth.Value <= 0f) return;
 
         if (gun == Shooting.currGun.Sniper) {
@@ -89,7 +79,6 @@ public class BuildHealth : NetworkBehaviour
             ObjectSpawner.DespawnObject(build);
     }
 
-    /// <summary>Visual reaction only — no health arithmetic, no despawn.</summary>
     [ObserversRpc(ExcludeServer = false)]
     private void RpcBuildDamage(float health)
     {
@@ -99,9 +88,9 @@ public class BuildHealth : NetworkBehaviour
     private void ApplyDamageVisuals(float health) {
         WallFinished wallFinished = build.GetComponent<WallFinished>();
         if (wallFinished == null)
-            wallFinished = build.GetComponentInParent<WallFinished>(); // Try parent
+            wallFinished = build.GetComponentInParent<WallFinished>();
         if (wallFinished == null)
-            wallFinished = build.GetComponentInChildren<WallFinished>(); // Try children
+            wallFinished = build.GetComponentInChildren<WallFinished>();
 
         if (wallFinished != null)
         {

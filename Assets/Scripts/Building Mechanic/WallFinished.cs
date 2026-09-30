@@ -17,8 +17,6 @@ public class WallFinished : MonoBehaviour
 
     private void Awake()
     {
-        // Animator may be on this object or a parent — store it so we can
-        // disable it after the swap to stop Write Defaults from undoing SetActive calls.
         _anim = GetComponentInParent<Animator>(true);
 
         _children = new GameObject[transform.childCount];
@@ -51,20 +49,14 @@ public class WallFinished : MonoBehaviour
     {
         yield return new WaitForEndOfFrame();
 
-        // Mesh is baked in wf-local space, so place as a child of wf at identity.
-        // The Animator is disabled above, so it cannot overwrite these transforms.
         _spawnedWall = Instantiate(completedPrefab, transform);
         _spawnedWall.transform.localPosition = Vector3.zero;
         _spawnedWall.transform.localRotation = Quaternion.identity;
         _spawnedWall.transform.localScale = Vector3.one;
         _spawnedWall.SetActive(true);
 
-        // Disable the Animator before hiding children so Write Defaults
-        // cannot re-enable them on the next evaluation tick.
         if (_anim != null) _anim.enabled = false;
 
-        // Keep children active so their colliders stay live for support
-        // detection; only hide the visuals (the combined prefab replaces them).
         for (int i = 0; i < _children.Length; i++)
             HideVisualsKeepColliders(_children[i]);
     }

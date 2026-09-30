@@ -21,7 +21,7 @@ public class CollisionControl : MonoBehaviour
     private float bulletDist2;
     private bool visualEnabled = false;
     private bool rotationApplied = false;
-    [SerializeField] private float showDistance = 0.5f; // Distance before bullet becomes visible
+    [SerializeField] private float showDistance = 0.5f;
     
     private Rigidbody rb;
     private TrailRenderer trail;
@@ -58,7 +58,6 @@ public class CollisionControl : MonoBehaviour
     {
         Vector3 currentPosition = transform.position;
 
-        // Apply rotation immediately upon instantiation (first Update after spawn)
         if (!rotationApplied && rb != null && rb.linearVelocity != Vector3.zero)
         {
             rb.rotation = Quaternion.LookRotation(rb.linearVelocity.normalized);

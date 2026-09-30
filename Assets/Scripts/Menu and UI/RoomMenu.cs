@@ -127,11 +127,6 @@ public class RoomMenu : MonoBehaviour
         if (TitleText != null) TitleText.text = "In Game";
     }
 
-    /// <summary>
-    /// True if something is already listening on this UDP port -- i.e. another
-    /// instance (a ParrelSync clone) is already hosting. Lets the first instance
-    /// host and later ones join automatically, without a per-instance setting.
-    /// </summary>
     private static bool IsPortInUse(ushort port)
     {
         try
@@ -149,10 +144,6 @@ public class RoomMenu : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// Username typed at the menu, captured while the input field is still
-    /// active. PlayerMovement reads this instead of searching the scene.
-    /// </summary>
     public static string TypedUsername { get; private set; } = "Player";
 
     private void CaptureUsername()

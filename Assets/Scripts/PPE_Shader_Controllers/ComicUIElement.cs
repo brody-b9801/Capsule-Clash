@@ -2,23 +2,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
-/// <summary>
-/// Attach to your UI Camera (or main camera if UI is overlay).
-/// Automatically applies the UI/ComicBook shader to ALL Image and RawImage
-/// components in the scene. Settings apply globally to all UI elements.
-/// 
-/// SETUP:
-///   1. Add this component to the camera that renders your UI Canvas
-///   2. All Image/RawImage components will automatically get the comic shader
-///   3. Adjust settings in Inspector — they apply to everything at once
-/// </summary>
 [ExecuteAlways]
 [RequireComponent(typeof(Camera))]
 public class ComicUIElement : MonoBehaviour
 {
     public Shader comicUIShader;
 
-    // ── Halftone ────────────────────────────────────────────────────────────
     [Header("Halftone")]
     public bool  halftoneEnabled  = true;
     [Range(4,   120)] public float halftoneScale    = 30f;
@@ -27,29 +16,24 @@ public class ComicUIElement : MonoBehaviour
     [Range(1,   12)]  public float halftoneContrast = 6f;
     [Range(0.1f, 2f)] public float halftoneGamma    = 1.0f;
 
-    // ── Paper Grain ─────────────────────────────────────────────────────────
     [Header("Paper Grain")]
     public bool  paperEnabled  = true;
     [Range(0, 0.4f)]    public float paperStrength = 0.05f;
     [Range(100, 3000)]  public float paperScale    = 1400f;
     public Color paperTint = Color.white;
 
-    // ── Ink Noise ───────────────────────────────────────────────────────────
     [Header("Ink Noise")]
     public bool  inkEnabled  = true;
     [Range(0, 0.5f)]  public float inkStrength = 0.18f;
     [Range(10, 500)]  public float inkScale    = 120f;
 
-    // ── Color Grading ────────────────────────────────────────────────────────
     [Header("Color Grading")]
     [Range(0, 4)] public float contrast   = 1.0f;
     [Range(0, 4)] public float saturation = 1.0f;
 
-    // ── Internals ───────────────────────────────────────────────────────────
     private Material _sharedMaterial;
     private HashSet<Graphic> _trackedGraphics = new HashSet<Graphic>();
 
-    // Shader property IDs (cached for performance)
     static readonly int ID_ScreenSize       = Shader.PropertyToID("_ScreenSize");
     static readonly int ID_HalftoneOn       = Shader.PropertyToID("_HalftoneOn");
     static readonly int ID_HalftoneScale    = Shader.PropertyToID("_HalftoneScale");
@@ -67,8 +51,6 @@ public class ComicUIElement : MonoBehaviour
     static readonly int ID_Contrast         = Shader.PropertyToID("_Contrast");
     static readonly int ID_Saturation       = Shader.PropertyToID("_Saturation");
 
-    // ────────────────────────────────────────────────────────────────────────
-
     void OnEnable()
     {
         if (!comicUIShader)
@@ -81,7 +63,6 @@ public class ComicUIElement : MonoBehaviour
             return;
         }
 
-        // Create a single shared material for all UI elements
         _sharedMaterial = new Material(comicUIShader) { hideFlags = HideFlags.HideAndDontSave };
 
         ApplyToAllUIElements();
@@ -90,7 +71,6 @@ public class ComicUIElement : MonoBehaviour
 
     void OnDisable()
     {
-        // Restore all graphics to default material
         foreach (var g in _trackedGraphics)
         {
             if (g != null) g.material = null;
@@ -108,8 +88,7 @@ public class ComicUIElement : MonoBehaviour
     {
         if (!_sharedMaterial) return;
 
-        // Re-scan for new UI elements much less frequently
-        if (Time.frameCount % 300 == 0) // every ~5 seconds at 60fps
+        if (Time.frameCount % 300 == 0)
         {
             ApplyToAllUIElements();
         }
@@ -117,40 +96,31 @@ public class ComicUIElement : MonoBehaviour
         PushProperties();
     }
 
-    // ── Find and apply material to all Image/RawImage in scene ───────────────
     void ApplyToAllUIElements()
     {
         if (!_sharedMaterial) return;
 
-        // Clear dead references
         _trackedGraphics.RemoveWhere(g => g == null);
 
-        // Find all UI graphics in the scene
-        var allGraphics = FindObjectsOfType<Graphic>(true); // includes inactive
+        var allGraphics = FindObjectsOfType<Graphic>(true);
 
         foreach (var graphic in allGraphics)
         {
-            // Only apply to Image and RawImage (not Text, etc.)
             if (!(graphic is Image || graphic is RawImage))
                 continue;
 
-            // Skip if already tracking
             if (_trackedGraphics.Contains(graphic))
                 continue;
 
-            // Apply shared material
             graphic.material = _sharedMaterial;
             _trackedGraphics.Add(graphic);
         }
     }
 
-    // ── Push all Inspector values to the shared material ──────────────────────
     void PushProperties()
     {
-        // Screen size so the halftone grid matches the PPE pass exactly
         _sharedMaterial.SetVector(ID_ScreenSize, new Vector2(Screen.width, Screen.height));
 
-        // Halftone
         _sharedMaterial.SetFloat(ID_HalftoneOn,       halftoneEnabled ? 1f : 0f);
         _sharedMaterial.SetFloat(ID_HalftoneScale,    halftoneScale);
         _sharedMaterial.SetFloat(ID_HalftoneStrength, halftoneStrength);
@@ -158,23 +128,18 @@ public class ComicUIElement : MonoBehaviour
         _sharedMaterial.SetFloat(ID_HalftoneContrast, halftoneContrast);
         _sharedMaterial.SetFloat(ID_HalftoneGamma,    halftoneGamma);
 
-        // Paper
         _sharedMaterial.SetFloat(ID_PaperOn,       paperEnabled ? 1f : 0f);
         _sharedMaterial.SetFloat(ID_PaperStrength, paperStrength);
         _sharedMaterial.SetFloat(ID_PaperScale,    paperScale);
         _sharedMaterial.SetColor(ID_PaperTint,     paperTint);
 
-        // Ink noise
         _sharedMaterial.SetFloat(ID_InkOn,       inkEnabled ? 1f : 0f);
         _sharedMaterial.SetFloat(ID_InkStrength, inkStrength);
         _sharedMaterial.SetFloat(ID_InkScale,    inkScale);
 
-        // Color grading
         _sharedMaterial.SetFloat(ID_Contrast,   contrast);
         _sharedMaterial.SetFloat(ID_Saturation, saturation);
     }
-
-    // ── Convenience presets (right-click component in Inspector) ─────────────
 
     [ContextMenu("Preset — Match Scene Classic")]
     public void PresetMatchSceneClassic()

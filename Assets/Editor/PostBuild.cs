@@ -10,7 +10,6 @@ using System.IO;
 
 public class PostBuild
 {
-    // Shared with CIBuild so local and CI builds ship the same scenes
     public static readonly string[] Scenes = { "Assets/Scenes/CombatScene.unity" }; //Change when boss scene added
 
     [MenuItem("Build/Windows Client Server")]

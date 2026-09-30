@@ -36,10 +36,11 @@ public class ObjectPool<T> where T : Component
         return instance;
     }
 
-    /// <summary>Rent an object from the pool (activates it).</summary>
     public T Get(Vector3 position, Quaternion rotation, Transform newParent = null)
     {
-        T instance = _pool.Count > 0 ? _pool.Dequeue() : CreateInstance();
+        T instance = null;
+        while (instance == null && _pool.Count > 0) instance = _pool.Dequeue();
+        if (instance == null) instance = CreateInstance();
 
         Transform t = instance.transform;
         if (newParent != null) t.SetParent(newParent, false);
@@ -49,9 +50,9 @@ public class ObjectPool<T> where T : Component
         return instance;
     }
 
-    /// <summary>Return an object to the pool (deactivates it).</summary>
     public void Return(T instance, Transform defaultParent = null)
     {
+        if (instance == null) return;
         instance.gameObject.SetActive(false);
         if (defaultParent != null) instance.transform.SetParent(defaultParent, false);
         _pool.Enqueue(instance);
@@ -76,6 +77,7 @@ public class Shooting : NetworkBehaviour
     [SerializeField] private Mesh           M4Mesh;
     [SerializeField] private Mesh           sniperMesh;
     [SerializeField] private Mesh           sniperMagMesh;
+    [SerializeField] private Vector3        sniperMagPosition = new Vector3(0f, -0.16f, 0.1f);
 
     private const int MuzzlePoolSize  = 10;
     private const int CasingPoolSize  = 30;
@@ -150,6 +152,7 @@ public class Shooting : NetworkBehaviour
     private MeshFilter playerMagFilter;
     private Mesh       defaultMagMesh;
     private Mesh       defaultPlayerMagMesh;
+    private Vector3    defaultMagPosition;
 
     private BulletManager bulletManager;
 
@@ -167,6 +170,8 @@ public class Shooting : NetworkBehaviour
     public override void OnStopClient()
     {
         if (Local == this) Local = null;
+        if (_muzzlePoolRoot != null) Destroy(_muzzlePoolRoot.gameObject);
+        if (_casingPoolRoot != null) Destroy(_casingPoolRoot.gameObject);
         base.OnStopClient();
     }
 
@@ -197,6 +202,7 @@ public class Shooting : NetworkBehaviour
         mag         = SceneLookup.FindInactive("MC.Magazine");
         magFilter      = mag.GetComponent<MeshFilter>();
         defaultMagMesh = magFilter.sharedMesh;
+        defaultMagPosition = mag.transform.localPosition;
         camCasing   = SceneLookup.FindInactive("CamCasing");
         gunThing_g1 = SceneLookup.FindInactive("CamAKM").transform;
 
@@ -228,6 +234,7 @@ public class Shooting : NetworkBehaviour
     private Transform CreatePoolRoot(string name)
     {
         var go = new GameObject(name);
+        PersistentSceneObject.Keep(go, name);
         return go.transform;
     }
 
@@ -253,7 +260,6 @@ public class Shooting : NetworkBehaviour
             else if (Input.GetMouseButtonUp(0))
                 clickStartedOverUI = false;
 
-            // Only the AR is full-auto; shotgun and sniper fire once per click.
             bool inputCheck = currentGun == currGun.AR ? Input.GetMouseButton(0) : Input.GetMouseButtonDown(0);
             if (inputCheck && Time.time >= nextFireTime &&
                 ammo > 0 && !reloading && canShoot && !PlayerMovement.Local.dead && !clickStartedOverUI)
@@ -449,6 +455,7 @@ public class Shooting : NetworkBehaviour
 
         ServerManager.Spawn(bulletNob, shooterObj != null ? shooterObj.Owner : conn);
 
+        if (bulletManager == null) bulletManager = FindFirstObjectByType<BulletManager>();
         if (bulletManager != null)
         {
             bulletManager.AddBulletData(bulletNob, origin, gunType, shooterObj);
@@ -503,7 +510,6 @@ public class Shooting : NetworkBehaviour
                 fireRate = 1.25f;
                 CamAKM.transform.localScale = new Vector3(1f, 1f, 1f);
                 gunMesh.mesh = sniperMesh != null ? sniperMesh : M4Mesh;
-                // Show the magazine so the sniper uses the AR's mag-swap reload.
                 mag.GetComponent<MeshRenderer>().enabled    = true;
                 camCasing.GetComponent<MeshRenderer>().enabled = false;
                 muzzleZ = 0.8f;
@@ -518,6 +524,7 @@ public class Shooting : NetworkBehaviour
                 break;
         }
         magFilter.sharedMesh = currentGun == currGun.Sniper && sniperMagMesh != null ? sniperMagMesh : defaultMagMesh;
+        mag.transform.localPosition = currentGun == currGun.Sniper ? sniperMagPosition : defaultMagPosition;
         bulletHole.transform.localPosition = new Vector3(bulletHole.transform.localPosition.x, bulletHole.transform.localPosition.y, muzzleZ);
         bH.transform.localPosition         = new Vector3(bH.transform.localPosition.x, bH.transform.localPosition.y, muzzleZ);
 
@@ -587,6 +594,8 @@ public class Shooting : NetworkBehaviour
     private void LateUpdate()
     {
         if (!IsOwner) return;
+        if (currentGun == currGun.Sniper && !reloading && mag != null)
+            mag.transform.localPosition = sniperMagPosition;
         if (lockCursor && !clickStartedOverUI)
             Cursor.lockState = CursorLockMode.Locked;
         else

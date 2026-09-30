@@ -14,7 +14,7 @@ using Cinemachine.Utility;
 [RequireComponent(typeof(ServerController))]
 public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float jumpForce = 8.0f;
-    [SerializeField] private float jumpBufferTime = 0.1f; // a jump pressed this long before landing still fires
+    [SerializeField] private float jumpBufferTime = 0.1f; 
     public static float rotationSpeed = 10.0f;
     [SerializeField] private float maxLookUpAngle = 80.0f;
     [SerializeField] private float maxLookDownAngle = 80.0f;
@@ -61,6 +61,9 @@ public class PlayerMovement : NetworkBehaviour {
     private GameObject portal3B;
     private GameObject portal4A;
     [HideInInspector] public GameObject portal4B;
+    private Transform bossArrival;
+    private GameObject combatSceneLight;
+    private string pendingSceneTransfer;
     bool inCombatScene = true;
     private bool canTeleport = true;
     private bool checkTele = true;
@@ -74,8 +77,8 @@ public class PlayerMovement : NetworkBehaviour {
     public bool jumpedLast = false;
     public bool isTeleporting = false;
     public Vector3 newVelocity;
-    private bool groundedPrev; // isGrounded as of the previous frame
-    private bool pendingLanding; // airborne since the last grounded collision; the next one applies fall damage
+    private bool groundedPrev; 
+    private bool pendingLanding; 
     private float jumpBufferTimer;
     private bool groundBeneath;
     private bool sprintingPrev;
@@ -180,7 +183,7 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float friction = 8f;
     [SerializeField] private float sprintAccelerationMultiplier = 1.5f;
     [SerializeField] private float airControlMultiplier = 0.5f;
-    [SerializeField] private float overspeedDamping = 10f; // how quickly speed above the current cap bleeds off
+    [SerializeField] private float overspeedDamping = 10f;
 
     private Vector3 wishDir = Vector3.zero;
     public static float percentAccelerated;
@@ -191,6 +194,7 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float landingCameraShake = 0.15f;
     [SerializeField] private float velocityBasedTilt = 2f;
     [SerializeField] private float momentumCameraSway = 0.5f;
+    [SerializeField] private float maxFOVBoost = 25f;
 
     private float baseFOV = 70f;
     private float targetFOV = 70f;
@@ -253,6 +257,10 @@ public class PlayerMovement : NetworkBehaviour {
     private DimensionInfo iceInfo;
     private DimensionInfo[] allDimensions;
     Vector3 floorNormal = Vector3.up;
+    private Vector3 ledgePushDir;
+    [SerializeField] private float ledgeSupportFraction = 0.5f;
+    [SerializeField] private float ledgeDropTolerance = 0.6f;
+    [SerializeField] private float ledgeSlipSpeed = 4f;
     private void InitializeDimensions() {
         desertInfo = new DimensionInfo {
             name = "Desert",
@@ -367,21 +375,15 @@ public class PlayerMovement : NetworkBehaviour {
             akm = SceneLookup.FindInactive("CamAKM").transform;
             akmBaseLocalPos = akm.localPosition;
             akmBaseLocalRot = akm.localEulerAngles;
-            portal1A = GameObject.Find("portal1B");
-            portal1B = GameObject.Find("portal1A");
-            portal2A = GameObject.Find("portal2B");
-            portal2B = GameObject.Find("portal2A");
-            portal3A = GameObject.Find("portal3B");
-            portal3B = GameObject.Find("portal3A");
-            portal4A = GameObject.Find("portal4A");
-            portal4B = GameObject.Find("portal4B");
-            portal4B.SetActive(false);
+            ResolveSceneReferences(GameObject.Find);
+            if (portal4B != null) portal4B.SetActive(false);
             characterController = GetComponent<CharacterController>();
             Cursor.lockState = CursorLockMode.Locked;
             lastPosition = playerTransform.position;
             capsuleCollider.layer = 10;
             transform.GetComponent<Renderer>().material = selfMaterial;
             borderInstance = Instantiate(borderPrefab, Vector3.zero, Quaternion.identity).transform;
+            PersistentSceneObject.Keep(borderInstance.gameObject, "PlayerBorder");
             _borderRenderers = borderInstance.GetComponentsInChildren<Renderer>();
             spawn = transform.position;
             dashIcon = GameObject.Find("dashBG").GetComponent<RectTransform>();
@@ -434,7 +436,6 @@ public class PlayerMovement : NetworkBehaviour {
         return Local != null && avatar1 == Local.NetworkObject && Local.canTakeDamage;
     }
 
-    // Sampled right after Move so the displacement and Time.deltaTime come from the same frame
     private void UpdateVelocityEstimate() {
         Vector3 currentPosition = playerTransform.position;
         if (Time.deltaTime > 0f) velocityTransform = (currentPosition - lastPosition) / Time.deltaTime;
@@ -451,6 +452,82 @@ public class PlayerMovement : NetworkBehaviour {
         dashVector = Vector3.zero;
         lastPosition = playerTransform.position;
         lastGroundedHeight = transform.position.y;
+
+        if (scene.name != pendingSceneTransfer) return;
+        pendingSceneTransfer = null;
+        ArriveInScene(scene);
+    }
+
+    private void ArriveInScene(Scene scene) {
+        System.Func<string, GameObject> find = SceneFinder(scene);
+        ResolveSceneReferences(find);
+        ResolveHudReferences(find, scene);
+        inCombatScene = scene.name != "BossScene";
+        if (borderInstance != null) borderInstance.gameObject.SetActive(inCombatScene);
+        if (!inCombatScene && portal4B == null)
+            Debug.LogError($"[PlayerMovement] '{scene.name}' has no portal4B; there is no way back to CombatScene.");
+
+        Transform destination = inCombatScene
+            ? (portal4A != null ? portal4A.transform : null)
+            : (bossArrival != null ? bossArrival : portal4B != null ? portal4B.transform : null);
+        if (destination == null) {
+            Debug.LogError($"[PlayerMovement] '{scene.name}' has no arrival point (portal4A in CombatScene, BossArrival or portal4B in BossScene).");
+            canTeleport = true;
+            return;
+        }
+
+        HandleTeleportation(destination, desertInfo, destination == bossArrival ? 0f : 3f);
+        if (destination == bossArrival) FaceDirection(bossArrival.eulerAngles.y);
+    }
+
+    private void ResolveSceneReferences(System.Func<string, GameObject> find) {
+        portal1A = find("portal1B");
+        portal1B = find("portal1A");
+        portal2A = find("portal2B");
+        portal2B = find("portal2A");
+        portal3A = find("portal3B");
+        portal3B = find("portal3A");
+        portal4A = find("portal4A");
+        portal4B = find("portal4B");
+        GameObject arrival = find("BossArrival");
+        bossArrival = arrival != null ? arrival.transform : null;
+        combatSceneLight = find("Scene Light");
+
+        if (allDimensions == null) return;
+        desertInfo.root = find("Desert");
+        mazeInfo.root = find("Maze");
+        spaceInfo.root = find("Void");
+        iceInfo.root = find("Ice");
+        allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo };
+    }
+
+    private static System.Func<string, GameObject> SceneFinder(Scene scene) {
+        Dictionary<string, GameObject> byName = new Dictionary<string, GameObject>();
+        foreach (GameObject root in scene.GetRootGameObjects())
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                if (!byName.ContainsKey(t.name)) byName[t.name] = t.gameObject;
+        return name => byName.TryGetValue(name, out GameObject go) ? go : null;
+    }
+
+    private void ResolveHudReferences(System.Func<string, GameObject> find, Scene scene) {
+        if (dt == null || !SurvivesInto(dt.gameObject, scene)) {
+            GameObject dashText = find("DashText");
+            dt = dashText != null ? dashText.GetComponent<TextMeshProUGUI>() : null;
+            displayedDashes = -1;
+        }
+        if (dashIcon == null || !SurvivesInto(dashIcon.gameObject, scene)) {
+            GameObject dashBG = find("dashBG");
+            dashIcon = dashBG != null ? dashBG.GetComponent<RectTransform>() : null;
+        }
+    }
+
+    private static bool SurvivesInto(GameObject go, Scene scene) {
+        return go.scene == scene || go.scene.name == "DontDestroyOnLoad";
+    }
+
+    private void FaceDirection(float yaw) {
+        currentCameraRotationY = yaw;
+        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
     }
 
     private void OnDestroy() {
@@ -465,7 +542,8 @@ public class PlayerMovement : NetworkBehaviour {
         }
         UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoadedAsOwner;
         base.OnStopClient();
-        if (allDimensions == null) return; // only the owner's instance set up dimensions
+        if (borderInstance != null) Destroy(borderInstance.gameObject);
+        if (allDimensions == null) return;
         for (int i = 0; i < allDimensions.Length; i++) {
             GameObject root = allDimensions[i].root;
             if (root != null) root.SetActive(true);
@@ -488,9 +566,21 @@ public class PlayerMovement : NetworkBehaviour {
                 floorNormal = faceHit.normal;
             }
 
-            return Vector3.Angle(floorNormal, Vector3.up) <= characterController.slopeLimit;
+            ledgePushDir = Vector3.zero;
+            if (Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit) return false;
+
+            Vector3 supportOffset = hit.point - origin;
+            supportOffset.y = 0f;
+            if (supportOffset.magnitude > characterController.radius * ledgeSupportFraction
+                && !Physics.Raycast(origin, Vector3.down, characterController.height * 0.5f + ledgeDropTolerance,
+                                    GroundMask, QueryTriggerInteraction.Ignore)) {
+                ledgePushDir = -supportOffset.normalized;
+                return false;
+            }
+            return true;
         }
         floorNormal = Vector3.up;
+        ledgePushDir = Vector3.zero;
         return false;
     }
 
@@ -498,7 +588,6 @@ public class PlayerMovement : NetworkBehaviour {
 
     private void Update() {
         if (ServerController.serverAnimationPlaying || !started) {
-            // keep the velocity estimate from spiking on the first frame back
             lastPosition = playerTransform.position;
             velocityTransform = Vector3.zero;
             return;
@@ -507,14 +596,13 @@ public class PlayerMovement : NetworkBehaviour {
 
         IsOnSlope();
         CheckIfStuckAndMoveUp();
-        if (dashes != displayedDashes) {
+        if (dt != null && dashes != displayedDashes) {
             displayedDashes = dashes;
             dt.text = dashes.ToString();
         }
 
         if (usernameRenderer != null) usernameRenderer.enabled = false;
 
-        // Snapshot before refreshing so groundedPrev really is last frame's state during Move's collision callbacks
         groundedPrev = isGrounded;
         isGrounded = isGround();
         lastFrameMovement = movement;
@@ -558,7 +646,6 @@ public class PlayerMovement : NetworkBehaviour {
         Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
         if (moveDirection.magnitude > 1f) moveDirection.Normalize();
 
-        // Flat heading used by the desert step-offset probe; falls back to momentum when there's no input
         Vector3 flatMovement = new Vector3(movement.x, 0f, movement.z);
         wishDir = moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : flatMovement.normalized;
 
@@ -566,7 +653,6 @@ public class PlayerMovement : NetworkBehaviour {
             moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
             moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
         } else {
-            // Vertical motion in the air belongs to newVelocity; don't carry slope-walking Y off a ramp
             movement.y = 0f;
         }
 
@@ -585,28 +671,24 @@ public class PlayerMovement : NetworkBehaviour {
             movement = projectedMoveDirection + perpendicularMovement;
             projectedMoveDirection = Vector3.Project(movement, moveDirection);
             float currentSpeed = projectedMoveDirection.magnitude * Mathf.Sign(Vector3.Dot(projectedMoveDirection, moveDirection));
-            // Starting from rest counts as accelerating, not reversing
             bool reversing = movement.sqrMagnitude > 1e-4f && Vector3.Dot(moveDirection.normalized, movement.normalized) < 0.5f;
             float accelRate;
             if (isGrounded) accelRate = reversing ? groundDeceleration : groundAcceleration;
             else accelRate = reversing ? airDeceleration : airAcceleration;
             if (isSprinting) accelRate *= sprintAccelerationMultiplier;
 
-            // Accelerate up to the un-upgraded speed (or the upgraded one, if the multiplier is below 1)
             float addSpeed = Mathf.Min(baseSpeed, targetSpeed) - currentSpeed;
             if (addSpeed > 0) {
                 float accelSpeed = Mathf.Min(accelRate * Time.deltaTime, addSpeed);
                 movement += moveDirection * accelSpeed;
             }
 
-            // Then ease into the speed upgrade; the tolerance matters because acceleration lands exactly on baseSpeed
             float currentMag = movement.magnitude;
             if (currentMag >= baseSpeed * 0.99f && currentMag < targetSpeed)
                 movement = movement.normalized * Mathf.Lerp(currentMag, targetSpeed, Time.deltaTime * 5f);
         } else {
             float speed = movement.magnitude;
             if (speed > 0.01f) {
-                // Ground friction stops the player quickly; in the air momentum only bleeds off slowly
                 float drop = isGrounded ? speed * friction * Time.deltaTime : airDeceleration * Time.deltaTime;
                 movement *= Mathf.Max(speed - drop, 0) / speed;
             } else {
@@ -614,7 +696,6 @@ public class PlayerMovement : NetworkBehaviour {
             }
         }
 
-        // Bleed off excess speed (leaving the ground, starting to aim) instead of hard-clamping it in one frame
         float maxAllowedSpeed = targetSpeed * 1.1f;
         float movementMag = movement.magnitude;
         if (movementMag > maxAllowedSpeed) {
@@ -650,7 +731,7 @@ public class PlayerMovement : NetworkBehaviour {
 
         Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
 
-        return (verticalVelo + groundingForce) * Time.deltaTime;
+        return (verticalVelo + groundingForce + ledgePushDir * ledgeSlipSpeed) * Time.deltaTime;
     }
 
     private void HandleCameraRotation() {
@@ -660,7 +741,6 @@ public class PlayerMovement : NetworkBehaviour {
         rotationY = mouseX * rotationSpeed;
 
         currentCameraRotationX += rotationX;
-        // negative X pitches the camera up
         currentCameraRotationX = Mathf.Clamp(currentCameraRotationX, -maxLookUpAngle, maxLookDownAngle);
         currentCameraRotationY += rotationY;
         transform.localEulerAngles = new Vector3(0.0f, currentCameraRotationY, 0.0f);
@@ -727,13 +807,12 @@ public class PlayerMovement : NetworkBehaviour {
                          + (playerCamera.transform.forward * dashForce);
             newVelocity.y = 0;
             jumpedLast = true;
-            jumpBufferTimer = 0f; // this press was spent on the dash, don't also jump on landing
+            jumpBufferTimer = 0f; 
             dashFOV = Mathf.Max(dashFOV, 20f);
             lastGroundedHeight = -30;
             if (dashRoutine != null) StopCoroutine(dashRoutine);
             dashRoutine = StartCoroutine(LerpDash());
         } else {
-            // ease the kick out rather than dropping it the next frame
             dashFOV = Mathf.Lerp(dashFOV, 0f, Time.deltaTime * 5f);
         }
 
@@ -804,8 +883,8 @@ public class PlayerMovement : NetworkBehaviour {
         float aimOffset = CameraZoom.aimZoomOffset;
 
         targetFOV = isAiming
-            ? baseFOV + aimOffset + dashFOV
-            : baseFOV + velocityFOVBoost + currentSprintFOV + dashFOV + aimOffset;
+            ? baseFOV + aimOffset + Mathf.Min(dashFOV, maxFOVBoost)
+            : baseFOV + Mathf.Min(velocityFOVBoost + currentSprintFOV + dashFOV, maxFOVBoost) + aimOffset;
 
         currentFOV = Mathf.Lerp(currentFOV, targetFOV, Time.deltaTime * 8f);
         if (playerCamera != null) playerCamera.fieldOfView = currentFOV + Shaker.FOVModRef;
@@ -833,7 +912,7 @@ public class PlayerMovement : NetworkBehaviour {
             while (elapsedTime < total) {
                 elapsedTime += Time.deltaTime;
                 float percent = elapsedTime / total;
-                dashIcon.sizeDelta = new Vector2(75, percent * 72);
+                if (dashIcon != null) dashIcon.sizeDelta = new Vector2(75, percent * 72);
                 float totalPrev = total;
                 total = 10 * (1.0f / upgradeManager.Local.dashRegenMultiplier);
                 if (currDimension == "Space")
@@ -853,7 +932,6 @@ public class PlayerMovement : NetworkBehaviour {
         
         string hitTag = hit.transform.gameObject.tag;
         if (isGrounded) {
-            // first grounded contact after being airborne; not necessarily the frame isGrounded flipped
             if (pendingLanding) {
                 pendingLanding = false;
                 HandleFallDamage(hitTag);
@@ -870,34 +948,32 @@ public class PlayerMovement : NetworkBehaviour {
 
     private void TeleportationCheck(GameObject hitObject) {        
         if (canTeleport) {
-            if (hitObject == portal1A) HandleTeleportation(portal1B, desertInfo);
-            else if (hitObject == portal1B) HandleTeleportation(portal1A, mazeInfo);
-            else if (hitObject == portal2A) HandleTeleportation(portal2B, desertInfo);
-            else if (hitObject == portal2B) HandleTeleportation(portal2A, spaceInfo);
-            else if (hitObject == portal3A) HandleTeleportation(portal3B, desertInfo);
-            else if (hitObject == portal3B) HandleTeleportation(portal3A, iceInfo);
-            else if (hitObject == portal4A) {
-                inCombatScene = false;
-                ChangeScene("BossScene");
-                HandleTeleportation(portal4B, desertInfo);
-            }
-            else if (hitObject == portal4B) {
-                inCombatScene = true;
-                ChangeScene("CombatScene");
-                HandleTeleportation(portal4A, desertInfo);
-            }
+            if (hitObject == portal1A) HandleTeleportation(portal1B.transform, desertInfo);
+            else if (hitObject == portal1B) HandleTeleportation(portal1A.transform, mazeInfo);
+            else if (hitObject == portal2A) HandleTeleportation(portal2B.transform, desertInfo);
+            else if (hitObject == portal2B) HandleTeleportation(portal2A.transform, spaceInfo);
+            else if (hitObject == portal3A) HandleTeleportation(portal3B.transform, desertInfo);
+            else if (hitObject == portal3B) HandleTeleportation(portal3A.transform, iceInfo);
+            else if (hitObject == portal4A) ChangeScene("BossScene");
+            else if (hitObject == portal4B) ChangeScene("CombatScene");
         }
     }
-    
-    /// <summary>
-    /// Owner-only. Asks the server to pull every player into the boss scene; the collision
-    /// callback can fire on consecutive frames, so the request is sent once.
-    /// </summary>
+
     private void ChangeScene(string name) {
         if (!IsOwner) return;
         canTeleport = false;
+        pendingSceneTransfer = name;
         RetroDither.isTeleporting = true;
         TransferToScene(name);
+        StartCoroutine(SceneTransferTimeout(name));
+    }
+
+    IEnumerator SceneTransferTimeout(string name) {
+        yield return new WaitForSecondsRealtime(15f);
+        if (pendingSceneTransfer != name) yield break;
+        Debug.LogWarning($"[PlayerMovement] Transfer to '{name}' never arrived; portals re-enabled.");
+        pendingSceneTransfer = null;
+        canTeleport = true;
     }
 
     private void VelocityResetCheck(Vector3 hitNormal) {
@@ -1024,21 +1100,24 @@ public class PlayerMovement : NetworkBehaviour {
         pendingLanding = false;
         jumpBufferTimer = 0f;
 
-        List<Vector3> currentSpawns = desertSpawnVectors; // default to desert spawns
-        if (currDimension == "Maze" && mazeSpawnVectors.Count > 0)
-            currentSpawns = mazeSpawnVectors;
-        else if (currDimension == "Space" && spaceSpawnVectors.Count > 0)
-            currentSpawns = spaceSpawnVectors;
-        else if (currDimension == "Ice" && iceSpawnVectors.Count > 0)
-            currentSpawns = iceSpawnVectors;
-            
-        int num = Random.Range(0, currentSpawns.Count);
-        transform.position = currentSpawns[num];
+        if (!inCombatScene && bossArrival != null) {
+            transform.position = bossArrival.position;
+            FaceDirection(bossArrival.eulerAngles.y);
+        } else {
+            List<Vector3> currentSpawns = desertSpawnVectors; // default to desert spawns
+            if (currDimension == "Maze" && mazeSpawnVectors.Count > 0)
+                currentSpawns = mazeSpawnVectors;
+            else if (currDimension == "Space" && spaceSpawnVectors.Count > 0)
+                currentSpawns = spaceSpawnVectors;
+            else if (currDimension == "Ice" && iceSpawnVectors.Count > 0)
+                currentSpawns = iceSpawnVectors;
 
-        Vector3 targetDirection = new Vector3(17f - 13.94f, -9f, -27f + 3.89f) - transform.position;
-        Quaternion targetRotation = Quaternion.LookRotation(targetDirection);
-        transform.rotation = Quaternion.Euler(0f, targetRotation.eulerAngles.y, 0f);
-        currentCameraRotationY = targetRotation.eulerAngles.y;
+            int num = Random.Range(0, currentSpawns.Count);
+            transform.position = currentSpawns[num];
+
+            Vector3 targetDirection = new Vector3(17f - 13.94f, -9f, -27f + 3.89f) - transform.position;
+            FaceDirection(Quaternion.LookRotation(targetDirection).eulerAngles.y);
+        }
 
         characterController.enabled = true;
         if (localShooting != null) localShooting.canShoot = true;
@@ -1078,18 +1157,16 @@ public class PlayerMovement : NetworkBehaviour {
         if (DamageControl.Local != null) DamageControl.Local.ServerEndSpawnProtection();
     }
 
-    private void HandleTeleportation(GameObject endPortal, DimensionInfo target) {
+    private void HandleTeleportation(Transform destination, DimensionInfo target, float heightOffset = 3f) {
         characterController.enabled = false;
-        bool movingToBossScene = endPortal == portal4B;
         SetActiveDimension(target);
-        if (!movingToBossScene)
-            GameObject.Find("Scene Light").transform.localScale = (target.name == "Desert") ? Vector3.one * 150f : Vector3.zero;
+        if (inCombatScene && combatSceneLight != null)
+            combatSceneLight.transform.localScale = (target.name == "Desert") ? Vector3.one * 150f : Vector3.zero;
         canTeleport = false;
         StartCoroutine(teleTrue());
         RetroDither.isTeleporting = true;
-        transform.position = endPortal.transform.position + new Vector3(0f, 3f, 0f);
+        transform.position = destination.position + new Vector3(0f, heightOffset, 0f);
         characterController.enabled = true;
-        // dimensions sit at different heights; measure the next fall from here, and don't count the jump as velocity
         lastGroundedHeight = transform.position.y;
         lastPosition = playerTransform.position;
 
@@ -1109,14 +1186,18 @@ public class PlayerMovement : NetworkBehaviour {
         Camera.main.GetComponent<FogShader>().ChangeDimension(target.name);
 
 
-        portal1A.SetActive(!movingToBossScene);
-        portal1B.SetActive(!movingToBossScene);
-        portal2A.SetActive(!movingToBossScene);
-        portal2B.SetActive(!movingToBossScene);
-        portal3A.SetActive(!movingToBossScene);
-        portal3B.SetActive(!movingToBossScene);
-        portal4A.SetActive(!movingToBossScene);
-        portal4B.SetActive(movingToBossScene);
+        SetActiveIfPresent(portal1A, inCombatScene);
+        SetActiveIfPresent(portal1B, inCombatScene);
+        SetActiveIfPresent(portal2A, inCombatScene);
+        SetActiveIfPresent(portal2B, inCombatScene);
+        SetActiveIfPresent(portal3A, inCombatScene);
+        SetActiveIfPresent(portal3B, inCombatScene);
+        SetActiveIfPresent(portal4A, inCombatScene);
+        SetActiveIfPresent(portal4B, !inCombatScene);
+    }
+
+    private static void SetActiveIfPresent(GameObject go, bool active) {
+        if (go != null) go.SetActive(active);
     }
 
     IEnumerator teleTrue() {
@@ -1148,7 +1229,6 @@ public class PlayerMovement : NetworkBehaviour {
             }
         }
         if (!isBuildCollision) return;
-        // only builds may be switched to BuildNoColPlayer; hitColliders also holds terrain on the Default layer
         Collider[] stuckColliders = hitColliders;
 
         Vector3 start = transform.position;
@@ -1177,14 +1257,13 @@ public class PlayerMovement : NetworkBehaviour {
 
             if (unstuckFail) {
                 newVelocity.y = 0;
-                // relayer what we were stuck in at the start, not whatever overlapped at the last probe height
                 foreach (Collider thing in stuckColliders)
                     if (IsBuildCollider(thing)) thing.transform.gameObject.layer = 11;
                 characterController.enabled = false;
                 transform.position = start;
                 characterController.enabled = true;
             }
-            lastPosition = playerTransform.position; // the unstuck nudge isn't player velocity
+            lastPosition = playerTransform.position; 
         } else {
             foreach (var entry in originalLayers) entry.Key.gameObject.layer = entry.Value;
             foreach (Collider thing in stuckColliders)

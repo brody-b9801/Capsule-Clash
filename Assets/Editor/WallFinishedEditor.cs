@@ -63,9 +63,6 @@ public class WallFinishedEditor : Editor
         Animator anim = wf.GetComponentInChildren<Animator>(true);
         bool animWasEnabled = anim != null && anim.enabled;
 
-        // Scrub the animator to the exact end of the build animation so baked
-        // transforms match what's visible when OnAnimationComplete fires.
-        // Update(1f) is needed — Update(0f) evaluates no time and leaves pose unchanged.
         if (anim != null)
         {
             anim.enabled = true;
@@ -73,9 +70,6 @@ public class WallFinishedEditor : Editor
             anim.Update(1f / 60f);
         }
 
-        // Bake verts into wf-local space. At runtime the prefab is placed as a
-        // child of wf at localPosition/Rotation/Scale identity, so verts land
-        // exactly where they appeared during the animation.
         Matrix4x4 rootInv = wf.transform.worldToLocalMatrix;
 
         MeshFilter[] meshFilters = wf.GetComponentsInChildren<MeshFilter>(true);

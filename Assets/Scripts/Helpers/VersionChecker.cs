@@ -28,7 +28,6 @@ public class JSONFetcher : MonoBehaviour
                 string jsonText = request.downloadHandler.text;
                 Debug.Log("Received JSON: " + jsonText);
 
-                // Optional: parse JSON
                 MyData data = JsonUtility.FromJson<MyData>(jsonText);
                 if (data.version != currentVersion)
                 {
