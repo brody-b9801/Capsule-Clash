@@ -97,6 +97,7 @@ public class PlayerMovement : NetworkBehaviour {
     public static bool lerpingWalkDone = false;
     private bool lerpingWalkEnd = false;
     private bool lerpingWalkDoneEnd = true;
+    private bool SprintGunPose => isSprinting && !CameraZoom.isAiming;
     public static float jumpOffset;
     private float jumpOffsetTwo;
     private bool lerpingJump = false;
@@ -1318,7 +1319,11 @@ public class PlayerMovement : NetworkBehaviour {
 
         while (elapsedTime < duration) {
             if (CameraZoom.isAiming) {
-                targetY = (Shooting.Local.currentGun == Shooting.currGun.Shotgun) ? 0 : 0.085f;
+                targetY = Shooting.Local.currentGun switch {
+                    Shooting.currGun.Shotgun => 0f,
+                    Shooting.currGun.Sniper => -0.115f,
+                    _ => 0.085f
+                };
                 aimVectorPos = Vector3.Lerp(startAimVectorPos, new Vector3(targetAimXPos, targetY, targetAimZPos), elapsedTime / duration);
                 aimVectorRot = Vector3.Lerp(startAimVectorRot, new Vector3(targetAimXRot, targetAimYRot, 0), elapsedTime / duration);
                 elapsedTime += Time.deltaTime;
@@ -1345,7 +1350,7 @@ public class PlayerMovement : NetworkBehaviour {
         float elapsedTime = 0f;
 
         while (elapsedTime < duration) {
-            if (isSprinting && !Shaker.shooting && !Shooting.Local.reloading && CameraZoom.moving) {
+            if (SprintGunPose && !Shaker.shooting && !Shooting.Local.reloading && CameraZoom.moving) {
                 walkVectorPos = Vector3.Lerp(walkVectorPosStart, new Vector3(targetWalkXPos, targetWalkYPos, targetWalkZPos), elapsedTime / duration);
                 walkVectorRot = Vector3.Lerp(walkVectorRotStart, new Vector3(targetWalkXRot, targetWalkYRot, targetWalkZRot), elapsedTime / duration);
                 elapsedTime += Time.deltaTime;
@@ -1397,7 +1402,7 @@ public class PlayerMovement : NetworkBehaviour {
         float elapsedTime = 0f;
 
         while (elapsedTime < duration) {
-            if (!isSprinting || Shaker.shooting || Shooting.Local.reloading || !CameraZoom.moving) {
+            if (!SprintGunPose || Shaker.shooting || Shooting.Local.reloading || !CameraZoom.moving) {
                 walkVectorPos = Vector3.Lerp(walkVectorPosStart, Vector3.zero, elapsedTime / duration);
                 walkVectorRot = Vector3.Lerp(walkVectorRotStart, Vector3.zero, elapsedTime / duration);
                 elapsedTime += Time.deltaTime;
@@ -1537,11 +1542,11 @@ public class PlayerMovement : NetworkBehaviour {
                     shootAnimTune * Shaker.zRot + -1.2f * gunYRot * turnAnimTune + 2.1f * sideTilt * sidewaysAnimTune);
         }
 
-        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && isSprinting && !Shaker.shooting && !Shooting.Local.reloading && !lerpingWalk && !lerpingWalkDone && CameraZoom.moving)
+        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && SprintGunPose && !Shaker.shooting && !Shooting.Local.reloading && !lerpingWalk && !lerpingWalkDone && CameraZoom.moving)
             StartCoroutine(lerpWalkStart());
-        else if (isSprinting && (Shaker.shooting || Shooting.Local.reloading) && !lerpingWalkEnd && !lerpingWalkDoneEnd)
+        else if (SprintGunPose && (Shaker.shooting || Shooting.Local.reloading) && !lerpingWalkEnd && !lerpingWalkDoneEnd)
             StartCoroutine(lerpWalkEnd(0.05f));
-        else if (!lerpingWalkEnd && !lerpingWalkDoneEnd && (!CameraZoom.moving || !isSprinting || !(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))))
+        else if (!lerpingWalkEnd && !lerpingWalkDoneEnd && (!CameraZoom.moving || !SprintGunPose || !(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))))
             StartCoroutine(lerpWalkEnd(0.25f));
 
         if (!CameraZoom.moving || Shaker.shooting || CameraZoom.isAiming || !isSprinting)
@@ -1571,7 +1576,7 @@ public class PlayerMovement : NetworkBehaviour {
 
         if (!Shaker.shooting) {
             Vector3 posOffset;
-            if (!isSprinting) {
+            if (!SprintGunPose) {
                 posOffset = new Vector3(
                     walkingShake.newX * 0.015f * walkAnimTuneGun + walkVectorPos.x,
                     -0.01f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune + BreathingAnim.yVal * 0.025f * breatheAnimTune + Mathf.Abs(walkingShake.newY) * 0.03f * walkAnimTuneGun + walkVectorPos.y + jumpOffset * jumpAnimTune + Shooting.changeOffset * shootAnimTune,
