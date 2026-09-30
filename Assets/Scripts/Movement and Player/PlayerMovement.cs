@@ -623,7 +623,7 @@ public class PlayerMovement : NetworkBehaviour {
 
     private float GetBaseSpeed()
     {
-        if (isAiming) return 2.5f;
+        if (isAiming && isGrounded) return 2.5f;
         if (isSprinting && isGrounded) return 12.0f;
         if (isSprinting && fastAir) return 10.0f;
         if (!isGrounded) return 7.5f;
@@ -709,7 +709,7 @@ public class PlayerMovement : NetworkBehaviour {
         if (_jump) serverController.TryFeed();
         
 
-        if (jumpBufferTimer > 0f && isGrounded && !isAiming && !serverController.LookingAtServer) {
+        if (jumpBufferTimer > 0f && isGrounded && !serverController.LookingAtServer) {
             jumpBufferTimer = 0f;
             if (currDimension == "Maze")
                 newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
@@ -892,7 +892,7 @@ public class PlayerMovement : NetworkBehaviour {
 
     private void SetAimRotSpeed()
     {
-        if ((Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && isGrounded) {
+        if (Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) {
             isAiming = true;
             rotationSpeed = SettingsController.rs * (1.5f / 4.0f);
         } else {
@@ -1301,6 +1301,11 @@ public class PlayerMovement : NetworkBehaviour {
         healParticles.healing = false;
         if (DamageControl.Local != null) DamageControl.Local.ServerHeal(45.0f);
         HealthController.healAnim = true;
+    }
+
+    public void ReplayAimLerp() {
+        if (CameraZoom.isAiming && !lerpingAim)
+            lerpingAimDone = false;
     }
 
     IEnumerator lerpAimStart() {

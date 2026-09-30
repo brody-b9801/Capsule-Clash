@@ -97,10 +97,13 @@ public class CameraZoom : MonoBehaviour
         }
 
         float desiredZoom;
-        if ((Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && PlayerMovement.Local.isGrounded)
+        if (Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
         {
             isAiming = true;
-            if (!moving) {
+            if (!PlayerMovement.Local.isGrounded) {
+                Shooting.spread = 1.8f * zoomSpread;
+                crosshairDelta = zoomCHFov * 1.5f * factor;
+            } else if (!moving) {
                 Shooting.spread = zoomSpread;
                 crosshairDelta = zoomCHFov * factor;
             } else {
