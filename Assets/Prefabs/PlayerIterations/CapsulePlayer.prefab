@@ -181,14 +181,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7b2d3d7334953a439fea3a4468ca911, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _componentIndexCache: 255
+  _componentIndexCache: 0
   _addedNetworkObject: {fileID: 1447310636841987035}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 1447310636841987035}
   jumpForce: 6.5
+  jumpBufferTime: 0.1
   maxLookUpAngle: 88
   maxLookDownAngle: 88
-  airSpeed: 8
-  sprintSpeed: 8
   gun: {fileID: 5678431955460453153}
   isGrounded: 0
   fastAir: 0
@@ -202,6 +201,7 @@ MonoBehaviour:
   borderPrefab: {fileID: 5615193209519933, guid: 2523692685631ff43a79f422e59d6d57, type: 3}
   forceMod: 100000000
   onSlope: 0
+  portal4B: {fileID: 0}
   launchForce: 20
   dashForce: 20
   jumpedLast: 0
@@ -244,20 +244,25 @@ MonoBehaviour:
   usernameDisplay: {fileID: 1054499837766755018}
   groundAcceleration: 1000
   groundDeceleration: 1000
-  airAcceleration: 3
-  airDeceleration: 2
+  airAcceleration: 30
+  airDeceleration: 20
   friction: 8
   sprintAccelerationMultiplier: 1.5
   airControlMultiplier: 0.5
+  overspeedDamping: 10
   speedFOVBoost: 15
   sprintFOVBoost: 10
   landingCameraShake: 1
   velocityBasedTilt: 2
   momentumCameraSway: 0.5
+  maxFOVBoost: 25
   currDimension: Desert
   spaceSky: {fileID: 2100000, guid: 1cf6f4c6e6e0518419839d3f5448dd99, type: 2}
   iceSky: {fileID: 2100000, guid: 2bd8959f5fbd3644aa33af1a155fc147, type: 2}
   shotBoost: {x: 0, y: 0, z: 0}
+  ledgeSupportFraction: 0.5
+  ledgeDropTolerance: 0.6
+  ledgeSlipSpeed: 4
 --- !u!33 &6811795265293790440
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -327,9 +332,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0524c641505199498d3bf2b49473c8f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _componentIndexCache: 255
+  _componentIndexCache: 1
   _addedNetworkObject: {fileID: 1447310636841987035}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 1447310636841987035}
   bulletPrefab: {fileID: 1122964723992546, guid: 674adf642abf5614aae2995443c8250f, type: 3}
   gun: {fileID: 297485254485252709}
   player: {fileID: 4563841083353979690}
@@ -347,17 +352,20 @@ MonoBehaviour:
   playerMesh: {fileID: 9146832561924185666}
   shotgunMesh: {fileID: 6919841926953838382, guid: ef692815acc00a84abbedf794f71d664, type: 3}
   M4Mesh: {fileID: -8401218714792031518, guid: 19b3217a01ed3df42b30c781edabc747, type: 3}
+  sniperMesh: {fileID: -8310518740751045040, guid: ab65b3a9e6ede624bace88b295768f73, type: 3}
+  sniperMagMesh: {fileID: -7144183082714287279, guid: ab65b3a9e6ede624bace88b295768f73, type: 3}
   bulletSpeed: 150
-  snipeSpeed: 150
+  snipeSpeed: 400
   fireRate: 11
   nextFireTime: 0
   reloadNum: 30
   shottieNum: 2
+  sniperNum: 5
   reloading: 0
   playerShot: 0
   isShooting: 0
   canShoot: 1
-  shotgun: 0
+  currentGun: 0
   end: {x: 0, y: 0, z: 0}
   playerMag: {fileID: 6428558820523471758}
   trailFadeDuration: 0.5
@@ -373,9 +381,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33ddfec7688c67b40b94c95d8cc95576, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _componentIndexCache: 255
+  _componentIndexCache: 2
   _addedNetworkObject: {fileID: 1447310636841987035}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 1447310636841987035}
   damaged: {fileID: 2100000, guid: 53b9e9f3c9c81324fb5884a244a84926, type: 2}
   normal: {fileID: 2100000, guid: b67ecb75ff79943459ef6057421c626e, type: 2}
   self: {fileID: 2100000, guid: 9966650909bd6de4387f2c689f1d6822, type: 2}
@@ -383,6 +391,7 @@ MonoBehaviour:
   wire: {fileID: 2100000, guid: 559056aa714c93c40a398fbaa32f25e3, type: 2}
   nails: {fileID: 2100000, guid: 9cc40215f6d25884581f7aec9879da2d, type: 2}
   gun: {fileID: 2100000, guid: 78514e5d586ee6748a19a6fb9395675e, type: 2}
+  damageFlashDuration: 0.05
   desertLitColor: {r: 1, g: 0.7137255, b: 0.64705884, a: 1}
   desertUnlitColor: {r: 0.7058824, g: 0.7058824, b: 1, a: 1}
   desertHardEdgeLightColor: {r: 0, g: 0, b: 0.19607843, a: 1}
@@ -411,9 +420,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c6fcd857ecfd2f4da84e2530911c177, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _componentIndexCache: 255
+  _componentIndexCache: 3
   _addedNetworkObject: {fileID: 1447310636841987035}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 1447310636841987035}
   rampPrefab: {fileID: 6186443727193615251, guid: 395be62ad9d3cb84c8cadf755dcd98c3, type: 3}
   wallPrefab: {fileID: 557634749615070146, guid: 98059948cd6fb444493625ff3f416615, type: 3}
   floorPrefab: {fileID: 2232761753259631505, guid: 082498592ff166044b7e3187e97543c0, type: 3}
@@ -440,7 +449,7 @@ CharacterController:
   serializedVersion: 3
   m_Height: 2
   m_Radius: 0.5
-  m_SlopeLimit: 70
+  m_SlopeLimit: 60
   m_StepOffset: 0
   m_SkinWidth: 0.05
   m_MinMoveDistance: 0.001
@@ -534,24 +543,32 @@ MonoBehaviour:
   _spectatorInterpolation: 2
   _enableTeleport: 0
   _teleportThreshold: 1
-  <PrefabId>k__BackingField: 65535
+  <PrefabId>k__BackingField: 13
   <SpawnableCollectionId>k__BackingField: 0
   <AssetPathHash>k__BackingField: 12571575387717151666
   SceneId: 0
   SerializedTransformProperties:
     Position: {x: 0, y: 0, z: 0}
-    Rotation: {x: 0, y: 0, z: 0, w: 0}
-    Scale: {x: 0, y: 0, z: 0}
-    IsValid: 0
+    Rotation: {x: 0, y: 0, z: 0, w: 1}
+    Scale: {x: 1, y: 1, z: 1}
+    IsValid: 1
   <IsNested>k__BackingField: 0
   WasActiveDuringEdit: 0
   WasActiveDuringEdit_Set1: 1
   <ComponentIndex>k__BackingField: 0
   <PredictedSpawn>k__BackingField: {fileID: 0}
   <PredictedOwner>k__BackingField: {fileID: 0}
-  NetworkBehaviours: []
+  NetworkBehaviours:
+  - {fileID: 8768481697642821006}
+  - {fileID: 3043129110490178642}
+  - {fileID: 8881949454150505402}
+  - {fileID: 4555525927683178864}
+  - {fileID: 4570701551215273596}
+  - {fileID: 7559977541259542866}
+  - {fileID: 9158572828972272116}
   InitializedParentNetworkBehaviour: {fileID: 0}
-  InitializedNestedNetworkObjects: []
+  InitializedNestedNetworkObjects:
+  - {fileID: 3211300088221069289}
   RuntimeParentNetworkBehaviour: {fileID: 0}
   RuntimeChildNetworkBehaviours: []
   _isNetworked: 1
@@ -560,7 +577,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: 0
+  _initializedTimestamp: -8584110484121607975
 --- !u!114 &4570701551215273596
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -573,9 +590,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2836e36774ca1c4bbbee976e17b649c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: FishNet.Runtime::FishNet.Component.Transforming.NetworkTransform
-  _componentIndexCache: 255
+  _componentIndexCache: 4
   _addedNetworkObject: {fileID: 1447310636841987035}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 1447310636841987035}
   _componentConfiguration: 0
   _synchronizeParent: 0
   _packing:
@@ -619,10 +636,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2b805e31f1d39b478761112b7bc3d3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DamageControl
-  _componentIndexCache: 255
+  _componentIndexCache: 5
   _addedNetworkObject: {fileID: 1447310636841987035}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 1447310636841987035}
   damage: 18
+  maxSpawnProtectionTime: 15
 --- !u!1 &7234072614236262368
 GameObject:
   m_ObjectHideFlags: 0
@@ -866,9 +884,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f2a183500ff9b04f8835c67b05849d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _componentIndexCache: 255
+  _componentIndexCache: 6
   _addedNetworkObject: {fileID: 1447310636841987035}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 1447310636841987035}
   usernameDisplay: {fileID: 1981088015738634965}
   killCount: 0
   username: 
@@ -991,7 +1009,7 @@ PrefabInstance:
     - target: {fileID: 6081214143165384429, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       propertyPath: _networkObjectCache
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 3211300088221069289}
     - target: {fileID: 8046000523938441231, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       propertyPath: m_LocalPosition.y
       value: -0.0338842
@@ -1004,6 +1022,26 @@ PrefabInstance:
       propertyPath: WasActiveDuringEdit
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 8678906300695345614, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+      propertyPath: <IsNested>k__BackingField
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8678906300695345614, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+      propertyPath: NetworkBehaviours.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8678906300695345614, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+      propertyPath: <ComponentIndex>k__BackingField
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8678906300695345614, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+      propertyPath: 'NetworkBehaviours.Array.data[1]'
+      value: 
+      objectReference: {fileID: 1522175987901386802}
+    - target: {fileID: 8678906300695345614, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+      propertyPath: InitializedParentNetworkBehaviour
+      value: 
+      objectReference: {fileID: 8768481697642821006}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -1043,6 +1081,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5473319011589123556, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
   m_PrefabInstance: {fileID: 6116309573121906215}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &3211300088221069289 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8678906300695345614, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
+  m_PrefabInstance: {fileID: 6116309573121906215}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26b716c41e9b56b4baafaf13a523ba2e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Object.NetworkObject
 --- !u!1 &3368015021342264296 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8817178322116648399, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
@@ -1234,9 +1283,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2836e36774ca1c4bbbee976e17b649c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: FishNet.Runtime::FishNet.Component.Transforming.NetworkTransform
-  _componentIndexCache: 255
+  _componentIndexCache: 1
   _addedNetworkObject: {fileID: 1447310636841987035}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 3211300088221069289}
   _componentConfiguration: 0
   _synchronizeParent: 0
   _packing:

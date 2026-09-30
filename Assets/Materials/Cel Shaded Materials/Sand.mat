@@ -147,7 +147,7 @@ Material:
     - _LightBands: 3
     - _LightScalar: 2
     - _LitDetailBrightness: 0.5
-    - _LowIntensity: 2
+    - _LowIntensity: 2.06
     - _LowLightBrightness: 0.55
     - _Metallic: 0
     - _MinLight: 0.4
