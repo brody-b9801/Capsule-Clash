@@ -494,6 +494,7 @@ public class Shooting : NetworkBehaviour
         }
 
         currentGun = newGun;
+        if (PlayerMovement.Local != null) PlayerMovement.Local.ReplayAimLerp();
 
         float muzzleZ;
         switch (currentGun)
