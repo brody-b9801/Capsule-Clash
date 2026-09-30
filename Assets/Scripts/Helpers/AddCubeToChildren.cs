@@ -31,7 +31,7 @@ public class AddCubeToChildren : MonoBehaviour
             }
             else
             {
-                cube.transform.localScale = Vector3.one; // Default scale if no Renderer is found
+                cube.transform.localScale = Vector3.one;
             }
         }
     }

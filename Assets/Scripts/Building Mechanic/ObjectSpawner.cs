@@ -26,9 +26,6 @@ public class ObjectSpawner : NetworkBehaviour
         set { if (IsServerStarted) _buildNum.Value = value; }
     }
 
-    // The build-reset clock is global, but it has to ride on a networked object
-    // the client observes to reach it. The HUD lives in the scene and already
-    // tracks the local player's spawner, so it rides along here.
     public float buildTime => _buildTime.Value;
 
     private static float _serverBuildTime;
@@ -43,11 +40,6 @@ public class ObjectSpawner : NetworkBehaviour
 
     private enum BuildType : byte { Floor = 0, Wall = 1, Ramp = 2 }
 
-    // TEMPORARY diagnostic for the client build-count bug. Fires on both sides:
-    // asServer=True on the server's copy, asServer=False when the replicated
-    // value lands on a client. If a client never logs asServer=False, the
-    // SyncVar is not reaching it; if it does, the HUD is reading the wrong
-    // spawner or something is regenerating the count.
     private void Awake()
     {
         _buildNum.OnChange += OnBuildNumChanged;
@@ -78,7 +70,6 @@ public class ObjectSpawner : NetworkBehaviour
             _claimSetInitialized = true;
         }
 
-        // Exactly one spawner drives the global support scan.
         if (_supportLoopOwner == null)
         {
             _supportLoopOwner = this;
@@ -112,9 +103,6 @@ public class ObjectSpawner : NetworkBehaviour
             Local = this;
             BuildUI.objectSpawner = this;
 
-            // The HUD used to wait on RoomMenu, which only exists in TitleScene, so
-            // playing CombatScene directly left the build counter frozen forever.
-            // The local player existing is the real signal that the HUD is live.
             BuildUI.started = true;
         }
     }
@@ -169,8 +157,6 @@ public class ObjectSpawner : NetworkBehaviour
     {
         if (IsServerStarted)
         {
-            // Advanced once per frame, then mirrored onto every spawner so each
-            // client reads the same clock off its own player object.
             if (_serverBuildTimeFrame != Time.frameCount)
             {
                 _serverBuildTimeFrame = Time.frameCount;
@@ -211,7 +197,6 @@ public class ObjectSpawner : NetworkBehaviour
         }
     }
 
-    // Clients cannot write buildNum directly; the setter drops the write.
     [ServerRpc]
     public void RequestBuildReset()
     {
@@ -278,14 +263,9 @@ public class ObjectSpawner : NetworkBehaviour
 
         public BuildCell(Vector3 worldPos, string type, float yawDegrees)
         {
-            // Quantize to hundredths: float drift would otherwise make two
-            // logically identical cells hash differently.
             _x = Mathf.RoundToInt(worldPos.x * 100f);
             _y = Mathf.RoundToInt(worldPos.y * 100f);
             _z = Mathf.RoundToInt(worldPos.z * 100f);
-            // Walls and ramps occupy a cell face, so orientation is part of the
-            // identity: two walls can share a position on perpendicular faces.
-            // Normalized to 0-359 so -90 and 270 are the same cell.
             _yaw = ((Mathf.RoundToInt(yawDegrees / 90f) * 90) % 360 + 360) % 360;
             _type = type;
         }
@@ -345,7 +325,6 @@ void SpawnFloor(Vector3 cameraPosition, Vector3 cameraForward)
 
         if (!IsPositionOccupied(spawnPosition, "Floor") && IsValidPlacement(spawnPosition, new Vector3(gridSize, 0.2f, gridSize), Quaternion.identity, "Floor"))
         {
-            // Floors are flat, so orientation is not part of the cell identity.
             if (!TryClaimCell(spawnPosition, "Floor", 0f)) return;
 
             Quaternion spawnRotation = Quaternion.LookRotation(cameraForward);
@@ -395,8 +374,6 @@ void SpawnWall(Vector3 cameraPosition, Vector3 cameraForward)
 
         if (!IsPositionOccupied(spawnPosition, "Wall", spawnOffset) && IsValidPlacement(finalPosition, new Vector3(gridSize, gridSize, 0.2f), spawnRotation, "Wall"))
         {
-            // A wall occupies one face of a cell, so yaw distinguishes the
-            // perpendicular wall that legitimately shares this position.
             float yaw = spawnRotation.eulerAngles.y;
             if (!TryClaimCell(finalPosition, "Wall", yaw)) return;
 
@@ -446,7 +423,6 @@ void SpawnRamp(Vector3 cameraPosition, Vector3 cameraForward)
 
         if (!IsPositionOccupied(spawnPosition, "Ramp") && IsValidPlacement(spawnPosition, new Vector3(gridSize, gridSize * Mathf.Sqrt(2), 0.2f), spawnRotation, "Ramp"))
         {
-            // Ramps are directional, so yaw is part of the cell identity.
             float yaw = spawnRotation.eulerAngles.y;
             if (!TryClaimCell(spawnPosition, "Ramp", yaw)) return;
 
@@ -503,7 +479,6 @@ IEnumerator CheckSupportLoop() {
   while (true) {
     yield return wait;
 
-    // Ownership can transfer on despawn; stop if this instance is no longer it.
     if (_supportLoopOwner != this) yield break;
 
     if (checkSupportBool && playerSpawnedObjects != null) {

@@ -5,9 +5,6 @@ using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
-// Build entry points for GameCI (.github/workflows/gameci.yml).
-// GameCI passes the output file as -customBuildPath; a failed build exits
-// non-zero so the workflow run fails instead of uploading an empty artifact.
 public static class CIBuild
 {
     public static void BuildWindows()

@@ -98,7 +98,7 @@ public class GunRotation : NetworkBehaviour
         if (IsServerInitialized)
             syncCasing(pos, enabled);
         else
-            applyCasing(pos, enabled);   // owner's RunLocally pass
+            applyCasing(pos, enabled);
     }
 
     [ObserversRpc(ExcludeOwner = true)]

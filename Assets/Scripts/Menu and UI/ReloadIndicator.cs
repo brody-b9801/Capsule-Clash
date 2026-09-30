@@ -46,7 +46,6 @@ public class ReloadIndicator : MonoBehaviour
         float total = 3f / upgradeManager.Local.regenSpeedMultiplier;
 
         HealBar.rectTransform.sizeDelta = new Vector2(0.0f, HealBar.rectTransform.sizeDelta.y);
-        // Stop if the player despawns mid-heal rather than dereferencing a null Local.
         while (PlayerMovement.Local != null && PlayerMovement.Local.elapsedHealTime < total && healParticles.healing)
         {
             float percent = PlayerMovement.Local.elapsedHealTime / total;

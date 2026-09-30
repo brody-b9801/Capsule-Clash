@@ -23,9 +23,6 @@ public class BuildUI : MonoBehaviour
 
     public static bool isHost => InstanceFinder.IsServerStarted;
 
-    // TEMPORARY diagnostic: the HUD counter sits at its authored value with no
-    // warning logged, so Update either never runs or bails at one of the gates
-    // below. Logs once per state change rather than every frame.
     private string _lastGate;
 
     private void LogGate(string gate)
@@ -50,15 +47,8 @@ public class BuildUI : MonoBehaviour
             return;
         }
 
-        // started is set by RoomMenu when the room UI opens, which is independent
-        // of player spawn — under FishNet the player arrives later, so the spawner
-        // reference can still be null here.
         if (objectSpawner == null)
         {
-            // ObjectSpawner.OnStartClient assigns this for the owner. If that
-            // callback is missed — an exception in an earlier NetworkBehaviour's
-            // OnStartClient aborts the rest of them — the HUD would sit frozen
-            // with no complaint, so recover it from the local player instead.
             if (PlayerMovement.Local == null)
             {
                 LogGate("no-local-player");
@@ -83,15 +73,10 @@ public class BuildUI : MonoBehaviour
 
         builds.text = objectSpawner.buildNum.ToString();
 
-        // timer and arrow are optional on some HUD prefabs; dereferencing a missing
-        // one threw every frame and aborted the rest of Update, which is what froze
-        // the reset ring and the build clock below.
         if (timer != null) timer.fillAmount = (buildResetTime / 100);
         if (arrow != null) arrow.localEulerAngles = new Vector3(0, 0, 360 * (buildResetTime / 100));
         WarnMissingRefsOnce();
 
-        // The server owns the clock and replicates it on the spawner; a client
-        // ticking its own copy would just sit at zero and freeze the ring.
         totalBuildTime = objectSpawner.buildTime;
 
         buildResetTime = 100 - (totalBuildTime % 100);

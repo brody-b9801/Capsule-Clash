@@ -57,7 +57,6 @@ public class CameraZoom : MonoBehaviour
     public static float aimZoomOffset = 0f;
     public static float baseFOVTarget = 60f;
 
-    // Cached Image components
     private Image _leftImg, _rightImg, _topImg, _bottomImg;
     private Image _topleftImg, _toprightImg, _bottomleftImg, _bottomrightImg;
 
@@ -82,7 +81,6 @@ public class CameraZoom : MonoBehaviour
 
     private void Update()
     {
-        // The local player is spawned by FishNet after this component starts.
         if (PlayerMovement.Local == null || Shooting.Local == null) return;
 
         if (shot) {
@@ -151,10 +149,8 @@ public class CameraZoom : MonoBehaviour
         airFOVOffset = Mathf.SmoothDamp(airFOVOffset, airFOVTarget, ref airFOVVelocity, 0.12f);
         targetZoom += airFOVOffset;
         
-        // Calculate the zoom offset for PlayerMovement to use
         aimZoomOffset = targetZoom - baseFOVTarget;
         
-        // Crosshair positioning
         if (Shooting.Local.currentGun != Shooting.currGun.Shotgun) {
             if (!_leftImg.enabled) {
                 _leftImg.enabled = true;
@@ -195,6 +191,6 @@ public class CameraZoom : MonoBehaviour
         if (cameraToZoomFloat != Mathf.Clamp(targetZoom, 60, 80))
             cameraToZoomFloat = Mathf.SmoothDamp(cameraToZoom.fieldOfView, Mathf.Clamp(targetZoom, 60, 80), ref currentVelocity1, 0.1f);
 
-        cameraToZoom.fieldOfView = cameraToZoomFloat + Shaker.FOVModRef*0 + PlayerMovement.dashFOV;
+        cameraToZoom.fieldOfView = cameraToZoomFloat;
     }
 }

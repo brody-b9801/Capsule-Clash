@@ -47,8 +47,6 @@ public class ParticleTweaker : MonoBehaviour
             FitRadiusToView();
         }
 
-        // FishNet spawns the player after this component starts, so Local is null
-        // for the first frames of a session and again after the player despawns.
         PlayerMovement player = PlayerMovement.Local;
         if (player == null || rb == null)
         {

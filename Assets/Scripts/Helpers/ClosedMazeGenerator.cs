@@ -26,8 +26,6 @@ public class ClosedMazeGenerator : MonoBehaviour
 
     MazeCell[,] grid;
 
-    // =============================
-
     public void Generate()
     {
         ClearChildren();
@@ -52,8 +50,6 @@ public class ClosedMazeGenerator : MonoBehaviour
         BuildMaze();
     }
 
-    // =============================
-
     float GetWallLength()
     {
         Renderer r = wallPrefab.GetComponentInChildren<Renderer>();
@@ -63,7 +59,6 @@ public class ClosedMazeGenerator : MonoBehaviour
             return 4f;
         }
 
-        // Use largest axis (x or z)
         return Mathf.Max(r.bounds.size.x, r.bounds.size.z);
     }
 
@@ -166,7 +161,6 @@ void BuildMaze()
         if (floorPrefab != null)
             InstantiatePrefab(floorPrefab, cell, Quaternion.identity);
 
-        // NORTH wall (horizontal, extends along X)
         if (grid[x, y].walls[0])
         {
             Vector3 pos = origin + new Vector3(
@@ -178,7 +172,6 @@ void BuildMaze()
             InstantiatePrefab(wallPrefab, pos, Quaternion.identity);
         }
 
-        // WEST wall (vertical, rotate 90 so it extends along Z)
         if (grid[x, y].walls[3])
         {
             Vector3 pos = origin + new Vector3(
@@ -191,7 +184,6 @@ void BuildMaze()
         }
     }
 
-    // EAST border (vertical)
     for (int y = 0; y < height; y++)
     {
         Vector3 pos = origin + new Vector3(
@@ -203,7 +195,6 @@ void BuildMaze()
         InstantiatePrefab(wallPrefab, pos, Quaternion.Euler(0, 90, 0));
     }
 
-    // SOUTH border (horizontal)
     for (int x = 0; x < width; x++)
     {
         Vector3 pos = origin + new Vector3(

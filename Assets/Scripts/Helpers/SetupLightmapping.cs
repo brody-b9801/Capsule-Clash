@@ -18,15 +18,12 @@ public class SetupLightmapping : EditorWindow
             Undo.RecordObject(r.gameObject, "Setup Lightmapping");
             Undo.RecordObject(r, "Setup Lightmapping");
 
-            // Add ContributeGI to existing static flags without removing anything
             StaticEditorFlags flags = GameObjectUtility.GetStaticEditorFlags(r.gameObject);
             flags |= StaticEditorFlags.ContributeGI;
             GameObjectUtility.SetStaticEditorFlags(r.gameObject, flags);
 
-            // Set to receive lightmaps
             r.receiveGI = ReceiveGI.Lightmaps;
 
-            // Make sure it contributes shadows to the bake
             r.shadowCastingMode = ShadowCastingMode.On;
 
             EditorUtility.SetDirty(r.gameObject);

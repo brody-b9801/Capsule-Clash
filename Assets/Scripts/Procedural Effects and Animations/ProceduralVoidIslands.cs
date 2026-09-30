@@ -157,7 +157,6 @@ public class ProceduralVoidIslands : MonoBehaviour
     {
         Vector3 islandCenter = island.transform.position;
 
-        // Derive radius from the island's combined renderer bounds
         Renderer[] renderers = island.GetComponentsInChildren<Renderer>();
         float radius = decorationRadius;
         if (renderers.Length > 0)
@@ -167,14 +166,11 @@ public class ProceduralVoidIslands : MonoBehaviour
             radius = Mathf.Max(bounds.extents.x, bounds.extents.z);
         }
 
-        // Collect all colliders that belong to the island itself before any decorations are added
         Collider[] islandColliders = island.GetComponentsInChildren<Collider>();
         HashSet<Collider> islandColliderSet = new HashSet<Collider>(islandColliders);
 
-        // Density scales with island size: bigger islands get proportionally more decorations
         int attemptCount = Mathf.Clamp(Mathf.RoundToInt(radius * decorationsPerRadius), 1, maxDecorationsPerIsland);
 
-        // Track placed decorations on this island so new ones don't overlap them
         List<Vector3> decoCenters = new List<Vector3>();
         List<float> decoRadii = new List<float>();
 
@@ -189,19 +185,15 @@ public class ProceduralVoidIslands : MonoBehaviour
 
             if (!RaycastIsland(rayOrigin, islandColliderSet, out RaycastHit hit)) continue;
 
-            // Skip cliff faces
             if (Vector3.Dot(hit.normal, Vector3.up) < 0.5f) continue;
-            int objectIndex = Random.Range(0, 2); // 0 or 1
+            int objectIndex = Random.Range(0, 2);
             GameObject prefab = decorationPrefabs[Random.Range(0, decorationPrefabs.Length)];
 
             float decScale = Random.Range(decorationScaleRange.x, decorationScaleRange.y);
 
-            // Reject placements whose footprint would overhang the island edge.
-            // Sample points around the decoration's footprint and require each to land on this island.
             float footprint = GetPrefabHorizontalRadius(prefab) * decScale;
             if (FootprintOverhangs(hit.point, footprint, islandColliderSet)) continue;
 
-            // Reject placements that overlap an already-placed decoration (compared on the horizontal plane)
             if (OverlapsDecorations(hit.point, footprint, decoCenters, decoRadii)) continue;
 
             Quaternion rot = Quaternion.FromToRotation(Vector3.up, hit.normal)

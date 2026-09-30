@@ -8,7 +8,6 @@ public class GunThingAnim : MonoBehaviour
     public static bool movingState = false;
     public static bool gunMoving = false;
     void Update() {
-        // The local player is spawned by FishNet after this component starts.
         if (PlayerMovement.Local == null) return;
 
         if (PlayerMovement.Local.isGrounded && CameraZoom.moving && !movingState) {
@@ -25,13 +24,24 @@ public class GunThingAnim : MonoBehaviour
             gunMoving = false;      
     }
 
+    private GameObject gun;
+
+    private GameObject Gun
+    {
+        get
+        {
+            if (gun == null) gun = transform.Find("CamAKM").gameObject;
+            return gun;
+        }
+    }
+
     public void enableGun()
     {
-        transform.GetChild(1).gameObject.SetActive(true);
+        Gun.SetActive(true);
     }
 
     public void disableGun()
     {
-        transform.GetChild(1).gameObject.SetActive(false);
+        Gun.SetActive(false);
     }
 }
