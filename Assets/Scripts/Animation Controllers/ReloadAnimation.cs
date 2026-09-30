@@ -9,7 +9,6 @@ public class ReloadAnimation : MonoBehaviour
     private GameObject camCasing;
     private MeshRenderer casingRenderer;
 
-    // frame to jump to when skipping the second-shell load
     private const float SkipToFrame = 100f;
     private const float ClipFrameCount = 120f;
     private const int SkipLayer = 0;
@@ -27,6 +26,9 @@ public class ReloadAnimation : MonoBehaviour
         if (camCasing != null)
             casingRenderer = camCasing.GetComponent<MeshRenderer>();
     }
+    private static string ReloadTrigger =>
+        Shooting.Local != null && Shooting.Local.currentGun == Shooting.currGun.Sniper ? "SniperReload" : "Reload";
+
     public static void PlayReload()
     {
         if (animator == null) return;
@@ -35,7 +37,7 @@ public class ReloadAnimation : MonoBehaviour
         animator.ResetTrigger("Shoot");
         animator.ResetTrigger("NoReload");
         animator.speed = upgradeManager.Local != null ? upgradeManager.Local.reloadSpeedMultiplier : 1f;
-        animator.SetTrigger("Reload");
+        animator.SetTrigger(ReloadTrigger);
     }
 
     public void EndReload()
@@ -63,7 +65,7 @@ public class ReloadAnimation : MonoBehaviour
         }
         else if (Shooting.Local != null && !Shooting.Local.reloading)
         {
-            animator.SetTrigger("Reload");
+            animator.SetTrigger(ReloadTrigger);
         }
     }
 
@@ -75,7 +77,7 @@ public class ReloadAnimation : MonoBehaviour
 
     public void enable()
     {
-        if (Shooting.Local != null && Shooting.Local.shotgun)
+        if (Shooting.Local != null && Shooting.Local.currentGun == Shooting.currGun.Shotgun)
             SetCasingVisible(true);
     }
 
@@ -83,9 +85,9 @@ public class ReloadAnimation : MonoBehaviour
     {
         if (Shooting.Local == null) return;
 
-        if (Shooting.Local.shotgun && Shooting.Local.shottieNum == 0)
+        if (Shooting.Local.currentGun == Shooting.currGun.Shotgun && Shooting.Local.shottieNum == 0)
             SetCasingVisible(true);
-        else if (Shooting.Local.shotgun)
+        else if (Shooting.Local.currentGun == Shooting.currGun.Shotgun)
             pendingSkip = true;
     }
 
