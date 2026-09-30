@@ -3282,7 +3282,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 8008598642595491935, guid: 475f7ac98d1f4344a82a99baf2972ea1, type: 3}
       propertyPath: m_Name
-      value: M4.Magazine
+      value: MC.Magazine
       objectReference: {fileID: 0}
     - target: {fileID: 9016377263507669201, guid: 475f7ac98d1f4344a82a99baf2972ea1, type: 3}
       propertyPath: m_RootOrder
