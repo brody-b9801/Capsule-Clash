@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.veriorpies.parrelsync": "https://github.com/VeriorPies/ParrelSync.git?path=/ParrelSync",
+    "com.firstgeargames.fishysteamworks": "https://github.com/FirstGearGames/FishySteamworks.git",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.ads": "4.16.4",
     "com.unity.ai.navigation": "2.0.12",
@@ -14,6 +14,7 @@
     "com.unity.timeline": "1.8.12",
     "com.unity.ugui": "2.0.0",
     "com.unity.visualscripting": "1.9.11",
+    "com.veriorpies.parrelsync": "https://github.com/VeriorPies/ParrelSync.git?path=/ParrelSync",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.adaptiveperformance": "1.0.0",
     "com.unity.modules.ai": "1.0.0",
