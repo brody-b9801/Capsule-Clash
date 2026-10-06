@@ -352,8 +352,8 @@ MonoBehaviour:
   playerMesh: {fileID: 9146832561924185666}
   shotgunMesh: {fileID: 6919841926953838382, guid: ef692815acc00a84abbedf794f71d664, type: 3}
   M4Mesh: {fileID: -8401218714792031518, guid: 19b3217a01ed3df42b30c781edabc747, type: 3}
-  sniperMesh: {fileID: -8310518740751045040, guid: ab65b3a9e6ede624bace88b295768f73, type: 3}
-  sniperMagMesh: {fileID: -7144183082714287279, guid: ab65b3a9e6ede624bace88b295768f73, type: 3}
+  sniperMesh: {fileID: -8310518740751045040, guid: 0ed6e4d5dfd64181885d99e38b8abb41, type: 3}
+  sniperMagMesh: {fileID: -7144183082714287279, guid: 0ed6e4d5dfd64181885d99e38b8abb41, type: 3}
   bulletSpeed: 150
   snipeSpeed: 400
   fireRate: 11
