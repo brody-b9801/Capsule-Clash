@@ -150,6 +150,7 @@ GameObject:
   - component: {fileID: 3042078731208241233}
   - component: {fileID: 2607632344493858979}
   - component: {fileID: 4130728127513495195}
+  - component: {fileID: 7091995829776787792}
   m_Layer: 0
   m_Name: ButtonBorder
   m_TagString: Untagged
@@ -258,6 +259,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &7091995829776787792
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6465063096610529800}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c1e5a9d3b2f4e68a0d4c6b8e2f1a357, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8783928816319921631
 GameObject:
   m_ObjectHideFlags: 0
@@ -270,6 +283,7 @@ GameObject:
   - component: {fileID: 2479641780217023128}
   - component: {fileID: 5158016207274302143}
   - component: {fileID: 7917897916242397274}
+  - component: {fileID: 2920869177134985738}
   m_Layer: 0
   m_Name: StartButton
   m_TagString: Untagged
@@ -380,3 +394,15 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &2920869177134985738
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8783928816319921631}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c1e5a9d3b2f4e68a0d4c6b8e2f1a357, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
