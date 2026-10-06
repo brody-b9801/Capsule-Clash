@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Steamworks;
 
 public class MenuHandler : MonoBehaviour
 {
@@ -15,20 +16,70 @@ public class MenuHandler : MonoBehaviour
     [SerializeField] private GameObject titleBg;
     [SerializeField] private GameObject usernameInput;
     [SerializeField] private GameObject instructions;
+    [SerializeField] private GameObject loadingCanvas;
+
+    [SerializeField] private RectTransform refreshIcon;
+    private CallResult<LobbyMatchList_t> m_LobbyMatchList;    
+    private bool browserOpen = false;
+    private bool awaitingLobbyList = false;
 
     void Start()
     {
         roomSelectionPanel.SetActive(false);
         Camera.main.transform.position = new Vector3(4f,14.6f,-26.5f);
         Camera.main.transform.localEulerAngles = new Vector3(15,-13.5f,0);
+        if (SteamManager.Initialized) {
+			m_LobbyMatchList = CallResult<LobbyMatchList_t>.Create(OnLobbyMatchList);
+		}
+    }
+	
+    private void OnLobbyMatchList(LobbyMatchList_t pCallback, bool bIOFailure) {
+        awaitingLobbyList = false;
+        loadingCanvas.SetActive(false);
+
+        if (bIOFailure) {
+            Debug.Log("There was an error retrieving the lobby list.");
+            startScreen.SetActive(true);
+            return;
+        }
+
+        Debug.Log("Lobby List: " + pCallback.m_nLobbiesMatching);
+        for (int i = 0; i < pCallback.m_nLobbiesMatching; i++) {
+            CSteamID lobbyId = SteamMatchmaking.GetLobbyByIndex(i);
+            Debug.Log("Lobby: " + lobbyId);
+        }
+
+        roomSelectionPanel.SetActive(true);
+        browserOpen = true;
     }
 
     public void browseClicked()
     {
+        if (!SteamManager.Initialized || m_LobbyMatchList == null) {
+            Debug.Log("Steam is not initialized, cannot browse lobbies.");
+            return;
+        }
+
         startScreen.SetActive(false);
-        roomSelectionPanel.SetActive(true);
+        if (!browserOpen) {
+            loadingCanvas.SetActive(true);
+        } else {
+            StartCoroutine(RefreshAnimation());
+        }
+        awaitingLobbyList = true;
+        SteamAPICall_t handle = SteamMatchmaking.RequestLobbyList();
+        m_LobbyMatchList.Set(handle);
     }
 
+    IEnumerator RefreshAnimation()
+    {
+        while (browserOpen && awaitingLobbyList)
+        {
+            refreshIcon.Rotate(Vector3.forward * -360 * Time.deltaTime);
+            yield return null;
+        }
+        refreshIcon.localEulerAngles = new Vector3(0,0,0);
+    }
     public void browserBack()
     {
         startScreen.SetActive(true);
