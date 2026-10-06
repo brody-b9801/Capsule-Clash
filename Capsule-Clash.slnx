@@ -2,6 +2,7 @@
   <Project Path="FishNet.Runtime.csproj" />
   <Project Path="FishNet.Codegen.Cecil.csproj" />
   <Project Path="SynapseSocket.csproj" />
+  <Project Path="com.rlabrecque.steamworks.net.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="BlockadeLabsSDK.Editor.csproj" />
   <Project Path="GameKit.Dependencies.csproj" />
@@ -10,6 +11,7 @@
   <Project Path="BlockadeLabsSDK.Runtime.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Unity.FishNet.Codegen.csproj" />
+  <Project Path="com.rlabrecque.steamworks.net.editor.csproj" />
   <Project Path="FishNet.Demos.csproj" />
   <Project Path="BigRookGames.csproj" />
   <Project Path="Boxophobic.SkyboxCubemapExtended.Editor.csproj" />

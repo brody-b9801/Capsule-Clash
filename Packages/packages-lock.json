@@ -8,6 +8,13 @@
         "com.unity.nuget.newtonsoft-json": "2.0.0"
       }
     },
+    "com.firstgeargames.fishysteamworks": {
+      "version": "https://github.com/FirstGearGames/FishySteamworks.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "0320459da446a95fc109aef66d42e1337e3b5fff"
+    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 0,
