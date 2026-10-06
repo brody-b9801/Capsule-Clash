@@ -117,10 +117,12 @@ public class PlayerMovement : NetworkBehaviour {
     private float gunYRot;
     private bool lerpingXRot = false;
     private bool lerpingYRot = false;
-    public float targetAimXPos;
-    public float targetAimZPos;
-    public float targetAimXRot;
-    public float targetAimYRot;
+    [SerializeField] private Vector3 arAimPos = new Vector3(0.12f, 0.085f, 0.05f);
+    [SerializeField] private Vector3 shotgunAimPos = new Vector3(0.12f, 0f, 0.05f);
+    [SerializeField] private Vector3 sniperAimPos = new Vector3(0.12f, -0.115f, 0.05f);
+    [SerializeField] private Vector3 arAimRot = new Vector3(-3f, 0f, 0f);
+    [SerializeField] private Vector3 shotgunAimRot = new Vector3(-3f, 0f, 0f);
+    [SerializeField] private Vector3 sniperAimRot = new Vector3(-3f, 0f, 0f);
     private bool lerpingAim = false;
     private bool lerpingAimDone = false;
     private bool lerpingAimEnd = false;
@@ -1309,23 +1311,33 @@ public class PlayerMovement : NetworkBehaviour {
             lerpingAimDone = false;
     }
 
+    private Vector3 GetAimPos() => Shooting.Local.currentGun switch {
+        Shooting.currGun.Shotgun => shotgunAimPos,
+        Shooting.currGun.Sniper => sniperAimPos,
+        _ => arAimPos
+    };
+
+    private Vector3 GetAimRot() => Shooting.Local.currentGun switch {
+        Shooting.currGun.Shotgun => shotgunAimRot,
+        Shooting.currGun.Sniper => sniperAimRot,
+        _ => arAimRot
+    };
+
     IEnumerator lerpAimStart() {
         lerpingAim = true;
         Vector3 startAimVectorPos = aimVectorPos;
         Vector3 startAimVectorRot = aimVectorRot;
-        float targetY = 0;
+        Vector3 targetPos = GetAimPos();
+        Vector3 targetRot = GetAimRot();
         float duration = 0.25f;
         float elapsedTime = 0f;
 
         while (elapsedTime < duration) {
             if (CameraZoom.isAiming) {
-                targetY = Shooting.Local.currentGun switch {
-                    Shooting.currGun.Shotgun => 0f,
-                    Shooting.currGun.Sniper => -0.115f,
-                    _ => 0.085f
-                };
-                aimVectorPos = Vector3.Lerp(startAimVectorPos, new Vector3(targetAimXPos, targetY, targetAimZPos), elapsedTime / duration);
-                aimVectorRot = Vector3.Lerp(startAimVectorRot, new Vector3(targetAimXRot, targetAimYRot, 0), elapsedTime / duration);
+                targetPos = GetAimPos();
+                targetRot = GetAimRot();
+                aimVectorPos = Vector3.Lerp(startAimVectorPos, targetPos, elapsedTime / duration);
+                aimVectorRot = Vector3.Lerp(startAimVectorRot, targetRot, elapsedTime / duration);
                 elapsedTime += Time.deltaTime;
                 yield return null;
             } else {
@@ -1335,8 +1347,8 @@ public class PlayerMovement : NetworkBehaviour {
                 yield break;
             }
         }
-        aimVectorPos = new Vector3(targetAimXPos, targetY, targetAimZPos);
-        aimVectorRot = new Vector3(targetAimXRot, targetAimYRot, 0);
+        aimVectorPos = targetPos;
+        aimVectorRot = targetRot;
         lerpingAim = false;
         lerpingAimDone = true;
         lerpingAimDoneEnd = false;

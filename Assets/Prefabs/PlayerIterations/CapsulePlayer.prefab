@@ -391,7 +391,7 @@ MonoBehaviour:
   wire: {fileID: 2100000, guid: 559056aa714c93c40a398fbaa32f25e3, type: 2}
   nails: {fileID: 2100000, guid: 9cc40215f6d25884581f7aec9879da2d, type: 2}
   gun: {fileID: 2100000, guid: 78514e5d586ee6748a19a6fb9395675e, type: 2}
-  damageFlashDuration: 0.05
+  damageFlashDuration: 0.15
   desertLitColor: {r: 1, g: 0.7137255, b: 0.64705884, a: 1}
   desertUnlitColor: {r: 0.7058824, g: 0.7058824, b: 1, a: 1}
   desertHardEdgeLightColor: {r: 0, g: 0, b: 0.19607843, a: 1}
