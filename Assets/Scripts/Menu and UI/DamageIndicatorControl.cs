@@ -13,7 +13,7 @@ public class DamageIndicatorControl : MonoBehaviour
     public static bool setDamageCross = false;
     private bool setting = false;
     private float time = 0;
-    private float totalTime = 0.05f;
+    [SerializeField] private float totalTime = 0.3f;
 
     void Update()
     {

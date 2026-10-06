@@ -14,7 +14,7 @@ public class ChangeMat : NetworkBehaviour
     public Material gun;
 
     [Tooltip("How long a player shows the damaged material after being hit.")]
-    [SerializeField] private float damageFlashDuration = 0.05f;
+    [SerializeField] private float damageFlashDuration = 0.15f;
 
     [Header("Desert Colors")]
     public Color desertLitColor = Color.white;
