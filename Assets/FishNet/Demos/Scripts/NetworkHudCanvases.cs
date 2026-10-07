@@ -95,6 +95,9 @@ namespace FishNet.Example
         private bool _joiningLobby = false;
         private System.Action<string> _onJoinFailed;
         private bool _connectingToHost = false;
+        private Callback<LobbyChatUpdate_t> _lobbyChatUpdate;
+        private Callback<LobbyDataUpdate_t> _lobbyDataUpdate;
+        private string _hostAddress;
 #if !ENABLE_INPUT_SYSTEM
         /// <summary>
         /// EventSystem for the project.
@@ -145,6 +148,8 @@ namespace FishNet.Example
                 _networkManager.ClientManager.OnClientConnectionState += ClientManager_OnClientConnectionState;
                 _lobbyCreated = CallResult<LobbyCreated_t>.Create(OnLobbyCreated);
                 _lobbyEntered = CallResult<LobbyEnter_t>.Create(OnLobbyEntered);
+                _lobbyChatUpdate = Callback<LobbyChatUpdate_t>.Create(OnLobbyChatUpdate);
+                _lobbyDataUpdate = Callback<LobbyDataUpdate_t>.Create(OnLobbyDataUpdate);
             }
         }
 
@@ -155,6 +160,8 @@ namespace FishNet.Example
             _loadingCanvas.SetActive(false);
             _networkManager.ServerManager.OnServerConnectionState -= ServerManager_OnServerConnectionState;
             _networkManager.ClientManager.OnClientConnectionState -= ClientManager_OnClientConnectionState;
+            _lobbyChatUpdate?.Dispose();
+            _lobbyDataUpdate?.Dispose();
         }
 
         /// <summary>
@@ -186,7 +193,12 @@ namespace FishNet.Example
             if (obj.ConnectionState == LocalConnectionState.Started)
                 _connectingToHost = false;
             else if (obj.ConnectionState == LocalConnectionState.Stopped)
-                HostConnectionFailed();
+            {
+                if (_connectingToHost)
+                    HostConnectionFailed();
+                else if (_lobbyId != CSteamID.Nil && _hostAddress != SteamUser.GetSteamID().ToString())
+                    HostLeft();
+            }
         }
 
         private void ServerManager_OnServerConnectionState(ServerConnectionStateArgs obj)
@@ -240,7 +252,8 @@ namespace FishNet.Example
             }
 
             _lobbyId = new CSteamID(pCallback.m_ulSteamIDLobby);
-            SteamMatchmaking.SetLobbyData(_lobbyId, "HostAddress", SteamUser.GetSteamID().ToString());
+            _hostAddress = SteamUser.GetSteamID().ToString();
+            SteamMatchmaking.SetLobbyData(_lobbyId, "HostAddress", _hostAddress);
             SteamMatchmaking.SetLobbyData(_lobbyId, "name", SteamFriends.GetPersonaName() + "'s room");
 
             if (_serverState == LocalConnectionState.Stopped)
@@ -298,10 +311,47 @@ namespace FishNet.Example
                 return;
             }
 
+            _hostAddress = hostAddress;
             _connectingToHost = true;
             if (!_networkManager.ClientManager.StartConnection(hostAddress))
                 HostConnectionFailed();
             GetNextStateText(_clientState);
+        }
+
+        private void OnLobbyChatUpdate(LobbyChatUpdate_t pCallback)
+        {
+            if (pCallback.m_ulSteamIDLobby == _lobbyId.m_SteamID)
+                CheckHostLeft();
+        }
+
+        private void OnLobbyDataUpdate(LobbyDataUpdate_t pCallback)
+        {
+            if (pCallback.m_ulSteamIDLobby == _lobbyId.m_SteamID)
+                CheckHostLeft();
+        }
+
+        private void CheckHostLeft()
+        {
+            if (_lobbyId == CSteamID.Nil || _creatingLobby || _joiningLobby)
+                return;
+            if (_hostAddress == SteamUser.GetSteamID().ToString())
+                return;
+
+            CSteamID owner = SteamMatchmaking.GetLobbyOwner(_lobbyId);
+            if (owner != CSteamID.Nil && owner.ToString() != _hostAddress)
+                HostLeft();
+        }
+
+        private void HostLeft()
+        {
+            _connectingToHost = false;
+            Debug.Log("The host left, closing the lobby.");
+            SteamMatchmaking.SetLobbyJoinable(_lobbyId, false);
+            LeaveLobby();
+            if (_clientState != LocalConnectionState.Stopped)
+                _networkManager.ClientManager.StopConnection();
+            GetNextStateText(_clientState);
+            _onJoinFailed?.Invoke("Host left,\nthe room has closed");
         }
 
         private void HostConnectionFailed()
@@ -321,6 +371,7 @@ namespace FishNet.Example
                 return;
             SteamMatchmaking.LeaveLobby(_lobbyId);
             _lobbyId = CSteamID.Nil;
+            _hostAddress = null;
         }
 
         public void OnClick_Client_Stop()
@@ -328,9 +379,13 @@ namespace FishNet.Example
             if (_networkManager == null)
                 return;
 
+            if (_lobbyId != CSteamID.Nil && _hostAddress == SteamUser.GetSteamID().ToString())
+                SteamMatchmaking.SetLobbyJoinable(_lobbyId, false);
+            LeaveLobby();
             if (_clientState != LocalConnectionState.Stopped)
                 _networkManager.ClientManager.StopConnection();
-            LeaveLobby();
+            if (_serverState != LocalConnectionState.Stopped)
+                _networkManager.ServerManager.StopConnection(true);
             GetNextStateText(_clientState);
         }
     }
