@@ -47840,6 +47840,7 @@ MonoBehaviour:
   _gameHUD: {fileID: 1161048979}
   _startScreenUI: {fileID: 1280286209}
   _startDecorations: {fileID: 206699339}
+  _maxLobbyMembers: 8
 --- !u!114 &246362513
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -179173,7 +179174,7 @@ MonoBehaviour:
     m_SelectOnRight: {fileID: 0}
   m_Transition: 1
   m_Colors:
-    m_NormalColor: {r: 1, g: 1, b: 0.14901961, a: 1}
+    m_NormalColor: {r: 1, g: 1, b: 0.14901961, a: 0}
     m_HighlightedColor: {r: 0, g: 0, b: 0, a: 0.15686275}
     m_PressedColor: {r: 0, g: 0, b: 0, a: 0.3529412}
     m_SelectedColor: {r: 1, g: 0, b: 0, a: 1}
@@ -298740,7 +298741,7 @@ GameObject:
   - component: {fileID: 1600121459}
   - component: {fileID: 1600121458}
   m_Layer: 5
-  m_Name: RawImage
+  m_Name: ReloadIcon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -373344,7 +373345,7 @@ MonoBehaviour:
   usernameInput: {fileID: 1731999501}
   instructions: {fileID: 843233339}
   loadingCanvas: {fileID: 1729782251}
-  refreshIcon: {fileID: 0}
+  refreshIcon: {fileID: 1600121457}
 --- !u!223 &2048291304 stripped
 Canvas:
   m_CorrespondingSourceObject: {fileID: 8763101913705298800, guid: 5a577542a281e0a448dc3b383023e1f2, type: 3}
