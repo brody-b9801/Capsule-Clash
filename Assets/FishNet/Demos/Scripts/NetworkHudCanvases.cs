@@ -70,6 +70,8 @@ namespace FishNet.Example
         private Canvas _startScreenUI;
         [SerializeField]
         private GameObject _startDecorations;
+        [SerializeField]
+        private int _maxLobbyMembers = 8;
         #endregion
 
         #region Private.
@@ -86,6 +88,9 @@ namespace FishNet.Example
         /// </summary>
         private LocalConnectionState _serverState = LocalConnectionState.Stopped;
         private bool checkStateChange = false;
+        private CallResult<LobbyCreated_t> _lobbyCreated;
+        private CSteamID _lobbyId = CSteamID.Nil;
+        private bool _creatingLobby = false;
 #if !ENABLE_INPUT_SYSTEM
         /// <summary>
         /// EventSystem for the project.
@@ -134,6 +139,7 @@ namespace FishNet.Example
                 UpdateColor(LocalConnectionState.Stopped, ref _clientJoin);
                 _networkManager.ServerManager.OnServerConnectionState += ServerManager_OnServerConnectionState;
                 _networkManager.ClientManager.OnClientConnectionState += ClientManager_OnClientConnectionState;
+                _lobbyCreated = CallResult<LobbyCreated_t>.Create(OnLobbyCreated);
             }
         }
 
@@ -193,10 +199,53 @@ namespace FishNet.Example
 
         public void OnClick_Client_Start()
         {
-            if (_networkManager == null)
+            if (_networkManager == null || _creatingLobby)
                 return;
+
+            try
+            {
+                SteamAPICall_t handle = SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePublic, _maxLobbyMembers);
+                _lobbyCreated.Set(handle);
+            }
+            catch (System.InvalidOperationException)
+            {
+                Debug.Log("Steam is not initialized, cannot create a lobby.");
+                return;
+            }
+
+            _creatingLobby = true;
+            _roomMenu.enabled = false;
+            _startScreenUI.enabled = false;
+            _loadingCanvas.SetActive(true);
+        }
+
+        private void OnLobbyCreated(LobbyCreated_t pCallback, bool bIOFailure)
+        {
+            _creatingLobby = false;
+
+            if (bIOFailure || pCallback.m_eResult != EResult.k_EResultOK)
+            {
+                Debug.Log("There was an error creating the lobby: " + pCallback.m_eResult);
+                GetNextStateText(_clientState);
+                return;
+            }
+
+            _lobbyId = new CSteamID(pCallback.m_ulSteamIDLobby);
+            SteamMatchmaking.SetLobbyData(_lobbyId, "HostAddress", SteamUser.GetSteamID().ToString());
+            SteamMatchmaking.SetLobbyData(_lobbyId, "name", SteamFriends.GetPersonaName() + "'s room");
+
+            if (_serverState == LocalConnectionState.Stopped)
+                _networkManager.ServerManager.StartConnection();
             _networkManager.ClientManager.StartConnection();
             GetNextStateText(_clientState);
+        }
+
+        private void LeaveLobby()
+        {
+            if (_lobbyId == CSteamID.Nil)
+                return;
+            SteamMatchmaking.LeaveLobby(_lobbyId);
+            _lobbyId = CSteamID.Nil;
         }
 
         public void OnClick_Client_Stop()
@@ -206,6 +255,7 @@ namespace FishNet.Example
 
             if (_clientState != LocalConnectionState.Stopped)
                 _networkManager.ClientManager.StopConnection();
+            LeaveLobby();
             GetNextStateText(_clientState);
         }
     }

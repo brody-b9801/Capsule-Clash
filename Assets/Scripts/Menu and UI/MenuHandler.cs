@@ -1,7 +1,6 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
+using UnityEngine.UI;
 using Steamworks;
 
 public class MenuHandler : MonoBehaviour
@@ -19,6 +18,9 @@ public class MenuHandler : MonoBehaviour
     [SerializeField] private GameObject loadingCanvas;
 
     [SerializeField] private RectTransform refreshIcon;
+    [SerializeField] private GameObject roomCardContainer;
+    [SerializeField] private GameObject roomCard;
+    [SerializeField] private GameObject errorScreen;
     private CallResult<LobbyMatchList_t> m_LobbyMatchList;    
     private bool browserOpen = false;
     private bool awaitingLobbyList = false;
@@ -32,25 +34,37 @@ public class MenuHandler : MonoBehaviour
 			m_LobbyMatchList = CallResult<LobbyMatchList_t>.Create(OnLobbyMatchList);
 		}
     }
+    
 	
     private void OnLobbyMatchList(LobbyMatchList_t pCallback, bool bIOFailure) {
         awaitingLobbyList = false;
         loadingCanvas.SetActive(false);
 
         if (bIOFailure) {
-            Debug.Log("There was an error retrieving the lobby list.");
-            startScreen.SetActive(true);
+            if (!browserOpen) {
+                startScreen.SetActive(true);
+            }
+            Instantiate(errorScreen, transform);
             return;
         }
 
-        Debug.Log("Lobby List: " + pCallback.m_nLobbiesMatching);
+        foreach (Transform card in roomCardContainer.transform) {
+            Destroy(card.gameObject);
+        }
+
         for (int i = 0; i < pCallback.m_nLobbiesMatching; i++) {
             CSteamID lobbyId = SteamMatchmaking.GetLobbyByIndex(i);
-            Debug.Log("Lobby: " + lobbyId);
+            createRoomCard(SteamMatchmaking.GetLobbyData(lobbyId, "name"));
         }
 
         roomSelectionPanel.SetActive(true);
         browserOpen = true;
+    }
+
+    private void createRoomCard(string name)
+    {
+        GameObject card = Instantiate(roomCard, roomCardContainer.transform);
+        card.GetComponentInChildren<Text>().text = name;
     }
 
     public void browseClicked()
@@ -84,6 +98,7 @@ public class MenuHandler : MonoBehaviour
     {
         startScreen.SetActive(true);
         roomSelectionPanel.SetActive(false);
+        browserOpen = false;
     }
 
     public void settingsClicked()
