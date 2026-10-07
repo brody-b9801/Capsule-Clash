@@ -26028,11 +26028,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 203257310, guid: 5a577542a281e0a448dc3b383023e1f2, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 245
+      value: 240
       objectReference: {fileID: 0}
     - target: {fileID: 203257310, guid: 5a577542a281e0a448dc3b383023e1f2, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 122.5
+      value: 120
       objectReference: {fileID: 0}
     - target: {fileID: 203257310, guid: 5a577542a281e0a448dc3b383023e1f2, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -26196,7 +26196,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8763101912591529871, guid: 5a577542a281e0a448dc3b383023e1f2, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -0.00088500977
+      value: -0.000030517578
       objectReference: {fileID: 0}
     - target: {fileID: 8763101912620878668, guid: 5a577542a281e0a448dc3b383023e1f2, type: 3}
       propertyPath: m_Color.b
@@ -47889,7 +47889,7 @@ MonoBehaviour:
   _serverBindAddress: 
   _port: 7770
   _maximumClients: 9001
-  _peerToPeer: 0
+  _peerToPeer: 1
   _clientAddress: 
 --- !u!1 &246624359
 GameObject:
@@ -280164,6 +280164,11 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1487721591}
   m_Mesh: {fileID: 4300000, guid: 68d5de4c275b2484a87de4f93591635f, type: 3}
+--- !u!1 &1488028908 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8763101912591529868, guid: 5a577542a281e0a448dc3b383023e1f2, type: 3}
+  m_PrefabInstance: {fileID: 152497817}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1488088288
 GameObject:
   m_ObjectHideFlags: 0
@@ -373346,6 +373351,10 @@ MonoBehaviour:
   instructions: {fileID: 843233339}
   loadingCanvas: {fileID: 1729782251}
   refreshIcon: {fileID: 1600121457}
+  roomCardContainer: {fileID: 1488028908}
+  roomCard: {fileID: 7199379446255882490, guid: 7d28d75640f40564a82b1cfee5b811c2, type: 3}
+  errorScreen: {fileID: 0}
+  maxRoomNameLength: 16
 --- !u!223 &2048291304 stripped
 Canvas:
   m_CorrespondingSourceObject: {fileID: 8763101913705298800, guid: 5a577542a281e0a448dc3b383023e1f2, type: 3}

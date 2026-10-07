@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using Steamworks;
+using FishNet.Example;
 
 public class MenuHandler : MonoBehaviour
 {
@@ -21,13 +22,16 @@ public class MenuHandler : MonoBehaviour
     [SerializeField] private GameObject roomCardContainer;
     [SerializeField] private GameObject roomCard;
     [SerializeField] private GameObject errorScreen;
+    [SerializeField] private int maxRoomNameLength = 16;
     private CallResult<LobbyMatchList_t> m_LobbyMatchList;    
     private bool browserOpen = false;
     private bool awaitingLobbyList = false;
+    private NetworkHudCanvases networkHud;
 
     void Start()
     {
         roomSelectionPanel.SetActive(false);
+        networkHud = FindObjectOfType<NetworkHudCanvases>();
         Camera.main.transform.position = new Vector3(4f,14.6f,-26.5f);
         Camera.main.transform.localEulerAngles = new Vector3(15,-13.5f,0);
         if (SteamManager.Initialized) {
@@ -44,7 +48,7 @@ public class MenuHandler : MonoBehaviour
             if (!browserOpen) {
                 startScreen.SetActive(true);
             }
-            Instantiate(errorScreen, transform);
+            showError("Failed to fetch lobby data,\nrefresh to try again");
             return;
         }
 
@@ -54,17 +58,42 @@ public class MenuHandler : MonoBehaviour
 
         for (int i = 0; i < pCallback.m_nLobbiesMatching; i++) {
             CSteamID lobbyId = SteamMatchmaking.GetLobbyByIndex(i);
-            createRoomCard(SteamMatchmaking.GetLobbyData(lobbyId, "name"));
+            createRoomCard(formatRoomName(SteamMatchmaking.GetLobbyData(lobbyId, "name")), lobbyId);
         }
 
         roomSelectionPanel.SetActive(true);
         browserOpen = true;
     }
 
-    private void createRoomCard(string name)
+    private string formatRoomName(string name)
+    {
+        const string suffix = "'s room";
+        if (name.EndsWith(suffix)) {
+            name = name.Substring(0, name.Length - suffix.Length);
+        }
+        if (name.Length > maxRoomNameLength) {
+            name = name.Substring(0, maxRoomNameLength) + "...";
+        }
+        return name;
+    }
+
+    private void createRoomCard(string name, CSteamID lobbyId)
     {
         GameObject card = Instantiate(roomCard, roomCardContainer.transform);
         card.GetComponentInChildren<Text>().text = name;
+        card.GetComponentInChildren<Button>().onClick.AddListener(() => joinClicked(lobbyId));
+    }
+
+    private void joinClicked(CSteamID lobbyId)
+    {
+        browserBack();
+        networkHud.JoinLobby(lobbyId, showError);
+    }
+
+    private void showError(string message)
+    {
+        GameObject error = Instantiate(errorScreen, transform);
+        error.GetComponent<ErrorScreen>().SetMessage(message);
     }
 
     public void browseClicked()

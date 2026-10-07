@@ -91,6 +91,10 @@ namespace FishNet.Example
         private CallResult<LobbyCreated_t> _lobbyCreated;
         private CSteamID _lobbyId = CSteamID.Nil;
         private bool _creatingLobby = false;
+        private CallResult<LobbyEnter_t> _lobbyEntered;
+        private bool _joiningLobby = false;
+        private System.Action<string> _onJoinFailed;
+        private bool _connectingToHost = false;
 #if !ENABLE_INPUT_SYSTEM
         /// <summary>
         /// EventSystem for the project.
@@ -140,6 +144,7 @@ namespace FishNet.Example
                 _networkManager.ServerManager.OnServerConnectionState += ServerManager_OnServerConnectionState;
                 _networkManager.ClientManager.OnClientConnectionState += ClientManager_OnClientConnectionState;
                 _lobbyCreated = CallResult<LobbyCreated_t>.Create(OnLobbyCreated);
+                _lobbyEntered = CallResult<LobbyEnter_t>.Create(OnLobbyEntered);
             }
         }
 
@@ -178,6 +183,10 @@ namespace FishNet.Example
         {
             _clientState = obj.ConnectionState;
             UpdateColor(obj.ConnectionState, ref _clientJoin);
+            if (obj.ConnectionState == LocalConnectionState.Started)
+                _connectingToHost = false;
+            else if (obj.ConnectionState == LocalConnectionState.Stopped)
+                HostConnectionFailed();
         }
 
         private void ServerManager_OnServerConnectionState(ServerConnectionStateArgs obj)
@@ -199,7 +208,7 @@ namespace FishNet.Example
 
         public void OnClick_Client_Start()
         {
-            if (_networkManager == null || _creatingLobby)
+            if (_networkManager == null || _creatingLobby || _joiningLobby)
                 return;
 
             try
@@ -238,6 +247,72 @@ namespace FishNet.Example
                 _networkManager.ServerManager.StartConnection();
             _networkManager.ClientManager.StartConnection();
             GetNextStateText(_clientState);
+        }
+
+        public void JoinLobby(CSteamID lobbyId, System.Action<string> onFailed = null)
+        {
+            if (_networkManager == null || _creatingLobby || _joiningLobby)
+                return;
+            if (_clientState != LocalConnectionState.Stopped)
+                return;
+
+            try
+            {
+                SteamAPICall_t handle = SteamMatchmaking.JoinLobby(lobbyId);
+                _lobbyEntered.Set(handle);
+            }
+            catch (System.InvalidOperationException)
+            {
+                Debug.Log("Steam is not initialized, cannot join a lobby.");
+                onFailed?.Invoke("Steam is not running,\nrestart the game to try again");
+                return;
+            }
+
+            _joiningLobby = true;
+            _onJoinFailed = onFailed;
+            _roomMenu.enabled = false;
+            _startScreenUI.enabled = false;
+            _loadingCanvas.SetActive(true);
+        }
+
+        private void OnLobbyEntered(LobbyEnter_t pCallback, bool bIOFailure)
+        {
+            _joiningLobby = false;
+
+            if (bIOFailure || pCallback.m_EChatRoomEnterResponse != (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess)
+            {
+                Debug.Log("There was an error joining the lobby: " + (EChatRoomEnterResponse)pCallback.m_EChatRoomEnterResponse);
+                GetNextStateText(_clientState);
+                _onJoinFailed?.Invoke("Failed to join room,\nit may be full or closed");
+                return;
+            }
+
+            _lobbyId = new CSteamID(pCallback.m_ulSteamIDLobby);
+            string hostAddress = SteamMatchmaking.GetLobbyData(_lobbyId, "HostAddress");
+            if (string.IsNullOrEmpty(hostAddress))
+            {
+                Debug.Log("Lobby has no host address, cannot connect.");
+                LeaveLobby();
+                GetNextStateText(_clientState);
+                _onJoinFailed?.Invoke("Room has no host,\ntry another room");
+                return;
+            }
+
+            _connectingToHost = true;
+            if (!_networkManager.ClientManager.StartConnection(hostAddress))
+                HostConnectionFailed();
+            GetNextStateText(_clientState);
+        }
+
+        private void HostConnectionFailed()
+        {
+            if (!_connectingToHost)
+                return;
+            _connectingToHost = false;
+            Debug.Log("There was an error connecting to the lobby host.");
+            LeaveLobby();
+            GetNextStateText(_clientState);
+            _onJoinFailed?.Invoke("Failed to connect to host,\ntry again later");
         }
 
         private void LeaveLobby()
