@@ -22,7 +22,6 @@ public class MenuHandler : MonoBehaviour
     [SerializeField] private GameObject roomCardContainer;
     [SerializeField] private GameObject roomCard;
     [SerializeField] private GameObject errorScreen;
-    [SerializeField] private int maxRoomNameLength = 16;
     private CallResult<LobbyMatchList_t> m_LobbyMatchList;    
     private bool browserOpen = false;
     private bool awaitingLobbyList = false;
@@ -58,23 +57,11 @@ public class MenuHandler : MonoBehaviour
 
         for (int i = 0; i < pCallback.m_nLobbiesMatching; i++) {
             CSteamID lobbyId = SteamMatchmaking.GetLobbyByIndex(i);
-            createRoomCard(formatRoomName(SteamMatchmaking.GetLobbyData(lobbyId, "name")), lobbyId);
+            createRoomCard(LobbyCode.Encode(lobbyId), lobbyId);
         }
 
         roomSelectionPanel.SetActive(true);
         browserOpen = true;
-    }
-
-    private string formatRoomName(string name)
-    {
-        const string suffix = "'s room";
-        if (name.EndsWith(suffix)) {
-            name = name.Substring(0, name.Length - suffix.Length);
-        }
-        if (name.Length > maxRoomNameLength) {
-            name = name.Substring(0, maxRoomNameLength) + "...";
-        }
-        return name;
     }
 
     private void createRoomCard(string name, CSteamID lobbyId)
@@ -88,6 +75,15 @@ public class MenuHandler : MonoBehaviour
     {
         browserBack();
         networkHud.JoinLobby(lobbyId, showError);
+    }
+
+    public void joinByCode(string code)
+    {
+        if (!LobbyCode.TryDecode(code, out CSteamID lobbyId)) {
+            showError("Invalid room code,\ncheck it and try again");
+            return;
+        }
+        joinClicked(lobbyId);
     }
 
     private void showError(string message)
