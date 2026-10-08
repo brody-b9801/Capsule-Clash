@@ -103,7 +103,15 @@ namespace FishNet.Example
         private float _hostWaitTimer;
         private const float HostWaitTimeout = 15f;
         private const string HostEpochKey = "HostEpoch";
+        private const string HostLostKey = "HostLost";
+        private const string HostAliveKey = "HostAlive";
+        private const float HostAckGrace = 4f;
         private int _hostEpoch;
+        private float _hostAckTimer;
+        private float _hostLostReportedAt;
+        private string _hostAliveSeen;
+        private int _hostAliveCounter;
+        private string _lostReportsSeen;
 #if !ENABLE_INPUT_SYSTEM
         /// <summary>
         /// EventSystem for the project.
@@ -217,6 +225,7 @@ namespace FishNet.Example
                 {
                     _waitingForHost = true;
                     _hostWaitTimer = HostWaitTimeout;
+                    ReportHostLost();
                     CheckHostChanged();
                 }
             }
@@ -358,6 +367,8 @@ namespace FishNet.Example
             if (_lobbyId == CSteamID.Nil || _creatingLobby || _joiningLobby)
                 return;
 
+            AckLostReports();
+
             if (FindAnnouncedHost(out string newHost, out int newEpoch))
             {
                 if (newHost == _hostAddress)
@@ -365,12 +376,66 @@ namespace FishNet.Example
                 else
                     MigrateTo(newHost, newEpoch);
             }
+            else if (_waitingForHost && HostAcked())
+            {
+                Debug.Log("The host is still alive, reconnecting. Ack took " + (Time.realtimeSinceStartup - _hostLostReportedAt).ToString("F2") + "s");
+                MigrateTo(_hostAddress, _hostEpoch);
+            }
             else if (ShouldTakeOver())
             {
                 MigrateTo(SteamUser.GetSteamID().ToString(), _hostEpoch + 1);
             }
 
             SyncLobbyHostAddress();
+        }
+
+        private void ReportHostLost()
+        {
+            _hostAckTimer = HostAckGrace;
+            _hostLostReportedAt = Time.realtimeSinceStartup;
+            _hostAliveSeen = GetHostAlive();
+            SteamMatchmaking.SetLobbyMemberData(_lobbyId, HostLostKey, System.DateTime.UtcNow.Ticks.ToString());
+        }
+
+        private string GetHostAlive()
+        {
+            if (!ulong.TryParse(_hostAddress, out ulong hostId))
+                return "";
+            return SteamMatchmaking.GetLobbyMemberData(_lobbyId, new CSteamID(hostId), HostAliveKey);
+        }
+
+        private bool HostAcked()
+        {
+            string alive = GetHostAlive();
+            return !string.IsNullOrEmpty(alive) && alive != _hostAliveSeen;
+        }
+
+        private void AckLostReports()
+        {
+            CSteamID local = SteamUser.GetSteamID();
+            if (_hostAddress != local.ToString())
+                return;
+
+            string reports = "";
+            int count = SteamMatchmaking.GetNumLobbyMembers(_lobbyId);
+            for (int i = 0; i < count; i++)
+            {
+                CSteamID member = SteamMatchmaking.GetLobbyMemberByIndex(_lobbyId, i);
+                if (member == local)
+                    continue;
+                string report = SteamMatchmaking.GetLobbyMemberData(_lobbyId, member, HostLostKey);
+                if (!string.IsNullOrEmpty(report))
+                    reports += member.m_SteamID + ":" + report + ";";
+            }
+
+            if (reports == _lostReportsSeen)
+                return;
+            _lostReportsSeen = reports;
+            if (reports == "")
+                return;
+
+            _hostAliveCounter++;
+            SteamMatchmaking.SetLobbyMemberData(_lobbyId, HostAliveKey, _hostAliveCounter.ToString());
         }
 
         private bool FindAnnouncedHost(out string host, out int epoch)
@@ -418,7 +483,7 @@ namespace FishNet.Example
                 else if (member.m_SteamID < local.m_SteamID)
                     return false;
             }
-            return _waitingForHost || !hostPresent;
+            return !hostPresent || (_waitingForHost && _hostAckTimer <= 0f);
         }
 
         private void MigrateTo(string newHost, int newEpoch)
@@ -427,6 +492,8 @@ namespace FishNet.Example
             Debug.Log("The host is gone, migrating to " + newHost);
             _hostAddress = newHost;
             _hostEpoch = newEpoch;
+            if (_waitingForHost)
+                SteamMatchmaking.SetLobbyMemberData(_lobbyId, HostLostKey, "");
             _waitingForHost = false;
             _migrating = true;
             if (wasHost)
@@ -461,6 +528,15 @@ namespace FishNet.Example
                 if (_clientState == LocalConnectionState.Stopped)
                     FinishMigration();
                 return;
+            }
+
+            bool ackPending = _hostAckTimer > 0f;
+            _hostAckTimer -= Time.unscaledDeltaTime;
+            if (ackPending && _hostAckTimer <= 0f)
+            {
+                CheckHostChanged();
+                if (!_waitingForHost)
+                    return;
             }
 
             _hostWaitTimer -= Time.unscaledDeltaTime;
@@ -515,6 +591,7 @@ namespace FishNet.Example
             _lobbyId = CSteamID.Nil;
             _hostAddress = null;
             _hostEpoch = 0;
+            _lostReportsSeen = null;
             _migrating = false;
             _waitingForHost = false;
         }
