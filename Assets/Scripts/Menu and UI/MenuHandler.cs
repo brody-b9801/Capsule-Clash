@@ -2,7 +2,6 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using Steamworks;
-using FishNet.Example;
 using TMPro;
 
 public class MenuHandler : MonoBehaviour

@@ -547,7 +547,7 @@ public class PlayerMovement : NetworkBehaviour {
         float now = Time.realtimeSinceStartup;
         float savedAt = migrationPositionTime;
         migrationPositionTime = float.NegativeInfinity;
-        if (now - FishNet.Example.NetworkHudCanvases.LastMigrationTime > DamageControl.MigrationRestoreWindow) return;
+        if (now - NetworkHudCanvases.LastMigrationTime > DamageControl.MigrationRestoreWindow) return;
         if (now - savedAt > DamageControl.MigrationRestoreWindow) return;
 
         Vector3 target = migrationPosition;
@@ -564,7 +564,7 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void ShowMigrationPopup() {
-        if (!FishNet.Example.NetworkHudCanvases.ConsumeMigrationNotice(out bool hostChanged)) return;
+        if (!NetworkHudCanvases.ConsumeMigrationNotice(out bool hostChanged)) return;
 
         if (!hostChanged) MenuHandler.ShowPopup("Connection lost,\nreconnected to the host");
         else if (IsServerStarted) MenuHandler.ShowPopup("Host disconnected,\nyou are now the host");
@@ -574,7 +574,7 @@ public class PlayerMovement : NetworkBehaviour {
     public override void OnStopClient()
     {
         if (Local == this) {
-            if (FishNet.Example.NetworkHudCanvases.InLobby) SaveSystem.CaptureSessionData();
+            if (NetworkHudCanvases.InLobby) SaveSystem.CaptureSessionData();
             if (!dead && inCombatScene && currDimension == "Desert") {
                 migrationPosition = transform.position;
                 migrationYaw = currentCameraRotationY;
