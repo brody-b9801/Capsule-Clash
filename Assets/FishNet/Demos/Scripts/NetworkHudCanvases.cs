@@ -225,7 +225,7 @@ namespace FishNet.Example
 
             try
             {
-                SteamAPICall_t handle = SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePublic, _maxLobbyMembers);
+                SteamAPICall_t handle = SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePublic, _maxLobbyMembers);     
                 _lobbyCreated.Set(handle);
             }
             catch (System.InvalidOperationException)
