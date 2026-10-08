@@ -1584,7 +1584,13 @@ public class PlayerMovement : NetworkBehaviour {
                 gunThing.localPosition = new Vector3(-aimVectorPos.x, -aimVectorPos.y, -aimVectorPos.z);
         }
 
-        gunThing.localEulerAngles = aimVectorRot;
+        if (Shooting.Local.currentGun == Shooting.currGun.Sniper) {
+            float aimBlend = Mathf.Clamp01(aimVectorPos.magnitude / Mathf.Max(sniperAimPos.magnitude, 0.0001f));
+            Quaternion flatRot = Quaternion.Inverse(gunThing.parent.rotation) * Quaternion.LookRotation(Camera.main.transform.forward, Camera.main.transform.up);
+            gunThing.localRotation = Quaternion.Slerp(Quaternion.identity, flatRot, aimBlend);
+        } else {
+            gunThing.localEulerAngles = aimVectorRot;
+        }
 
         if (!Shaker.shooting) {
             Vector3 posOffset;
