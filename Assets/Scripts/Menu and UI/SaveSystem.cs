@@ -64,6 +64,28 @@ public class SaveSystem : MonoBehaviour
     static bool pendingSpaceKeyAcquired;
     static bool pendingIceKeyAcquired;
 
+    public static void CaptureSessionData()
+    {
+        upgradeManager manager = upgradeManager.Local;
+        if (manager != null)
+        {
+            pendingKillPoints = manager.killPoints;
+            pendingUpgradePoints = manager.upgradePoints;
+            pendingUpgradesPurchased = manager.upgradesPurchased;
+        }
+
+        ServerController server = ServerController.Local;
+        if (server != null)
+        {
+            pendingMazeKeyAcquired = server.mazeKeyAcquired;
+            pendingSpaceKeyAcquired = server.spaceKeyAcquired;
+            pendingIceKeyAcquired = server.iceKeyAcquired;
+        }
+
+        if (PlayerMovement.Local != null)
+            pendingLifetimeKills = PlayerMovement.Local.killCount;
+    }
+
     public static void ApplyPendingServerData(ServerController server)
     {
         server.mazeKeyAcquired = pendingMazeKeyAcquired;

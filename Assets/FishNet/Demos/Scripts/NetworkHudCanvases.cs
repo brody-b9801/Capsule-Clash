@@ -112,6 +112,18 @@ namespace FishNet.Example
         private string _hostAliveSeen;
         private int _hostAliveCounter;
         private string _lostReportsSeen;
+        public static float LastMigrationTime { get; private set; } = float.NegativeInfinity;
+        public static bool InLobby { get; private set; }
+        private static bool _migrationNoticePending;
+        private static bool _migrationChangedHost;
+
+        public static bool ConsumeMigrationNotice(out bool hostChanged)
+        {
+            hostChanged = _migrationChangedHost;
+            bool pending = _migrationNoticePending;
+            _migrationNoticePending = false;
+            return pending;
+        }
 #if !ENABLE_INPUT_SYSTEM
         /// <summary>
         /// EventSystem for the project.
@@ -280,6 +292,7 @@ namespace FishNet.Example
             }
 
             _lobbyId = new CSteamID(pCallback.m_ulSteamIDLobby);
+            InLobby = true;
             _hostAddress = SteamUser.GetSteamID().ToString();
             _hostEpoch = 1;
             AnnounceHost();
@@ -328,6 +341,7 @@ namespace FishNet.Example
             }
 
             _lobbyId = new CSteamID(pCallback.m_ulSteamIDLobby);
+            InLobby = true;
             _hostEpoch = 0;
             _hostAddress = SteamMatchmaking.GetLobbyData(_lobbyId, "HostAddress");
             if (FindAnnouncedHost(out string announcedHost, out int announcedEpoch))
@@ -490,6 +504,7 @@ namespace FishNet.Example
         {
             bool wasHost = _hostAddress == SteamUser.GetSteamID().ToString();
             Debug.Log("The host is gone, migrating to " + newHost);
+            _migrationChangedHost = newHost != _hostAddress;
             _hostAddress = newHost;
             _hostEpoch = newEpoch;
             if (_waitingForHost)
@@ -547,6 +562,8 @@ namespace FishNet.Example
         private void FinishMigration()
         {
             _migrating = false;
+            LastMigrationTime = Time.realtimeSinceStartup;
+            _migrationNoticePending = true;
             if (_hostAddress == SteamUser.GetSteamID().ToString())
             {
                 _connectingToHost = false;
@@ -589,6 +606,8 @@ namespace FishNet.Example
                 return;
             SteamMatchmaking.LeaveLobby(_lobbyId);
             _lobbyId = CSteamID.Nil;
+            InLobby = false;
+            _migrationNoticePending = false;
             _hostAddress = null;
             _hostEpoch = 0;
             _lostReportsSeen = null;

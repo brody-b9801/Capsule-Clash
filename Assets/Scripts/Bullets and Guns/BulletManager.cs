@@ -87,34 +87,48 @@ public class BulletManager : NetworkBehaviour
         }
     }
 
+    private const int MaxShooterSkips = 4;
+    private const float ShooterSkipDistance = 0.01f;
+
+    public static bool RaycastSkippingShooter(Vector3 origin, Vector3 direction, float distance, int mask, NetworkObject shooter, out RaycastHit hit)
+    {
+        for (int i = 0; i < MaxShooterSkips && distance > 0f; i++)
+        {
+            if (!Physics.Raycast(origin, direction, out hit, distance, mask)) return false;
+            if (shooter == null || hit.collider.GetComponentInParent<NetworkObject>() != shooter) return true;
+
+            float skip = hit.distance + ShooterSkipDistance;
+            origin += direction * skip;
+            distance -= skip;
+        }
+
+        hit = default;
+        return false;
+    }
+
     void HandleRaycastHit(ref BulletData bulletData)
     {
         Vector3 direction = bulletData.bulletObject.transform.position - bulletData.previousPosition;
         float rayDistance = direction.magnitude;
-        RaycastHit hit;
+        if (rayDistance <= 0f) return;
 
-        GameObject hitObject;
-        if (Physics.Raycast(bulletData.previousPosition, direction.normalized, out hit, rayDistance, layerMask))
+        if (RaycastSkippingShooter(bulletData.previousPosition, direction / rayDistance, rayDistance, layerMask, bulletData.shooter, out RaycastHit hit))
         {
-            hitObject = hit.collider.gameObject;
-            
+            GameObject hitObject = hit.collider.gameObject;
+            float hitDistance = (hit.point - bulletData.startPosition).magnitude;
+
             BuildHealth buildHealth = hitObject.GetComponent<BuildHealth>();
             if (buildHealth != null)
             {
-                buildHealth.TakeDamage(bulletData.gunType, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
+                buildHealth.TakeDamage(bulletData.gunType, hitDistance);
             }
 
             if (hitObject.CompareTag("DamageCollider"))
             {
-                Debug.Log("DamageCollider hit");
                 NetworkObject victim = hitObject.GetComponentInParent<NetworkObject>();
-
-                if (victim == null || victim == bulletData.shooter) return;
-                Debug.Log("early return did not terminate");
-
-                DamageControl damage = victim.gameObject.GetComponent<DamageControl>();
+                DamageControl damage = victim != null ? victim.gameObject.GetComponent<DamageControl>() : null;
                 bool damageApplied = damage != null
-                    && damage.ControlDamage(bulletData.shooter, bulletData.gunType, (bulletData.bulletObject.transform.position - bulletData.startPosition).magnitude);
+                    && damage.ControlDamage(bulletData.shooter, bulletData.gunType, hitDistance);
 
                 if (damageApplied && bulletData.shooter != null && bulletData.shooter.Owner != null && bulletData.shooter.Owner.IsValid)
                     SetDamageCross(bulletData.shooter.Owner);

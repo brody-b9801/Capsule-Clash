@@ -8,6 +8,7 @@ public class WallFinished : MonoBehaviour
     public GameObject completedPrefab;
 
     private bool isMeshesCombined = false;
+    private bool isDamaged = false;
     private GameObject[] _children;
     private Animator _anim;
     private GameObject _spawnedWall;
@@ -39,7 +40,7 @@ public class WallFinished : MonoBehaviour
     public void OnAnimationComplete()
     {
         IsSettled = true;
-        if (isMeshesCombined) return;
+        if (isMeshesCombined || isDamaged) return;
         if (completedPrefab == null) return;
         isMeshesCombined = true;
         StartCoroutine(SwapAfterFrame());
@@ -127,6 +128,7 @@ public class WallFinished : MonoBehaviour
 
     public void UnmergeChildren()
     {
+        isDamaged = true;
         if (!isMeshesCombined) return;
 
         if (_spawnedWall != null)

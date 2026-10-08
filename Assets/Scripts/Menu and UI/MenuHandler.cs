@@ -30,9 +30,36 @@ public class MenuHandler : MonoBehaviour
     private bool browserOpen = false;
     private bool awaitingLobbyList = false;
     private NetworkHudCanvases networkHud;
+    private static MenuHandler instance;
+
+    public static void ShowPopup(string message)
+    {
+        if (instance == null) {
+            return;
+        }
+
+        GameObject canvasObject = new GameObject("Popup Canvas");
+        Canvas canvas = canvasObject.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 100;
+
+        CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+        CanvasScaler source = instance.GetComponentInParent<CanvasScaler>();
+        if (source != null) {
+            scaler.uiScaleMode = source.uiScaleMode;
+            scaler.referenceResolution = source.referenceResolution;
+            scaler.screenMatchMode = source.screenMatchMode;
+            scaler.matchWidthOrHeight = source.matchWidthOrHeight;
+        }
+
+        GameObject popup = Instantiate(instance.errorScreen, canvasObject.transform);
+        popup.GetComponent<ErrorScreen>().SetMessage(message);
+        Destroy(canvasObject, 10f);
+    }
 
     void Start()
     {
+        instance = this;
         roomSelectionPanel.SetActive(false);
         networkHud = FindObjectOfType<NetworkHudCanvases>();
         Camera.main.transform.position = new Vector3(4f,14.6f,-26.5f);
