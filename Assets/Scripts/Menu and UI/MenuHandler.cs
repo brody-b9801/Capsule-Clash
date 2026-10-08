@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Steamworks;
 using FishNet.Example;
+using TMPro;
 
 public class MenuHandler : MonoBehaviour
 {
@@ -22,7 +23,10 @@ public class MenuHandler : MonoBehaviour
     [SerializeField] private GameObject roomCardContainer;
     [SerializeField] private GameObject roomCard;
     [SerializeField] private GameObject errorScreen;
-    private CallResult<LobbyMatchList_t> m_LobbyMatchList;    
+    [SerializeField] private TMP_InputField JoinCodeInput;
+    private CallResult<LobbyMatchList_t> m_LobbyMatchList;
+    private Callback<LobbyDataUpdate_t> m_LobbyDataUpdate;
+    private CSteamID pendingCodeLobby = CSteamID.Nil;
     private bool browserOpen = false;
     private bool awaitingLobbyList = false;
     private NetworkHudCanvases networkHud;
@@ -35,6 +39,7 @@ public class MenuHandler : MonoBehaviour
         Camera.main.transform.localEulerAngles = new Vector3(15,-13.5f,0);
         if (SteamManager.Initialized) {
 			m_LobbyMatchList = CallResult<LobbyMatchList_t>.Create(OnLobbyMatchList);
+			m_LobbyDataUpdate = Callback<LobbyDataUpdate_t>.Create(OnLobbyDataUpdate);
 		}
     }
     
@@ -77,10 +82,41 @@ public class MenuHandler : MonoBehaviour
         networkHud.JoinLobby(lobbyId, showError);
     }
 
-    public void joinByCode(string code)
+    public void joinCodeClicked()
     {
-        if (!LobbyCode.TryDecode(code, out CSteamID lobbyId)) {
+        if (!SteamManager.Initialized || m_LobbyDataUpdate == null) {
+            showError("Steam is not running,\nrestart the game to try again");
+            return;
+        }
+        if (pendingCodeLobby != CSteamID.Nil) {
+            return;
+        }
+
+        if (!LobbyCode.TryDecode(JoinCodeInput.text, out CSteamID lobbyId)) {
             showError("Invalid room code,\ncheck it and try again");
+            return;
+        }
+
+        if (!SteamMatchmaking.RequestLobbyData(lobbyId)) {
+            showError("Failed to look up room,\ntry again later");
+            return;
+        }
+        pendingCodeLobby = lobbyId;
+        loadingCanvas.SetActive(true);
+    }
+
+    private void OnLobbyDataUpdate(LobbyDataUpdate_t pCallback)
+    {
+        if (pendingCodeLobby == CSteamID.Nil || pCallback.m_ulSteamIDLobby != pendingCodeLobby.m_SteamID) {
+            return;
+        }
+
+        CSteamID lobbyId = pendingCodeLobby;
+        pendingCodeLobby = CSteamID.Nil;
+        loadingCanvas.SetActive(false);
+
+        if (pCallback.m_bSuccess == 0 || SteamMatchmaking.GetLobbyData(lobbyId, "HostAddress") == "") {
+            showError("Room not found,\ncheck the code and try again");
             return;
         }
         joinClicked(lobbyId);

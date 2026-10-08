@@ -98,6 +98,12 @@ namespace FishNet.Example
         private Callback<LobbyChatUpdate_t> _lobbyChatUpdate;
         private Callback<LobbyDataUpdate_t> _lobbyDataUpdate;
         private string _hostAddress;
+        private bool _migrating = false;
+        private bool _waitingForHost = false;
+        private float _hostWaitTimer;
+        private const float HostWaitTimeout = 15f;
+        private const string HostEpochKey = "HostEpoch";
+        private int _hostEpoch;
 #if !ENABLE_INPUT_SYSTEM
         /// <summary>
         /// EventSystem for the project.
@@ -108,8 +114,17 @@ namespace FishNet.Example
 
         void Update()
         {
-            if (checkStateChange) 
+            if (_migrating || _waitingForHost)
+                UpdateMigration();
+            else if (checkStateChange) 
                 GetNextStateText(_clientState);
+        }
+
+        private void ShowLoading()
+        {
+            _roomMenu.enabled = false;
+            _startScreenUI.enabled = false;
+            _loadingCanvas.SetActive(true);
         }
 
         private string GetNextStateText(LocalConnectionState state)
@@ -194,10 +209,16 @@ namespace FishNet.Example
                 _connectingToHost = false;
             else if (obj.ConnectionState == LocalConnectionState.Stopped)
             {
+                if (_migrating)
+                    return;
                 if (_connectingToHost)
                     HostConnectionFailed();
                 else if (_lobbyId != CSteamID.Nil && _hostAddress != SteamUser.GetSteamID().ToString())
-                    HostLeft();
+                {
+                    _waitingForHost = true;
+                    _hostWaitTimer = HostWaitTimeout;
+                    CheckHostChanged();
+                }
             }
         }
 
@@ -235,9 +256,7 @@ namespace FishNet.Example
             }
 
             _creatingLobby = true;
-            _roomMenu.enabled = false;
-            _startScreenUI.enabled = false;
-            _loadingCanvas.SetActive(true);
+            ShowLoading();
         }
 
         private void OnLobbyCreated(LobbyCreated_t pCallback, bool bIOFailure)
@@ -253,7 +272,8 @@ namespace FishNet.Example
 
             _lobbyId = new CSteamID(pCallback.m_ulSteamIDLobby);
             _hostAddress = SteamUser.GetSteamID().ToString();
-            SteamMatchmaking.SetLobbyData(_lobbyId, "HostAddress", _hostAddress);
+            _hostEpoch = 1;
+            AnnounceHost();
             SteamMatchmaking.SetLobbyData(_lobbyId, "name", SteamFriends.GetPersonaName() + "'s room");
 
             if (_serverState == LocalConnectionState.Stopped)
@@ -283,9 +303,7 @@ namespace FishNet.Example
 
             _joiningLobby = true;
             _onJoinFailed = onFailed;
-            _roomMenu.enabled = false;
-            _startScreenUI.enabled = false;
-            _loadingCanvas.SetActive(true);
+            ShowLoading();
         }
 
         private void OnLobbyEntered(LobbyEnter_t pCallback, bool bIOFailure)
@@ -301,8 +319,14 @@ namespace FishNet.Example
             }
 
             _lobbyId = new CSteamID(pCallback.m_ulSteamIDLobby);
-            string hostAddress = SteamMatchmaking.GetLobbyData(_lobbyId, "HostAddress");
-            if (string.IsNullOrEmpty(hostAddress))
+            _hostEpoch = 0;
+            _hostAddress = SteamMatchmaking.GetLobbyData(_lobbyId, "HostAddress");
+            if (FindAnnouncedHost(out string announcedHost, out int announcedEpoch))
+            {
+                _hostAddress = announcedHost;
+                _hostEpoch = announcedEpoch;
+            }
+            if (string.IsNullOrEmpty(_hostAddress))
             {
                 Debug.Log("Lobby has no host address, cannot connect.");
                 LeaveLobby();
@@ -311,9 +335,8 @@ namespace FishNet.Example
                 return;
             }
 
-            _hostAddress = hostAddress;
             _connectingToHost = true;
-            if (!_networkManager.ClientManager.StartConnection(hostAddress))
+            if (!_networkManager.ClientManager.StartConnection(_hostAddress))
                 HostConnectionFailed();
             GetNextStateText(_clientState);
         }
@@ -321,37 +344,156 @@ namespace FishNet.Example
         private void OnLobbyChatUpdate(LobbyChatUpdate_t pCallback)
         {
             if (pCallback.m_ulSteamIDLobby == _lobbyId.m_SteamID)
-                CheckHostLeft();
+                CheckHostChanged();
         }
 
         private void OnLobbyDataUpdate(LobbyDataUpdate_t pCallback)
         {
             if (pCallback.m_ulSteamIDLobby == _lobbyId.m_SteamID)
-                CheckHostLeft();
+                CheckHostChanged();
         }
 
-        private void CheckHostLeft()
+        private void CheckHostChanged()
         {
             if (_lobbyId == CSteamID.Nil || _creatingLobby || _joiningLobby)
                 return;
-            if (_hostAddress == SteamUser.GetSteamID().ToString())
-                return;
 
-            CSteamID owner = SteamMatchmaking.GetLobbyOwner(_lobbyId);
-            if (owner != CSteamID.Nil && owner.ToString() != _hostAddress)
-                HostLeft();
+            if (FindAnnouncedHost(out string newHost, out int newEpoch))
+            {
+                if (newHost == _hostAddress)
+                    _hostEpoch = newEpoch;
+                else
+                    MigrateTo(newHost, newEpoch);
+            }
+            else if (ShouldTakeOver())
+            {
+                MigrateTo(SteamUser.GetSteamID().ToString(), _hostEpoch + 1);
+            }
+
+            SyncLobbyHostAddress();
         }
 
-        private void HostLeft()
+        private bool FindAnnouncedHost(out string host, out int epoch)
         {
-            _connectingToHost = false;
-            Debug.Log("The host left, closing the lobby.");
-            SteamMatchmaking.SetLobbyJoinable(_lobbyId, false);
-            LeaveLobby();
+            host = null;
+            epoch = _hostEpoch;
+            ulong.TryParse(_hostAddress, out ulong bestId);
+
+            CSteamID local = SteamUser.GetSteamID();
+            int count = SteamMatchmaking.GetNumLobbyMembers(_lobbyId);
+            for (int i = 0; i < count; i++)
+            {
+                CSteamID member = SteamMatchmaking.GetLobbyMemberByIndex(_lobbyId, i);
+                if (member == local)
+                    continue;
+                if (!int.TryParse(SteamMatchmaking.GetLobbyMemberData(_lobbyId, member, HostEpochKey), out int memberEpoch))
+                    continue;
+
+                if (memberEpoch > epoch || (memberEpoch == epoch && member.m_SteamID < bestId))
+                {
+                    epoch = memberEpoch;
+                    bestId = member.m_SteamID;
+                    host = member.ToString();
+                }
+            }
+            return host != null;
+        }
+
+        private bool ShouldTakeOver()
+        {
+            CSteamID local = SteamUser.GetSteamID();
+            if (_hostAddress == local.ToString())
+                return false;
+
+            int count = SteamMatchmaking.GetNumLobbyMembers(_lobbyId);
+            if (count == 0)
+                return false;
+
+            bool hostPresent = false;
+            for (int i = 0; i < count; i++)
+            {
+                CSteamID member = SteamMatchmaking.GetLobbyMemberByIndex(_lobbyId, i);
+                if (member.ToString() == _hostAddress)
+                    hostPresent = true;
+                else if (member.m_SteamID < local.m_SteamID)
+                    return false;
+            }
+            return _waitingForHost || !hostPresent;
+        }
+
+        private void MigrateTo(string newHost, int newEpoch)
+        {
+            bool wasHost = _hostAddress == SteamUser.GetSteamID().ToString();
+            Debug.Log("The host is gone, migrating to " + newHost);
+            _hostAddress = newHost;
+            _hostEpoch = newEpoch;
+            _waitingForHost = false;
+            _migrating = true;
+            if (wasHost)
+            {
+                SteamMatchmaking.SetLobbyMemberData(_lobbyId, HostEpochKey, "");
+                if (_serverState != LocalConnectionState.Stopped)
+                    _networkManager.ServerManager.StopConnection(true);
+            }
             if (_clientState != LocalConnectionState.Stopped)
                 _networkManager.ClientManager.StopConnection();
+        }
+
+        private void AnnounceHost()
+        {
+            SteamMatchmaking.SetLobbyMemberData(_lobbyId, HostEpochKey, _hostEpoch.ToString());
+            SyncLobbyHostAddress();
+        }
+
+        private void SyncLobbyHostAddress()
+        {
+            if (_lobbyId == CSteamID.Nil || SteamMatchmaking.GetLobbyOwner(_lobbyId) != SteamUser.GetSteamID())
+                return;
+            if (SteamMatchmaking.GetLobbyData(_lobbyId, "HostAddress") != _hostAddress)
+                SteamMatchmaking.SetLobbyData(_lobbyId, "HostAddress", _hostAddress);
+        }
+
+        private void UpdateMigration()
+        {
+            ShowLoading();
+            if (_migrating)
+            {
+                if (_clientState == LocalConnectionState.Stopped)
+                    FinishMigration();
+                return;
+            }
+
+            _hostWaitTimer -= Time.unscaledDeltaTime;
+            if (_hostWaitTimer <= 0f)
+                HostLost();
+        }
+
+        private void FinishMigration()
+        {
+            _migrating = false;
+            if (_hostAddress == SteamUser.GetSteamID().ToString())
+            {
+                _connectingToHost = false;
+                AnnounceHost();
+                if (_serverState == LocalConnectionState.Stopped)
+                    _networkManager.ServerManager.StartConnection();
+                _networkManager.ClientManager.StartConnection();
+            }
+            else
+            {
+                _connectingToHost = true;
+                if (!_networkManager.ClientManager.StartConnection(_hostAddress))
+                    HostConnectionFailed();
+            }
             GetNextStateText(_clientState);
-            _onJoinFailed?.Invoke("Host left,\nthe room has closed");
+        }
+
+        private void HostLost()
+        {
+            Debug.Log("No new host took over, leaving the lobby.");
+            LeaveLobby();
+            GetNextStateText(_clientState);
+            _onJoinFailed?.Invoke("Lost connection to host,\nthe room has closed");
         }
 
         private void HostConnectionFailed()
@@ -372,6 +514,9 @@ namespace FishNet.Example
             SteamMatchmaking.LeaveLobby(_lobbyId);
             _lobbyId = CSteamID.Nil;
             _hostAddress = null;
+            _hostEpoch = 0;
+            _migrating = false;
+            _waitingForHost = false;
         }
 
         public void OnClick_Client_Stop()
@@ -379,8 +524,6 @@ namespace FishNet.Example
             if (_networkManager == null)
                 return;
 
-            if (_lobbyId != CSteamID.Nil && _hostAddress == SteamUser.GetSteamID().ToString())
-                SteamMatchmaking.SetLobbyJoinable(_lobbyId, false);
             LeaveLobby();
             if (_clientState != LocalConnectionState.Stopped)
                 _networkManager.ClientManager.StopConnection();
