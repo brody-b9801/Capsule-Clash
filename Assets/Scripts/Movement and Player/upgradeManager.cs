@@ -15,6 +15,8 @@ public class upgradeManager : MonoBehaviour
 
     public static upgradeManager Local { get; private set; }
 
+    public static float MaxMultiplier => Local != null ? 1f + 4 * Local.upgradeFactor : 2f;
+
     public bool UpgradeWindowOpen => upgradeWindow != null && upgradeWindow.activeSelf;
 
     public int killPoints = 100;

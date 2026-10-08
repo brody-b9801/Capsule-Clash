@@ -11,6 +11,7 @@ public class BulletManager : NetworkBehaviour
     public struct BulletData
     {
         public NetworkObject bulletObject;
+        public Rigidbody rb;
         public Vector3 previousPosition;
         public Vector3 startPosition;
         public float timeActive;
@@ -26,11 +27,16 @@ public class BulletManager : NetworkBehaviour
 
     private List<BulletData> activeBullets = new List<BulletData>();
 
-    public void AddBulletData(NetworkObject bulletGO, Vector3 origin, Shooting.currGun gun, NetworkObject shooterObj)
+    private const float ShotgunRange = 20f;
+    private const float MaxBulletRange = 300f;
+    private const float MaxBulletLifetime = 3f;
+
+    public void AddBulletData(NetworkObject bulletGO, Rigidbody bulletRb, Vector3 origin, Shooting.currGun gun, NetworkObject shooterObj)
     {
         activeBullets.Add(new BulletData
         {
             bulletObject = bulletGO,
+            rb = bulletRb,
             previousPosition = origin,
             startPosition = origin,
             timeActive = 0f,
@@ -60,7 +66,7 @@ public class BulletManager : NetworkBehaviour
 
             if (bullet.bulletObject == null) { activeBullets.RemoveAt(i); continue; }
 
-            Rigidbody rb = bullet.bulletObject.GetComponent<Rigidbody>();
+            Rigidbody rb = bullet.rb;
             Vector3 currentPosition = bullet.bulletObject.transform.position;
 
             if (!bullet.hitPrev)
@@ -75,8 +81,9 @@ public class BulletManager : NetworkBehaviour
             bullet.previousPosition = currentPosition;
 
             float bulletDist = (currentPosition - bullet.startPosition).magnitude;
+            float maxRange = bullet.gunType == Shooting.currGun.Shotgun ? ShotgunRange : MaxBulletRange;
 
-            if (bullet.hitPrev || (bullet.gunType == Shooting.currGun.Shotgun && bulletDist > 20f) || bullet.timeActive > 7.5f)
+            if (bullet.hitPrev || bulletDist > maxRange || bullet.timeActive > MaxBulletLifetime)
             {
                 DestroyBullet(i, bullet);
             }

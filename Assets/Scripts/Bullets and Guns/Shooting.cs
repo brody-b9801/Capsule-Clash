@@ -156,6 +156,17 @@ public class Shooting : NetworkBehaviour
 
     private BulletManager bulletManager;
 
+    private const int   ShotgunPellets = 9;
+    private const float GunSwapMinTime = 0.5f;
+
+    private readonly Vector3[] singleSpread = new Vector3[1];
+    private readonly Vector3[] pelletSpreads = new Vector3[ShotgunPellets];
+
+    private readonly float[] shotTokens     = new float[3];
+    private readonly float[] shotTokenTimes = new float[3];
+    private currGun lastServerShotGun;
+    private float   lastServerShotTime = float.NegativeInfinity;
+
 
     public float trailFadeDuration = 0.5f;
 
@@ -277,16 +288,20 @@ public class Shooting : NetworkBehaviour
                     _               => 1f,
                 };
                 float range = currentGun == currGun.Sniper ? 150f : 25f;
-                for (int i = 0; i < (currentGun == currGun.Shotgun ? 9 : 1); i++)
+                float maxSpread = spread * spreadMulti;
+                Vector3[] spreads = currentGun == currGun.Shotgun ? pelletSpreads : singleSpread;
+                for (int i = 0; i < spreads.Length; i++)
                 {
-                    FireBullet(useCameraPos, cameraForward,
-                        bulletSpawn.transform.position, range, 15f,
-                        bulletHole.position, bH.transform.position,
-                        Random.Range(-spread * spreadMulti, spread * spreadMulti),
-                        Random.Range(-spread * spreadMulti, spread * spreadMulti),
-                        Random.Range(-spread * spreadMulti, spread * spreadMulti),
-                        i == 0);
+                    spreads[i] = new Vector3(
+                        Random.Range(-maxSpread, maxSpread),
+                        Random.Range(-maxSpread, maxSpread),
+                        Random.Range(-maxSpread, maxSpread));
                 }
+
+                FireBullet(useCameraPos, cameraForward,
+                    bulletSpawn.transform.position, range,
+                    bulletHole.position, bH.transform.position,
+                    spreads);
 
                 Shaker.shooting = true;
                 Shaker.StopShake();
@@ -343,15 +358,46 @@ public class Shooting : NetworkBehaviour
         _               => 30,
     };
 
+    private static float BaseBulletsPerSecond(currGun gun) => gun switch
+    {
+        currGun.Shotgun => 3.5f * ShotgunPellets,
+        currGun.Sniper  => 1.25f,
+        _               => 11f,
+    };
+
+    private static float MaxBulletsPerSecond(currGun gun) => BaseBulletsPerSecond(gun) * upgradeManager.MaxMultiplier;
+
+    private static float MaxBulletBurst(currGun gun) => gun switch
+    {
+        currGun.Shotgun => MaxAmmo(currGun.Shotgun) * ShotgunPellets,
+        currGun.Sniper  => 2f,
+        _               => 6f,
+    };
+
+    private bool TryConsumeServerShot(currGun gun)
+    {
+        int index = (int)gun;
+        if (index < 0 || index >= shotTokens.Length) return false;
+
+        float now = Time.time;
+        if (gun != lastServerShotGun && now - lastServerShotTime < GunSwapMinTime) return false;
+
+        shotTokens[index] = Mathf.Min(MaxBulletBurst(gun), shotTokens[index] + (now - shotTokenTimes[index]) * MaxBulletsPerSecond(gun));
+        shotTokenTimes[index] = now;
+        if (shotTokens[index] < 1f) return false;
+
+        shotTokens[index] -= 1f;
+        lastServerShotGun  = gun;
+        lastServerShotTime = now;
+        return true;
+    }
+
     private void FireBullet(
         Vector3 origin, Vector3 direction, Vector3 bS,
-        float force, float damage,
+        float force,
         Vector3 bulletOrigin, Vector3 bHPos,
-        float randomX, float randomY, float randomZ,
-        bool doMuzzleFlash)
+        Vector3[] spreads)
     {
-        bool isOwner = IsOwner;
-
         Vector3 shooterVelocity = PlayerMovement.Local.dashVector;
         if (IsValidVector3(PlayerMovement.Local.newVelocity))
         {
@@ -362,7 +408,7 @@ public class Shooting : NetworkBehaviour
 
         ServerBulletLogic(
             spawnPosition: bS, direction: direction, force: force, origin: origin,
-            randomX: randomX, randomY: randomY, randomZ: randomZ,
+            spreads: spreads,
             camPosition: mainCameraTransform.position,
             camForward: mainCameraTransform.forward,
             gunType: currentGun,
@@ -371,62 +417,68 @@ public class Shooting : NetworkBehaviour
         lockCursor = true;
 
         Vector3 spawnMuzzlePosition = IsOwner ? bulletOrigin : bHPos;
-        Vector3 spawnPosition       = bS;
 
-        if (doMuzzleFlash)
+        float randomAngle = Random.Range(-45f, 45f);
+        Transform bulletHoleRef = IsOwner ? bulletHole : bH.transform;
+
+        if (IsValidQuaternion(bulletHoleRef.rotation))
         {
-            float randomAngle = Random.Range(-45f, 45f);
-            Transform bulletHoleRef = IsOwner ? bulletHole : bH.transform;
+            Quaternion muzzleRot = bulletHoleRef.rotation *
+                                  Quaternion.Euler(randomAngle, -90f, 0f);
 
-                if (IsValidQuaternion(bulletHoleRef.rotation))
-                {
-                    Quaternion muzzleRot = bulletHoleRef.rotation *
-                                          Quaternion.Euler(randomAngle, -90f, 0f);
+            ParticleSystem muzzleInst = _muzzlePool.Get(
+                spawnMuzzlePosition, muzzleRot, bulletHoleRef);
+            muzzleInst.transform.localPosition = Vector3.zero;
+            muzzleInst.Play();
 
-                    ParticleSystem muzzleInst = _muzzlePool.Get(
-                        spawnMuzzlePosition, muzzleRot, bulletHoleRef);
-                    muzzleInst.transform.localPosition = Vector3.zero;
-                    muzzleInst.Play();
+            StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bulletHoleRef));
 
-                    StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bulletHoleRef));
+            if (IsOwner) {
+                Transform casing = _casingPool.Get(
+                    casingSpawn.position, bulletCasingPrefab.transform.rotation, casingSpawn);
+                casing.gameObject.layer = 5;
 
-                    if (IsOwner) {
-                        Transform casing = _casingPool.Get(
-                            casingSpawn.position, bulletCasingPrefab.transform.rotation, casingSpawn);
-                        casing.gameObject.layer = 5;
-
-                        BulletCasingAnim casingAnim = casing.GetComponent<BulletCasingAnim>();
-                        if (casingAnim != null)
-                            casingAnim.OnReturnToPool = () => _casingPool.Return(casing, _casingPoolRoot);
-                    }
-                    Transform casingHolder = transform.GetChild(2).GetChild(0).GetChild(1).GetChild(0);
-                    Transform nonCameraCasing = _casingPool.Get(
-                        casingHolder.position, bulletCasingPrefab.transform.rotation, casingHolder);
-                    nonCameraCasing.gameObject.layer = 11;
-                    if (IsOwner) nonCameraCasing.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
-                    BulletCasingAnim casingAnimNonCam = nonCameraCasing.GetComponent<BulletCasingAnim>();
-                    if (casingAnimNonCam != null)
-                        casingAnimNonCam.OnReturnToPool = () => _casingPool.Return(nonCameraCasing, _casingPoolRoot);
-                }
-
+                BulletCasingAnim casingAnim = casing.GetComponent<BulletCasingAnim>();
+                if (casingAnim != null)
+                    casingAnim.OnReturnToPool = () => _casingPool.Return(casing, _casingPoolRoot);
+            }
+            Transform casingHolder = transform.GetChild(2).GetChild(0).GetChild(1).GetChild(0);
+            Transform nonCameraCasing = _casingPool.Get(
+                casingHolder.position, bulletCasingPrefab.transform.rotation, casingHolder);
+            nonCameraCasing.gameObject.layer = 11;
+            if (IsOwner) nonCameraCasing.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+            BulletCasingAnim casingAnimNonCam = nonCameraCasing.GetComponent<BulletCasingAnim>();
+            if (casingAnimNonCam != null)
+                casingAnimNonCam.OnReturnToPool = () => _casingPool.Return(nonCameraCasing, _casingPoolRoot);
         }
     }
 
     [ServerRpc(RequireOwnership = false)]
     private void ServerBulletLogic(
         Vector3 spawnPosition, Vector3 direction, float force, Vector3 origin,
-        float randomX, float randomY, float randomZ,
+        Vector3[] spreads,
         Vector3 camPosition, Vector3 camForward, currGun gunType, Vector3 shooterVelocity,
         NetworkConnection conn = null)
     {
+        if (spreads == null || spreads.Length == 0) return;
+
         NetworkObject shooterObj = conn != null ? conn.FirstObject : NetworkObject;
+        Shooting shooterShooting = null;
+
+        if (shooterObj != null)
+        {
+            DamageControl shooterDamage = shooterObj.GetComponent<DamageControl>();
+            if (shooterDamage != null && shooterDamage.health.Value <= 0f) return;
+
+            shooterShooting = shooterObj.GetComponent<Shooting>();
+        }
 
         Vector3 targetPoint;
         Vector3 bulletPosition = spawnPosition;
 
         if (BulletManager.RaycastSkippingShooter(camPosition, camForward, 1.5f, ~ignoreLayers, shooterObj, out _))
         {
-            targetPoint    = transform.position + direction * force;
+            targetPoint    = camPosition + direction * force;
             origin         = camPosition;
             bulletPosition = origin;
         }
@@ -439,33 +491,34 @@ public class Shooting : NetworkBehaviour
             targetPoint = origin + direction * force;
         }
 
-        Vector3 spreadVector       = new Vector3(randomX, randomY, randomZ);
-        float   distanceFromCamera = Vector3.Distance(origin, targetPoint);
-        targetPoint += spreadVector * distanceFromCamera;
-
-        Vector3 fireDirection = (targetPoint - origin).normalized;
-        float   speed         = gunType == currGun.Sniper ? snipeSpeed : bulletSpeed;
-        Vector3 velocity      = fireDirection * speed + shooterVelocity;
-
-        GameObject    bulletGO  = Instantiate(bulletPrefab, bulletPosition, Quaternion.LookRotation(fireDirection));
-        Rigidbody     bulletRb  = bulletGO.GetComponent<Rigidbody>();
-        NetworkObject bulletNob = bulletGO.GetComponent<NetworkObject>();
-
-        if (bulletRb != null) bulletRb.linearVelocity = velocity;
-
-        ServerManager.Spawn(bulletNob, shooterObj != null ? shooterObj.Owner : conn);
+        float distanceFromCamera = Vector3.Distance(origin, targetPoint);
+        float speed              = gunType == currGun.Sniper ? snipeSpeed : bulletSpeed;
 
         if (bulletManager == null) bulletManager = FindFirstObjectByType<BulletManager>();
-        if (bulletManager != null)
+
+        int bulletCount = Mathf.Min(spreads.Length, gunType == currGun.Shotgun ? ShotgunPellets : 1);
+        for (int i = 0; i < bulletCount; i++)
         {
-            bulletManager.AddBulletData(bulletNob, origin, gunType, shooterObj);
-            Debug.Log("Bullet added to BulletManager");
-        } else
-        {
-            Debug.Log("BulletManager is null");
+            if (shooterShooting != null && !shooterShooting.TryConsumeServerShot(gunType)) break;
+
+            Vector3 bulletTarget  = targetPoint + spreads[i] * distanceFromCamera;
+            Vector3 fireDirection = (bulletTarget - origin).normalized;
+            Vector3 velocity      = fireDirection * speed + shooterVelocity;
+
+            GameObject    bulletGO  = Instantiate(bulletPrefab, bulletPosition, Quaternion.LookRotation(fireDirection));
+            Rigidbody     bulletRb  = bulletGO.GetComponent<Rigidbody>();
+            NetworkObject bulletNob = bulletGO.GetComponent<NetworkObject>();
+
+            if (bulletRb != null) bulletRb.linearVelocity = velocity;
+
+            ServerManager.Spawn(bulletNob, shooterObj != null ? shooterObj.Owner : conn);
+
+            if (bulletManager != null) bulletManager.AddBulletData(bulletNob, bulletRb, origin, gunType, shooterObj);
+            else Debug.Log("BulletManager is null");
+
+            end = bulletTarget;
         }
 
-        end            = targetPoint;
         isFiringBullet = true;
     }
 

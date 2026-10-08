@@ -374122,6 +374122,7 @@ MonoBehaviour:
   roomCardContainer: {fileID: 1488028908}
   roomCard: {fileID: 7199379446255882490, guid: 7d28d75640f40564a82b1cfee5b811c2, type: 3}
   errorScreen: {fileID: 4915439730096903542, guid: ad50c7cf0c8d60c4f952aa88ce2fe5e2, type: 3}
+  disconnectScreen: {fileID: 3891341194511620114, guid: b68852c3542849e6b292adc790093fd7, type: 3}
   JoinCodeInput: {fileID: 0}
 --- !u!223 &2048291304 stripped
 Canvas:
