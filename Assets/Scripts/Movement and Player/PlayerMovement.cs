@@ -426,6 +426,8 @@ public class PlayerMovement : NetworkBehaviour {
             usernameRenderer = usernameDisplay.GetComponent<MeshRenderer>();
             GetComponent<MeshRenderer>().enabled = false;
             started = true;
+            RestoreMigrationPosition();
+            ShowMigrationPopup();
         } else {
             foreach (Transform child in transform) {
                 if (child.name == "RenderedBody") child.gameObject.SetActive(false);
@@ -537,9 +539,49 @@ public class PlayerMovement : NetworkBehaviour {
         UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoadedAsOwner;
     }
 
+    private static Vector3 migrationPosition;
+    private static float migrationYaw;
+    private static float migrationPositionTime = float.NegativeInfinity;
+
+    private void RestoreMigrationPosition() {
+        float now = Time.realtimeSinceStartup;
+        float savedAt = migrationPositionTime;
+        migrationPositionTime = float.NegativeInfinity;
+        if (now - FishNet.Example.NetworkHudCanvases.LastMigrationTime > DamageControl.MigrationRestoreWindow) return;
+        if (now - savedAt > DamageControl.MigrationRestoreWindow) return;
+
+        Vector3 target = migrationPosition;
+        if (!Physics.Raycast(target + Vector3.up * 0.5f, Vector3.down, out RaycastHit hit, 500f, GroundMask, QueryTriggerInteraction.Ignore)) return;
+        if (hit.distance > 2f)
+            target.y = hit.point.y - characterController.center.y + characterController.height * 0.5f + 0.1f;
+
+        characterController.enabled = false;
+        transform.position = target;
+        FaceDirection(migrationYaw);
+        characterController.enabled = true;
+        lastGroundedHeight = transform.position.y;
+        lastPosition = playerTransform.position;
+    }
+
+    private void ShowMigrationPopup() {
+        if (!FishNet.Example.NetworkHudCanvases.ConsumeMigrationNotice(out bool hostChanged)) return;
+
+        if (!hostChanged) MenuHandler.ShowPopup("Connection lost,\nreconnected to the host");
+        else if (IsServerStarted) MenuHandler.ShowPopup("Host disconnected,\nyou are now the host");
+        else MenuHandler.ShowPopup("Host disconnected,\nmoved to a new host");
+    }
+
     public override void OnStopClient()
     {
         if (Local == this) {
+            if (FishNet.Example.NetworkHudCanvases.InLobby) SaveSystem.CaptureSessionData();
+            if (!dead && inCombatScene && currDimension == "Desert") {
+                migrationPosition = transform.position;
+                migrationYaw = currentCameraRotationY;
+                migrationPositionTime = Time.realtimeSinceStartup;
+            } else {
+                migrationPositionTime = float.NegativeInfinity;
+            }
             Local = null;
             started = false;
         }
@@ -835,7 +877,7 @@ public class PlayerMovement : NetworkBehaviour {
     private void KeyEvents()
     {
 
-        if (Input.GetKey(KeyCode.R) && dead) Respawn();
+        if (Input.GetKeyDown(KeyCode.R) && dead) Respawn();
 
         if (Input.GetKey(KeyCode.Q) && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
             && isGrounded && !healParticles.healing && DamageControl.Local.health.Value < 180.0f)
@@ -1066,6 +1108,7 @@ public class PlayerMovement : NetworkBehaviour {
         if (!IsOwner || dead) return;
         characterController.enabled = false;
         dead = true;
+        if (DamageControl.Local != null) DamageControl.Local.ServerKillSelf();
         respawnInit = Instantiate(respawnScreen);
         Cursor.lockState = CursorLockMode.None;
         Shooting.lockCursor = false;

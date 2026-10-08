@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using FishNet.Connection;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using Unity.VisualScripting;
@@ -20,6 +21,7 @@ public class BuildHealth : NetworkBehaviour
     void Awake()
     {
         currentHealth.Value = maxHealth;
+        currentHealth.OnChange += OnHealthChanged;
 
         if (transMesh == null)
         {
@@ -29,6 +31,17 @@ public class BuildHealth : NetworkBehaviour
             if (cube != null)
                 transMesh = cube.GetComponent<MeshRenderer>();
         }
+    }
+
+    private void OnDestroy()
+    {
+        currentHealth.OnChange -= OnHealthChanged;
+    }
+
+    private void OnHealthChanged(float prev, float next, bool asServer)
+    {
+        if (next >= maxHealth || IsServerOnlyStarted) return;
+        ApplyDamageVisuals(next);
     }
 
     private static Material _transMat;
@@ -55,7 +68,12 @@ public class BuildHealth : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false, RunLocally = false)]
-    private void ServerTakeDamage(Shooting.currGun gun, float dist) => ApplyDamage(gun, dist);
+    private void ServerTakeDamage(Shooting.currGun gun, float dist, NetworkConnection conn = null)
+    {
+        DamageControl sender = conn != null && conn.FirstObject != null ? conn.FirstObject.GetComponent<DamageControl>() : null;
+        if (sender != null && sender.health.Value <= 0f) return;
+        ApplyDamage(gun, dist);
+    }
 
     [Server]
     private void ApplyDamage(Shooting.currGun gun, float dist) {
@@ -73,16 +91,8 @@ public class BuildHealth : NetworkBehaviour
             currentHealth.Value -= Mathf.Clamp((1 - ((dist - 5) * 0.1f)) * .25f, 0.075f, 0.5f);
         }
 
-        RpcBuildDamage(currentHealth.Value);
-
         if (currentHealth.Value <= 0f)
             ObjectSpawner.DespawnObject(build);
-    }
-
-    [ObserversRpc(ExcludeServer = false)]
-    private void RpcBuildDamage(float health)
-    {
-        ApplyDamageVisuals(health);
     }
 
     private void ApplyDamageVisuals(float health) {

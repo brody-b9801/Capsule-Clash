@@ -166,7 +166,7 @@ public class ObjectSpawner : NetworkBehaviour
         }
 
         if (!IsOwner) return;
-        if (PlayerMovement.Local == null || PlayerMovement.Local.currDimension == "Maze") return;
+        if (PlayerMovement.Local == null || PlayerMovement.Local.dead || PlayerMovement.Local.currDimension == "Maze") return;
         if (Camera.main == null) return;
 
         Vector3 camPos = Camera.main.transform.position;
@@ -200,7 +200,21 @@ public class ObjectSpawner : NetworkBehaviour
     [ServerRpc]
     public void RequestBuildReset()
     {
+        if (_skipNextBuildReset)
+        {
+            _skipNextBuildReset = false;
+            return;
+        }
         buildNum = 25;
+    }
+
+    private bool _skipNextBuildReset;
+
+    [Server]
+    public void RestoreBuildNum(float value)
+    {
+        buildNum = Mathf.Clamp(value, 0f, 25f);
+        _skipNextBuildReset = true;
     }
 
     [ServerRpc]
@@ -214,6 +228,9 @@ public class ObjectSpawner : NetworkBehaviour
     private void CmdSpawnBuild(BuildType type, Vector3 cameraPosition, Vector3 cameraForward)
     {
         if (buildNum <= 0) return;
+
+        DamageControl damageControl = GetComponent<DamageControl>();
+        if (damageControl != null && damageControl.health.Value <= 0f) return;
 
         switch (type)
         {

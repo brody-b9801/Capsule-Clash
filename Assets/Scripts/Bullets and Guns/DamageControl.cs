@@ -8,6 +8,20 @@ using FishNet.Object.Synchronizing;
 public class DamageControl : NetworkBehaviour
 {
     public const float MaxHealth = 180f;
+    public const float MigrationRestoreWindow = 60f;
+
+    private struct MigrationSnapshot
+    {
+        public float health;
+        public float buildNum;
+        public float time;
+    }
+
+    private static readonly Dictionary<string, MigrationSnapshot> migrationSnapshots = new Dictionary<string, MigrationSnapshot>();
+
+    public readonly SyncVar<string> steamId = new SyncVar<string>(
+        "", new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.Observers));
+
     public readonly SyncVar<float> health = new SyncVar<float>(
         MaxHealth, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.Observers));
 
@@ -38,6 +52,36 @@ public class DamageControl : NetworkBehaviour
     {
         base.OnStartServer();
         GrantSpawnProtection();
+        if (Owner.IsValid) steamId.Value = Owner.GetAddress();
+        RestoreMigrationSnapshot();
+    }
+
+    private void RestoreMigrationSnapshot()
+    {
+        string id = steamId.Value;
+        if (string.IsNullOrEmpty(id) || !migrationSnapshots.TryGetValue(id, out MigrationSnapshot snapshot)) return;
+        migrationSnapshots.Remove(id);
+
+        float now = Time.realtimeSinceStartup;
+        if (now - FishNet.Example.NetworkHudCanvases.LastMigrationTime > MigrationRestoreWindow) return;
+        if (now - snapshot.time > MigrationRestoreWindow || snapshot.health <= 0f) return;
+
+        health.Value = Mathf.Min(snapshot.health, MaxHealth);
+        ObjectSpawner spawner = GetComponent<ObjectSpawner>();
+        if (spawner != null) spawner.RestoreBuildNum(snapshot.buildNum);
+    }
+
+    private void CaptureMigrationSnapshot()
+    {
+        if (string.IsNullOrEmpty(steamId.Value)) return;
+
+        ObjectSpawner spawner = GetComponent<ObjectSpawner>();
+        migrationSnapshots[steamId.Value] = new MigrationSnapshot
+        {
+            health = health.Value,
+            buildNum = spawner != null ? spawner.buildNum : 25f,
+            time = Time.realtimeSinceStartup
+        };
     }
 
     public override void OnStartClient()
@@ -60,6 +104,7 @@ public class DamageControl : NetworkBehaviour
 
     public override void OnStopClient()
     {
+        CaptureMigrationSnapshot();
         if (Local == this) Local = null;
         base.OnStopClient();
     }
@@ -137,6 +182,13 @@ public class DamageControl : NetworkBehaviour
     {
         if (amount <= 0f || health.Value <= 0f) return;
         ApplyDamage(Mathf.Min(amount, MaxHealth), null);
+    }
+
+    [ServerRpc]
+    public void ServerKillSelf()
+    {
+        if (health.Value <= 0f) return;
+        health.Value = 0f;
     }
 
     [ServerRpc]

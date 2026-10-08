@@ -424,13 +424,13 @@ public class Shooting : NetworkBehaviour
         Vector3 targetPoint;
         Vector3 bulletPosition = spawnPosition;
 
-        if (Physics.Raycast(new Ray(camPosition, camForward), out _, 1.5f, ~ignoreLayers))
+        if (BulletManager.RaycastSkippingShooter(camPosition, camForward, 1.5f, ~ignoreLayers, shooterObj, out _))
         {
             targetPoint    = transform.position + direction * force;
             origin         = camPosition;
             bulletPosition = origin;
         }
-        else if (Physics.Raycast(new Ray(origin, direction), out RaycastHit hit, force, ~ignoreLayers))
+        else if (BulletManager.RaycastSkippingShooter(origin, direction, force, ~ignoreLayers, shooterObj, out RaycastHit hit))
         {
             targetPoint = hit.point;
         }
