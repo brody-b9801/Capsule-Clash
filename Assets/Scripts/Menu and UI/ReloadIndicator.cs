@@ -43,7 +43,7 @@ public class ReloadIndicator : MonoBehaviour
         healAnimStarted = true;
         HealBar.gameObject.SetActive(true);
         ReloadBarBg.SetActive(true);
-        float total = 3f / upgradeManager.Local.regenSpeedMultiplier;
+        float total = DamageControl.HealChannelTime / upgradeManager.Local.regenSpeedMultiplier;
 
         HealBar.rectTransform.sizeDelta = new Vector2(0.0f, HealBar.rectTransform.sizeDelta.y);
         while (PlayerMovement.Local != null && PlayerMovement.Local.elapsedHealTime < total && healParticles.healing)
@@ -51,7 +51,7 @@ public class ReloadIndicator : MonoBehaviour
             float percent = PlayerMovement.Local.elapsedHealTime / total;
             float newWidth = Mathf.Lerp(0.0f, 66.0f, percent);
             HealBar.rectTransform.sizeDelta = new Vector2(newWidth, HealBar.rectTransform.sizeDelta.y);
-            total = 3f / upgradeManager.Local.regenSpeedMultiplier;
+            total = DamageControl.HealChannelTime / upgradeManager.Local.regenSpeedMultiplier;
             yield return null;
         }
         healAnimStarted = false;

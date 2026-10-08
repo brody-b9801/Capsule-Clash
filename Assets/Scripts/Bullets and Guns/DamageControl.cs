@@ -8,7 +8,12 @@ using FishNet.Object.Synchronizing;
 public class DamageControl : NetworkBehaviour
 {
     public const float MaxHealth = 180f;
+    public const float HealAmount = 45f;
+    public const float HealChannelTime = 3f;
     public const float MigrationRestoreWindow = 60f;
+
+    private const float HealIntervalTolerance = 0.8f;
+    private const float RespawnRevealDelay = 0.25f;
 
     private struct MigrationSnapshot
     {
@@ -35,12 +40,23 @@ public class DamageControl : NetworkBehaviour
     [SerializeField] private float maxSpawnProtectionTime = 15f;
 
     private Coroutine spawnProtectionFailsafe;
+    private Coroutine revealRoutine;
+    private Collider damageCollider;
+    private bool bodyAlive = true;
+    private float lastHealTime = float.NegativeInfinity;
 
     public static DamageControl Local { get; private set; }
 
     private void Awake()
     {
         health.OnChange += OnHealthChanged;
+
+        foreach (Collider col in GetComponentsInChildren<Collider>(true))
+        {
+            if (!col.CompareTag("DamageCollider")) continue;
+            damageCollider = col;
+            break;
+        }
     }
 
     private void OnDestroy()
@@ -99,7 +115,7 @@ public class DamageControl : NetworkBehaviour
     [ServerRpc]
     public void SetDamageMultiplier(float multiplier)
     {
-        damageMultiplier.Value = Mathf.Clamp(multiplier, 1f, 4f);
+        damageMultiplier.Value = Mathf.Clamp(multiplier, 1f, upgradeManager.MaxMultiplier);
     }
 
     public override void OnStopClient()
@@ -111,8 +127,41 @@ public class DamageControl : NetworkBehaviour
 
     private void OnHealthChanged(float prev, float next, bool asServer)
     {
+        UpdateBodyState(next > 0f);
+
         if (asServer || !IsOwner) return;
         HealthController.updateHealth();
+    }
+
+    private void UpdateBodyState(bool alive)
+    {
+        if (alive == bodyAlive) return;
+        bodyAlive = alive;
+
+        if (revealRoutine != null)
+        {
+            StopCoroutine(revealRoutine);
+            revealRoutine = null;
+        }
+
+        if (alive) revealRoutine = StartCoroutine(RevealBody());
+        else SetBodyVisible(false);
+    }
+
+    IEnumerator RevealBody()
+    {
+        yield return new WaitForSeconds(RespawnRevealDelay);
+        revealRoutine = null;
+        SetBodyVisible(true);
+    }
+
+    private void SetBodyVisible(bool visible)
+    {
+        if (damageCollider != null) damageCollider.enabled = visible;
+        if (IsOwner) return;
+
+        foreach (Renderer bodyRenderer in GetComponentsInChildren<Renderer>(true))
+            bodyRenderer.forceRenderingOff = !visible;
     }
 
     public bool ControlDamage(NetworkObject shooter, Shooting.currGun gun, float dist)
@@ -192,10 +241,15 @@ public class DamageControl : NetworkBehaviour
     }
 
     [ServerRpc]
-    public void ServerHeal(float amount)
+    public void ServerHeal()
     {
-        if (amount <= 0f || health.Value <= 0f) return;
-        health.Value = Mathf.Clamp(health.Value + amount, 0f, MaxHealth);
+        if (health.Value <= 0f || health.Value >= MaxHealth) return;
+
+        float minInterval = HealChannelTime / upgradeManager.MaxMultiplier * HealIntervalTolerance;
+        if (Time.time - lastHealTime < minInterval) return;
+
+        lastHealTime = Time.time;
+        health.Value = Mathf.Min(health.Value + HealAmount, MaxHealth);
     }
 
     [ServerRpc]

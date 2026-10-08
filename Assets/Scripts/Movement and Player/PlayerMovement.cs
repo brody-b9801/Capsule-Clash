@@ -1177,11 +1177,6 @@ public class PlayerMovement : NetworkBehaviour {
         Cursor.lockState = CursorLockMode.Locked;
     }
 
-    public void killHeal(NetworkObject shooter) { ServerKillHeal(shooter); }
-
-    [ServerRpc(RequireOwnership = false)]
-    private void ServerKillHeal(NetworkObject shooter) => killHealSync(shooter);
-
     [ObserversRpc]
     public void killHealSync(NetworkObject shooter) {
         if (Local == null || Local.NetworkObject != shooter) return;
@@ -1334,7 +1329,7 @@ public class PlayerMovement : NetworkBehaviour {
 
     IEnumerator stationaryHealing() {
         elapsedHealTime = 0f;
-        while (elapsedHealTime < 3f / upgradeManager.Local.regenSpeedMultiplier) {
+        while (elapsedHealTime < DamageControl.HealChannelTime / upgradeManager.Local.regenSpeedMultiplier) {
             healParticles.healing = true;
             if (!(Input.GetKey(KeyCode.Q) && !CameraZoom.moving && !Shaker.shooting
                   && DamageControl.Local.health.Value < 180.0f && isGrounded && !Shooting.Local.reloading)) {
@@ -1345,7 +1340,7 @@ public class PlayerMovement : NetworkBehaviour {
             yield return null;
         }
         healParticles.healing = false;
-        if (DamageControl.Local != null) DamageControl.Local.ServerHeal(45.0f);
+        if (DamageControl.Local != null) DamageControl.Local.ServerHeal();
         HealthController.healAnim = true;
     }
 

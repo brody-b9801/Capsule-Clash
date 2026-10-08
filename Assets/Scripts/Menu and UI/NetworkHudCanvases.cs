@@ -1,6 +1,7 @@
 ﻿using FishNet.Managing;
 using FishNet.Transporting;
 using Steamworks;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -244,6 +245,7 @@ public class NetworkHudCanvases : MonoBehaviour
     private void ClientManager_OnClientConnectionState(ClientConnectionStateArgs obj)
     {
         _clientState = obj.ConnectionState;
+        LobbyTelemetry.Record("Client " + obj.ConnectionState);
         UpdateColor(obj.ConnectionState, ref _clientJoin);
         if (obj.ConnectionState == LocalConnectionState.Started)
             _connectingToHost = false;
@@ -266,6 +268,7 @@ public class NetworkHudCanvases : MonoBehaviour
     private void ServerManager_OnServerConnectionState(ServerConnectionStateArgs obj)
     {
         _serverState = obj.ConnectionState;
+        LobbyTelemetry.Record("Server " + obj.ConnectionState);
         UpdateColor(obj.ConnectionState, ref _serverIndicator);
     }
 
@@ -307,6 +310,7 @@ public class NetworkHudCanvases : MonoBehaviour
         if (bIOFailure || pCallback.m_eResult != EResult.k_EResultOK)
         {
             Debug.Log("There was an error creating the lobby: " + pCallback.m_eResult);
+            LobbyTelemetry.Record("Lobby create failed: " + pCallback.m_eResult);
             GetNextStateText(_clientState);
             return;
         }
@@ -315,6 +319,7 @@ public class NetworkHudCanvases : MonoBehaviour
         InLobby = true;
         _hostAddress = SteamUser.GetSteamID().ToString();
         _hostEpoch = 1;
+        LobbyTelemetry.Record("Lobby created " + _lobbyId);
         AnnounceHost();
         SteamMatchmaking.SetLobbyData(_lobbyId, "name", SteamFriends.GetPersonaName() + "'s room");
 
@@ -355,6 +360,7 @@ public class NetworkHudCanvases : MonoBehaviour
         if (bIOFailure || pCallback.m_EChatRoomEnterResponse != (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess)
         {
             Debug.Log("There was an error joining the lobby: " + (EChatRoomEnterResponse)pCallback.m_EChatRoomEnterResponse);
+            LobbyTelemetry.Record("Lobby join failed: " + (EChatRoomEnterResponse)pCallback.m_EChatRoomEnterResponse);
             GetNextStateText(_clientState);
             _onJoinFailed?.Invoke("Failed to join room,\nit may be full or closed");
             return;
@@ -369,6 +375,7 @@ public class NetworkHudCanvases : MonoBehaviour
             _hostAddress = announcedHost;
             _hostEpoch = announcedEpoch;
         }
+        LobbyTelemetry.Record("Lobby entered " + _lobbyId + " host=" + _hostAddress + " epoch=" + _hostEpoch + " members=" + SteamMatchmaking.GetNumLobbyMembers(_lobbyId));
         if (string.IsNullOrEmpty(_hostAddress))
         {
             Debug.Log("Lobby has no host address, cannot connect.");
@@ -386,8 +393,10 @@ public class NetworkHudCanvases : MonoBehaviour
 
     private void OnLobbyChatUpdate(LobbyChatUpdate_t pCallback)
     {
-        if (pCallback.m_ulSteamIDLobby == _lobbyId.m_SteamID)
-            CheckHostChanged();
+        if (pCallback.m_ulSteamIDLobby != _lobbyId.m_SteamID)
+            return;
+        LobbyTelemetry.Record("Member " + pCallback.m_ulSteamIDUserChanged + " change=" + (EChatMemberStateChange)pCallback.m_rgfChatMemberStateChange);
+        CheckHostChanged();
     }
 
     private void OnLobbyDataUpdate(LobbyDataUpdate_t pCallback)
@@ -413,6 +422,7 @@ public class NetworkHudCanvases : MonoBehaviour
         else if (_waitingForHost && HostAcked())
         {
             Debug.Log("The host is still alive, reconnecting. Ack took " + (Time.realtimeSinceStartup - _hostLostReportedAt).ToString("F2") + "s");
+            LobbyTelemetry.Record("Host acked after " + (Time.realtimeSinceStartup - _hostLostReportedAt).ToString("F2") + "s");
             MigrateTo(_hostAddress, _hostEpoch);
         }
         else if (ShouldTakeOver())
@@ -428,6 +438,7 @@ public class NetworkHudCanvases : MonoBehaviour
         _hostAckTimer = HostAckGrace;
         _hostLostReportedAt = Time.realtimeSinceStartup;
         _hostAliveSeen = GetHostAlive();
+        LobbyTelemetry.Record("Host connection lost, host=" + _hostAddress + " steamLoggedOn=" + SteamUser.BLoggedOn());
         SteamMatchmaking.SetLobbyMemberData(_lobbyId, HostLostKey, System.DateTime.UtcNow.Ticks.ToString());
     }
 
@@ -524,6 +535,7 @@ public class NetworkHudCanvases : MonoBehaviour
     {
         bool wasHost = _hostAddress == SteamUser.GetSteamID().ToString();
         Debug.Log("The host is gone, migrating to " + newHost);
+        LobbyTelemetry.Record("Migrating from " + _hostAddress + " to " + newHost + " epoch=" + newEpoch + " waiting=" + _waitingForHost);
         _migrationChangedHost = newHost != _hostAddress;
         _connectRetriesLeft = ConnectRetries;
         _connectRetryTimer = 0f;
@@ -592,6 +604,7 @@ public class NetworkHudCanvases : MonoBehaviour
     private void FinishMigration()
     {
         _migrating = false;
+        LobbyTelemetry.Record("Connecting to host " + _hostAddress + " retriesLeft=" + _connectRetriesLeft);
         LastMigrationTime = Time.realtimeSinceStartup;
         _migrationNoticePending = true;
         if (_hostAddress == SteamUser.GetSteamID().ToString())
@@ -615,24 +628,59 @@ public class NetworkHudCanvases : MonoBehaviour
     private void HostLost()
     {
         Debug.Log("No new host took over, leaving the lobby.");
+        WriteDisconnectReport("No new host took over");
         LeaveLobby();
         GetNextStateText(_clientState);
-        ShowError("Lost connection to host,\nthe room has closed");
+        MenuHandler.ShowDisconnect("Lost connection to host,\nthe room has closed");
     }
 
     private void SteamLost()
     {
         Debug.Log("Lost connection to Steam, leaving the lobby.");
+        WriteDisconnectReport("Lost connection to Steam");
         OnClick_Client_Stop();
-        ShowError("Lost connection to Steam,\ncheck your internet");
+        MenuHandler.ShowDisconnect("Lost connection to Steam,\ncheck your internet");
     }
 
-    private void ShowError(string message)
+    private void WriteDisconnectReport(string reason)
     {
-        if (_onJoinFailed != null)
-            _onJoinFailed(message);
-        else
-            MenuHandler.ShowPopup(message);
+        List<string> state = new List<string>
+        {
+            "clientState=" + _clientState,
+            "serverState=" + _serverState,
+            "hostAddress=" + _hostAddress,
+            "hostEpoch=" + _hostEpoch,
+            "migrating=" + _migrating,
+            "waitingForHost=" + _waitingForHost,
+            "connectingToHost=" + _connectingToHost,
+            "connectRetriesLeft=" + _connectRetriesLeft,
+            "hostAckTimer=" + _hostAckTimer.ToString("F2"),
+            "hostWaitTimer=" + _hostWaitTimer.ToString("F2"),
+            "secondsSinceMigration=" + (Time.realtimeSinceStartup - LastMigrationTime).ToString("F2")
+        };
+
+        if (SteamManager.Initialized)
+        {
+            state.Add("localSteamId=" + SteamUser.GetSteamID());
+            state.Add("steamLoggedOn=" + SteamUser.BLoggedOn());
+            state.Add("lobbyId=" + _lobbyId);
+            if (_lobbyId != CSteamID.Nil)
+            {
+                state.Add("lobbyOwner=" + SteamMatchmaking.GetLobbyOwner(_lobbyId));
+                state.Add("lobbyHostAddress=" + SteamMatchmaking.GetLobbyData(_lobbyId, "HostAddress"));
+                int count = SteamMatchmaking.GetNumLobbyMembers(_lobbyId);
+                for (int i = 0; i < count; i++)
+                {
+                    CSteamID member = SteamMatchmaking.GetLobbyMemberByIndex(_lobbyId, i);
+                    state.Add("member=" + member
+                        + " epoch=" + SteamMatchmaking.GetLobbyMemberData(_lobbyId, member, HostEpochKey)
+                        + " lost=" + SteamMatchmaking.GetLobbyMemberData(_lobbyId, member, HostLostKey)
+                        + " alive=" + SteamMatchmaking.GetLobbyMemberData(_lobbyId, member, HostAliveKey));
+                }
+            }
+        }
+
+        LobbyTelemetry.WriteReport(reason, state);
     }
 
     private void HostConnectionFailed()
@@ -645,15 +693,17 @@ public class NetworkHudCanvases : MonoBehaviour
         {
             _connectRetriesLeft--;
             Debug.Log("Failed to connect to the lobby host, retrying.");
+            LobbyTelemetry.Record("Connect to host failed, retriesLeft=" + _connectRetriesLeft);
             _connectRetryTimer = ConnectRetryDelay;
             _migrating = true;
             return;
         }
 
         Debug.Log("There was an error connecting to the lobby host.");
+        WriteDisconnectReport("Failed to connect to host");
         LeaveLobby();
         GetNextStateText(_clientState);
-        ShowError("Failed to connect to host,\ntry again later");
+        MenuHandler.ShowDisconnect("Failed to connect to host,\ntry again later");
     }
 
     private void LeaveLobby()
@@ -679,6 +729,7 @@ public class NetworkHudCanvases : MonoBehaviour
         if (_networkManager == null)
             return;
 
+        LobbyTelemetry.Record("Leaving lobby");
         LeaveLobby();
         if (_clientState != LocalConnectionState.Stopped)
             _networkManager.ClientManager.StopConnection();

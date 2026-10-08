@@ -60,7 +60,6 @@ public class BuildHealth : NetworkBehaviour
     }
     public void TakeDamage(Shooting.currGun gun, float dist)
     {
-        Debug.Log($"Taking damage: gun={gun}, dist={dist}");
         if (IsServerStarted)
             ApplyDamage(gun, dist);
         else
@@ -71,14 +70,21 @@ public class BuildHealth : NetworkBehaviour
     private void ServerTakeDamage(Shooting.currGun gun, float dist, NetworkConnection conn = null)
     {
         DamageControl sender = conn != null && conn.FirstObject != null ? conn.FirstObject.GetComponent<DamageControl>() : null;
-        if (sender != null && sender.health.Value <= 0f) return;
+        if (sender != null && (sender.health.Value <= 0f || !IsWithinBreakRange(sender.transform.position))) return;
         ApplyDamage(gun, dist);
+    }
+
+    private const float MaxBreakDistance = 10f;
+
+    private bool IsWithinBreakRange(Vector3 from)
+    {
+        Collider buildCollider = GetComponent<Collider>();
+        Vector3 nearest = buildCollider != null ? buildCollider.ClosestPoint(from) : transform.position;
+        return (nearest - from).sqrMagnitude <= MaxBreakDistance * MaxBreakDistance;
     }
 
     [Server]
     private void ApplyDamage(Shooting.currGun gun, float dist) {
-        Debug.Log($"Server received damage: gun={gun}, dist={dist}");
-
         if (currentHealth.Value <= 0f) return;
 
         if (gun == Shooting.currGun.Sniper) {

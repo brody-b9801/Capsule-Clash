@@ -22,6 +22,7 @@ public class MenuHandler : MonoBehaviour
     [SerializeField] private GameObject roomCardContainer;
     [SerializeField] private GameObject roomCard;
     [SerializeField] private GameObject errorScreen;
+    [SerializeField] private GameObject disconnectScreen;
     [SerializeField] private TMP_InputField JoinCodeInput;
     private CallResult<LobbyMatchList_t> m_LobbyMatchList;
     private Callback<LobbyDataUpdate_t> m_LobbyDataUpdate;
@@ -54,6 +55,20 @@ public class MenuHandler : MonoBehaviour
         GameObject popup = Instantiate(instance.errorScreen, canvasObject.transform);
         popup.GetComponent<ErrorScreen>().SetMessage(message);
         Destroy(canvasObject, 10f);
+    }
+
+    public static void ShowDisconnect(string message)
+    {
+        if (instance == null) {
+            return;
+        }
+        if (instance.disconnectScreen == null) {
+            instance.showError(message);
+            return;
+        }
+
+        GameObject screen = Instantiate(instance.disconnectScreen, instance.transform);
+        screen.GetComponent<DisconnectScreen>().SetMessage(message);
     }
 
     void Start()
