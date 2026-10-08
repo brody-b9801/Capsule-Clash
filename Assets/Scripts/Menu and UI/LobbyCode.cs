@@ -30,7 +30,7 @@ public static class LobbyCode
             return false;
         }
 
-        code = code.Trim().ToUpperInvariant();
+        code = code.Replace("\u200B", "").Trim().ToUpperInvariant();
         if (code.Length != Length) {
             return false;
         }
