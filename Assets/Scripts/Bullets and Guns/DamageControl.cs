@@ -63,7 +63,7 @@ public class DamageControl : NetworkBehaviour
         migrationSnapshots.Remove(id);
 
         float now = Time.realtimeSinceStartup;
-        if (now - FishNet.Example.NetworkHudCanvases.LastMigrationTime > MigrationRestoreWindow) return;
+        if (now - NetworkHudCanvases.LastMigrationTime > MigrationRestoreWindow) return;
         if (now - snapshot.time > MigrationRestoreWindow || snapshot.health <= 0f) return;
 
         health.Value = Mathf.Min(snapshot.health, MaxHealth);
