@@ -9,8 +9,9 @@ public class BulletText : MonoBehaviour
     [SerializeField] private TextMeshProUGUI text;
     [SerializeField] private TextMeshProUGUI roomText;
     public static string roomName;
-    [SerializeField] private GameObject bullet;  
+    [SerializeField] private GameObject bullet;
     [SerializeField] private GameObject shotgun;
+    [SerializeField] private GameObject sniper;
 
 
     void Update()
@@ -22,16 +23,19 @@ public class BulletText : MonoBehaviour
         text.text = Shooting.Local.shottieNum.ToString();
         shotgun.SetActive(true);
         bullet.SetActive(false);
+        if (sniper != null) sniper.SetActive(false);
         break;
       case Shooting.currGun.Sniper:
         text.text = Shooting.Local.sniperNum.ToString();
-        bullet.SetActive(true);
+        bullet.SetActive(sniper == null);
         shotgun.SetActive(false);
+        if (sniper != null) sniper.SetActive(true);
         break;
       default:
         text.text = Shooting.Local.reloadNum.ToString();
         bullet.SetActive(true);
         shotgun.SetActive(false);
+        if (sniper != null) sniper.SetActive(false);
         break;
     }
     if (roomText != null)

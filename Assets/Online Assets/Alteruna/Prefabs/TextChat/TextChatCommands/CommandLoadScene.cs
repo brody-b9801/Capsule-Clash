@@ -25,11 +25,11 @@ namespace Alteruna.TextChatCommands
 			}
 			else if (int.TryParse(args[0], out int id))
 			{
-				SceneManager.LoadScene(id);
+				UnityEngine.SceneManagement.SceneManager.LoadScene(id);
 			}
 			else
 			{
-				SceneManager.LoadScene(args[0]);
+				UnityEngine.SceneManagement.SceneManager.LoadScene(args[0]);
 			}
 
 			return null;

@@ -49,12 +49,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 076fe48f90c59264b828ccd02bdf1549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  previousPosition: {x: 0, y: 0, z: 0}
-  bulletEndPos: {x: 0, y: 0, z: 0}
-  trailMaterial: {fileID: 2100000, guid: db2f5d074e2f6674a9ba76dfcdcd2290, type: 2}
   bulletOne: {fileID: 7908568636026974177}
   Visual: {fileID: 7908568636026974177}
-  shottieBool: 0
   showDistance: 0.25
 --- !u!54 &2432923963459860620
 Rigidbody:
@@ -140,7 +136,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584152884497382736
+  _initializedTimestamp: -8584099311865715719
 --- !u!114 &-5935864355584963695
 MonoBehaviour:
   m_ObjectHideFlags: 0

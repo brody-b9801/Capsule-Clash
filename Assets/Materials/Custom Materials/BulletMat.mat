@@ -111,10 +111,10 @@ Material:
     - _HighlightDotScale: 120
     - _HighlightDotSize: 0.4
     - _HighlightDotThreshold: 0.7
-    - _IndirectLightIntensity: 0.5
+    - _IndirectLightIntensity: 0.3
     - _InkNoiseIntensity: 0.03
     - _InkNoiseScale: 200
-    - _LightScalar: 1.5
+    - _LightScalar: 1
     - _LowIntensity: 1
     - _Metallic: 1
     - _Mode: 0
@@ -124,7 +124,7 @@ Material:
     - _NormalStrength: 1
     - _OcclusionStrength: 1
     - _OutlineDistanceScale: 1
-    - _OutlineLightModulation: 0
+    - _OutlineLightModulation: 0.073
     - _OutlineScaleStartDistance: 0
     - _OutlineScreenSpace: 1
     - _OutlineSize: 0.004
@@ -133,7 +133,7 @@ Material:
     - _Parallax: 0.02
     - _PosterizeLevels: 8
     - _RampLevels: 4
-    - _RimAlpha: 0
+    - _RimAlpha: 0.7
     - _RimBandSmoothness: 0.05
     - _RimBands: 8
     - _RimDropOff: 1
@@ -142,7 +142,7 @@ Material:
     - _RimHatchScale: 100
     - _RimHatchThreshold: 0.3
     - _RimHatchWidth: 0.3
-    - _RimPower: 0.5
+    - _RimPower: 0.2
     - _ShadowBandSmoothness: 0
     - _ShadowBands: 4
     - _ShadowHatchAngle: 45
@@ -180,12 +180,12 @@ Material:
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _CastShadowHatchColor: {r: 0, g: 0, b: 0, a: 1}
-    - _Color: {r: 1, g: 0.8000001, b: 0, a: 1}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0.066823885, g: 0.05209998, b: 0, a: 1}
     - _FlatShadowTint: {r: 0.92156863, g: 0.92156863, b: 1, a: 1}
     - _FresnelColor: {r: 1, g: 1, b: 1, a: 1}
     - _FresnelDotColor: {r: 1, g: 1, b: 1, a: 1}
-    - _HighColor: {r: 1, g: 0.9075091, b: 0.7783019, a: 1}
+    - _HighColor: {r: 1, g: 0.8780921, b: 0, a: 1}
     - _HighlightDotColor: {r: 1, g: 1, b: 1, a: 1}
     - _LowColor: {r: 1, g: 0.50980395, b: 0, a: 1}
     - _NormalRampShadowTint: {r: 0.6, g: 0.6, b: 0.7, a: 1}

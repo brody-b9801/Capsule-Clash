@@ -26,13 +26,13 @@ public class PersistentObjects : MonoBehaviour {
             obj.transform.parent = null;
             DontDestroyOnLoad(obj);
         }
-        SceneManager.sceneLoaded += OnSceneLoaded;
+        SceneManager.SceneLoaded += OnSceneLoaded;
     }
 
     private void OnDestroy() {
         if (_instance != this) return;
         _instance = null;
-        SceneManager.sceneLoaded -= OnSceneLoaded;
+        SceneManager.SceneLoaded -= OnSceneLoaded;
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode) {
@@ -42,8 +42,5 @@ public class PersistentObjects : MonoBehaviour {
 
             Destroy(cam.gameObject);
         }
-        GameObject light = GameObject.Find("Scene Light");
-        GameObject portals = GameObject.Find("PortalContainer");
-        
     }
 }

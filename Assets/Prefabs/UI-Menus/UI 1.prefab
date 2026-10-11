@@ -589,7 +589,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   h1: {fileID: 8926966991606923168}
-  healthBlackRef: {fileID: 0}
 --- !u!1 &8926966991821226908
 GameObject:
   m_ObjectHideFlags: 0
@@ -816,6 +815,7 @@ MonoBehaviour:
   roomText: {fileID: 0}
   bullet: {fileID: 0}
   shotgun: {fileID: 0}
+  sniper: {fileID: 0}
 --- !u!1 &8926966992407038752
 GameObject:
   m_ObjectHideFlags: 0

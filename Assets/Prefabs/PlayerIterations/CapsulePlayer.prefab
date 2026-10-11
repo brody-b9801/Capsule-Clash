@@ -213,10 +213,12 @@ MonoBehaviour:
   targetWalkXRot: 15
   targetWalkYRot: -45
   targetWalkZRot: 10
-  targetAimXPos: 0.12
-  targetAimZPos: 0.05
-  targetAimXRot: -3
-  targetAimYRot: 0
+  arAimPos: {x: 0.12, y: 0.085, z: 0.05}
+  shotgunAimPos: {x: 0.12, y: 0, z: 0.05}
+  sniperAimPos: {x: 0.12, y: -0.13, z: 0.05}
+  arAimRot: {x: -3, y: 0, z: 0}
+  shotgunAimRot: {x: -3, y: 0, z: 0}
+  sniperAimRot: {x: -3, y: 0, z: 0}
   dashVector: {x: 0, y: 0, z: 0}
   canTakeDamage: 1
   collisionMask:
@@ -352,8 +354,9 @@ MonoBehaviour:
   playerMesh: {fileID: 9146832561924185666}
   shotgunMesh: {fileID: 6919841926953838382, guid: ef692815acc00a84abbedf794f71d664, type: 3}
   M4Mesh: {fileID: -8401218714792031518, guid: 19b3217a01ed3df42b30c781edabc747, type: 3}
-  sniperMesh: {fileID: -8310518740751045040, guid: 0ed6e4d5dfd64181885d99e38b8abb41, type: 3}
-  sniperMagMesh: {fileID: -7144183082714287279, guid: 0ed6e4d5dfd64181885d99e38b8abb41, type: 3}
+  sniperMesh: {fileID: -8310518740751045040, guid: d29fec288a11ec64f9a91061c8e8d82c, type: 3}
+  sniperMagMesh: {fileID: -7144183082714287279, guid: d29fec288a11ec64f9a91061c8e8d82c, type: 3}
+  sniperMagPosition: {x: 0, y: -0.16, z: 0.1}
   bulletSpeed: 150
   snipeSpeed: 400
   fireRate: 11
@@ -577,7 +580,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584110484121607975
+  _initializedTimestamp: -8584099311865715719
 --- !u!114 &4570701551215273596
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -13,7 +13,6 @@ public class MenuHandler : MonoBehaviour
     [SerializeField] private GameObject startScreen;
     [SerializeField] private GameObject roomSelectionPanel;
     [SerializeField] private GameObject SettingsScreen;
-    [SerializeField] private GameObject titleBg;
     [SerializeField] private GameObject usernameInput;
     [SerializeField] private GameObject instructions;
     [SerializeField] private GameObject loadingCanvas;
