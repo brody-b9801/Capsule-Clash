@@ -21,9 +21,7 @@ public class RoomMenu : MonoBehaviour
 
     [SerializeField] private GameObject panel;
     [SerializeField] private GameObject x;
-    [SerializeField] private GameObject contents;
     [SerializeField] private GameObject UI;
-    [SerializeField] private GameObject Gun;
     [SerializeField] private GameObject Loading;
     [SerializeField] private GameObject roomText;
     [SerializeField] private GameObject startMenu;

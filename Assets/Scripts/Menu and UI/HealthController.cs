@@ -8,8 +8,6 @@ public class HealthController : MonoBehaviour
     public static RectTransform healthBar;
     [SerializeField] private RectTransform h1;
     public static float h = 180.0f;
-    public static RectTransform healthBlack;
-    [SerializeField] private RectTransform healthBlackRef;
     public static bool damageAnim;
     public static bool healAnim;
     public static bool noFDAnim;
@@ -21,7 +19,6 @@ public class HealthController : MonoBehaviour
 
     private void Start() {
         healthBar = h1;
-        healthBlack = healthBlackRef;
         healthPrev = DamageControl.MaxHealth;
         updateHealth();
     }

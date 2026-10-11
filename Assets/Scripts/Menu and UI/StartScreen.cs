@@ -81,7 +81,7 @@ public class StartScreen : MonoBehaviour
     }
     public void StartGame()
     {
-        SceneManager.LoadScene("mainScene", LoadSceneMode.Single);
+        UnityEngine.SceneManagement.SceneManager.LoadScene("mainScene", LoadSceneMode.Single);
     }
 
     public void OpenCredits() 

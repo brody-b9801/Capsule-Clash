@@ -11,8 +11,10 @@ public class CameraZoom : MonoBehaviour
     [SerializeField] private float maxZoom = 60.0f;
     [SerializeField] private float minZoom = 20.0f;
     [SerializeField] private float sprintZoom = 65.0f;
+    [SerializeField] private float sniperZoomDrop = 15.0f;
     [SerializeField] private float gunMoveSpeed = 5.0f;
     [SerializeField] private Camera cameraToZoom;
+    [SerializeField] private GameObject scope;
     private float targetZoom;
     private float currentVelocity1;
     private float currentVelocity2;
@@ -81,6 +83,9 @@ public class CameraZoom : MonoBehaviour
 
     private void Update()
     {
+        bool sniperEquipped = Shooting.Local != null && Shooting.Local.currentGun == Shooting.currGun.Sniper;
+        if (scope != null && scope.activeSelf != sniperEquipped) scope.SetActive(sniperEquipped);
+
         if (PlayerMovement.Local == null || Shooting.Local == null) return;
 
         if (shot) {
@@ -111,6 +116,7 @@ public class CameraZoom : MonoBehaviour
                 crosshairDelta = zoomCHFov * 1.25f * factor;
             }
             desiredZoom = minZoom;
+            if (Shooting.Local.currentGun == Shooting.currGun.Sniper) desiredZoom -= sniperZoomDrop;
         }
         else if (StaminaController.zoomOut)
         {

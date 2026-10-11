@@ -22,15 +22,6 @@ public class BuildHealth : NetworkBehaviour
     {
         currentHealth.Value = maxHealth;
         currentHealth.OnChange += OnHealthChanged;
-
-        if (transMesh == null)
-        {
-            Transform cube = transform.Find("Cube");
-            if (cube == null && build != null)
-                cube = build.transform.Find("Cube");
-            if (cube != null)
-                transMesh = cube.GetComponent<MeshRenderer>();
-        }
     }
 
     private void OnDestroy()

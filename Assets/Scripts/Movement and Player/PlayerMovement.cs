@@ -7,9 +7,6 @@ using FishNet.Object;
 using FishNet.Transporting;
 using UnityEngine.SceneManagement;
 using TMPro;
-using NUnit.Framework;
-using Unity.VisualScripting;
-using Cinemachine.Utility;
 
 [RequireComponent(typeof(ServerController))]
 public class PlayerMovement : NetworkBehaviour {
@@ -46,12 +43,10 @@ public class PlayerMovement : NetworkBehaviour {
     private Transform borderInstance;
     private float rotationX;
     private float rotationY;
-    private Transform cam2;
     private Transform akm;
     private Vector3 akmBaseLocalPos;
     private Vector3 akmBaseLocalRot;
     [SerializeField] private float forceMod;
-    private CapsuleCollider meshCollider;
     public bool onSlope;
     private GameObject portal1A;
     private GameObject portal1B;
@@ -63,24 +58,17 @@ public class PlayerMovement : NetworkBehaviour {
     [HideInInspector] public GameObject portal4B;
     private Transform bossArrival;
     private GameObject combatSceneLight;
-    private string pendingSceneTransfer;
-    bool inCombatScene = true;
     private bool canTeleport = true;
-    private bool checkTele = true;
     [SerializeField] private float launchForce;
-    private Vector3 remainingMovement;
-    private float speedMod;
     [SerializeField] private float dashForce = 10.0f;
     private int dashes = 0;
     private bool resettingDashes = false;
-    private Vector3 hitPoint;
     public bool jumpedLast = false;
     public bool isTeleporting = false;
     public Vector3 newVelocity;
     private bool groundedPrev; 
     private bool pendingLanding; 
     private float jumpBufferTimer;
-    private bool groundBeneath;
     private bool sprintingPrev;
     private CharacterController characterController;
     private bool resetPrev = false;
@@ -111,15 +99,21 @@ public class PlayerMovement : NetworkBehaviour {
     private static int SlopeMask { get { if (_slopeMask == 0) _slopeMask = ~LayerMask.GetMask("Player", "Bullet", "FiredBullet", "DCSelf", "DamageCollide", "IgnoreRaycast", "BuildNoColPlayer"); return _slopeMask; } }
     private readonly List<string> _hitNames = new List<string>();
     private RaycastHit[] _capsuleHits = new RaycastHit[16];
+    private Collider[] _stuckHits = new Collider[32];
     private Renderer[] _borderRenderers;
+    private Material[] _borderMaterials;
+    private static float _cachedBaseFOV = -1f;
+    private const float JumpOffsetMax = 0.0075f;
+    private const float GunSwayReferenceDelta = 1f / 60f; //mouse deltas are already per-frame, so sway uses a fixed scale instead of Time.deltaTime
+    private float baseGroundAcceleration;
+    private float baseGroundDeceleration;
+    private float baseFriction;
 
     private float gunXRot;
     private float gunYRot;
-    private bool lerpingXRot = false;
-    private bool lerpingYRot = false;
     [SerializeField] private Vector3 arAimPos = new Vector3(0.12f, 0.085f, 0.05f);
     [SerializeField] private Vector3 shotgunAimPos = new Vector3(0.12f, 0f, 0.05f);
-    [SerializeField] private Vector3 sniperAimPos = new Vector3(0.12f, -0.115f, 0.05f);
+    [SerializeField] private Vector3 sniperAimPos = new Vector3(0.12f, -0.13f, 0.05f);
     [SerializeField] private Vector3 arAimRot = new Vector3(-3f, 0f, 0f);
     [SerializeField] private Vector3 shotgunAimRot = new Vector3(-3f, 0f, 0f);
     [SerializeField] private Vector3 sniperAimRot = new Vector3(-3f, 0f, 0f);
@@ -142,7 +136,6 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private LayerMask collisionMask2;
     public float unstuckDistance = 0.1f;
     private int maxUnstuckAttempts = 30;
-    private bool isStuck = false;
     private List<Vector3> spawnVectors = new List<Vector3>();
     public Transform spawnPosContainer;
     
@@ -155,16 +148,13 @@ public class PlayerMovement : NetworkBehaviour {
     private List<Vector3> iceSpawnVectors = new List<Vector3>();
     public int hitCount = 0;
     public GameObject respawnScreen;
-    private GameObject respawnInit;
     public bool dead = false;
-    private List<Collider> NoColPlayerBuilds;
     private bool unstuckFail = false;
     private float lastGroundedHeight;
     private float sideTilt;
     private float targetSideTilt;
     public string username;
     public int killCount = 0;
-    private GameObject sceneLight;
     [SerializeField] private float walkAnimTuneGun = 1f;
     [SerializeField] private float walkAnimTune = 1f;
     [SerializeField] private float jumpAnimTune = 1f;
@@ -175,8 +165,6 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private Material selfMaterial;
     public float elapsedHealTime;
 
-    private SettingsController settingsControl;
-    private LeaderboardControl leaderboardControl;
     public GameObject usernameDisplay;
     [Header("Movement Physics")]
     [SerializeField] private float groundAcceleration = 20f;
@@ -206,7 +194,6 @@ public class PlayerMovement : NetworkBehaviour {
     private float currentSprintFOV = 0f;
     private Vector3 landingCameraOffset = Vector3.zero;
 
-    private Vector3 lastFrameMovement = Vector3.zero;
 
     public string currDimension = "Desert";
     private float gravity = 9.81f;
@@ -271,9 +258,9 @@ public class PlayerMovement : NetworkBehaviour {
             skybox = desertSky,
             farClip = 1000f,
             gravity = 9.81f,
-            accel = 1000f,
-            decel = 1000f,
-            fric = 8f,
+            accel = baseGroundAcceleration,
+            decel = baseGroundDeceleration,
+            fric = baseFriction,
             snow = false,
             root = GameObject.Find("Desert")
         };
@@ -283,9 +270,9 @@ public class PlayerMovement : NetworkBehaviour {
             skybox = null,
             farClip = 10f,
             gravity = 9.81f,
-            accel = 1000f,
-            decel = 1000f,
-            fric = 8f,
+            accel = baseGroundAcceleration,
+            decel = baseGroundDeceleration,
+            fric = baseFriction,
             snow = false,
             root = GameObject.Find("Maze")
         };
@@ -295,9 +282,9 @@ public class PlayerMovement : NetworkBehaviour {
             skybox = spaceSky,
             farClip = 400f,
             gravity = 6f,
-            accel = 1000f,
-            decel = 1000f,
-            fric = 8f,
+            accel = baseGroundAcceleration,
+            decel = baseGroundDeceleration,
+            fric = baseFriction,
             snow = false,
             root = GameObject.Find("Void")
         };
@@ -332,6 +319,9 @@ public class PlayerMovement : NetworkBehaviour {
 
 
     private void Awake() {
+        baseGroundAcceleration = groundAcceleration;
+        baseGroundDeceleration = groundDeceleration;
+        baseFriction = friction;
     }
 
 
@@ -350,8 +340,6 @@ public class PlayerMovement : NetworkBehaviour {
             SaveSystem.ApplyPendingKillData(this);
             gunRenderer = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
             gunRenderer.enableGun();
-            settingsControl = GameObject.Find("Room Menu (1)").GetComponent<SettingsController>();
-            leaderboardControl = GetComponent<LeaderboardControl>();
             serverController = GetComponent<ServerController>();
             iceSpawnPosContainer = GameObject.Find("IceSpawnContainer").transform;
             spaceSpawnPosContainer = GameObject.Find("VoidSpawnContainer").transform;
@@ -361,8 +349,6 @@ public class PlayerMovement : NetworkBehaviour {
             if (localShooting != null) localShooting.canShoot = true;
             Shooting.lockCursor = true;
             dt = GameObject.Find("DashText").GetComponent<TextMeshProUGUI>();
-            sceneLight = GameObject.Find("DynamicLight");
-            meshCollider = GetComponent<CapsuleCollider>();
             playerCamera = Camera.main;
             PersistentObjects.Ensure(playerCamera);
 
@@ -370,10 +356,11 @@ public class PlayerMovement : NetworkBehaviour {
             if (upgradeManagers.Length > 0) PersistentSceneObject.Keep(upgradeManagers[0].gameObject, "UpgradeUI");
             else Debug.LogWarning("[PlayerMovement] no upgradeManager found; the HUD will not survive the scene load.");
 
-            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoadedAsOwner;
-            baseFOV = playerCamera.fieldOfView;
+            global::SceneManager.Reset();
+            global::SceneManager.SceneLoaded += OnSceneLoadedAsOwner;
+            if (_cachedBaseFOV < 0f) _cachedBaseFOV = playerCamera.fieldOfView;
+            baseFOV = _cachedBaseFOV;
             currentFOV = baseFOV;
-            cam2 = GameObject.Find("CameraTwo").transform;
             gunThing = SceneLookup.FindInactive("gunThing").transform;
             akm = SceneLookup.FindInactive("CamAKM").transform;
             akmBaseLocalPos = akm.localPosition;
@@ -388,6 +375,8 @@ public class PlayerMovement : NetworkBehaviour {
             borderInstance = Instantiate(borderPrefab, Vector3.zero, Quaternion.identity).transform;
             PersistentSceneObject.Keep(borderInstance.gameObject, "PlayerBorder");
             _borderRenderers = borderInstance.GetComponentsInChildren<Renderer>();
+            _borderMaterials = new Material[_borderRenderers.Length];
+            for (int i = 0; i < _borderRenderers.Length; i++) _borderMaterials[i] = _borderRenderers[i].material;
             spawn = transform.position;
             dashIcon = GameObject.Find("dashBG").GetComponent<RectTransform>();
             
@@ -458,16 +447,15 @@ public class PlayerMovement : NetworkBehaviour {
         lastPosition = playerTransform.position;
         lastGroundedHeight = transform.position.y;
 
-        if (scene.name != pendingSceneTransfer) return;
-        pendingSceneTransfer = null;
+        if (!global::SceneManager.CompleteTransfer(scene)) return;
         ArriveInScene(scene);
     }
 
     private void ArriveInScene(Scene scene) {
-        System.Func<string, GameObject> find = SceneFinder(scene);
+        System.Func<string, GameObject> find = global::SceneManager.Finder(scene);
         ResolveSceneReferences(find);
         ResolveHudReferences(find, scene);
-        inCombatScene = scene.name != "BossScene";
+        bool inCombatScene = global::SceneManager.InCombatScene;
         if (borderInstance != null) borderInstance.gameObject.SetActive(inCombatScene);
         if (!inCombatScene && portal4B == null)
             Debug.LogError($"[PlayerMovement] '{scene.name}' has no portal4B; there is no way back to CombatScene.");
@@ -506,28 +494,16 @@ public class PlayerMovement : NetworkBehaviour {
         allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo };
     }
 
-    private static System.Func<string, GameObject> SceneFinder(Scene scene) {
-        Dictionary<string, GameObject> byName = new Dictionary<string, GameObject>();
-        foreach (GameObject root in scene.GetRootGameObjects())
-            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
-                if (!byName.ContainsKey(t.name)) byName[t.name] = t.gameObject;
-        return name => byName.TryGetValue(name, out GameObject go) ? go : null;
-    }
-
     private void ResolveHudReferences(System.Func<string, GameObject> find, Scene scene) {
-        if (dt == null || !SurvivesInto(dt.gameObject, scene)) {
+        if (dt == null || !global::SceneManager.SurvivesInto(dt.gameObject, scene)) {
             GameObject dashText = find("DashText");
             dt = dashText != null ? dashText.GetComponent<TextMeshProUGUI>() : null;
             displayedDashes = -1;
         }
-        if (dashIcon == null || !SurvivesInto(dashIcon.gameObject, scene)) {
+        if (dashIcon == null || !global::SceneManager.SurvivesInto(dashIcon.gameObject, scene)) {
             GameObject dashBG = find("dashBG");
             dashIcon = dashBG != null ? dashBG.GetComponent<RectTransform>() : null;
         }
-    }
-
-    private static bool SurvivesInto(GameObject go, Scene scene) {
-        return go.scene == scene || go.scene.name == "DontDestroyOnLoad";
     }
 
     private void FaceDirection(float yaw) {
@@ -536,7 +512,7 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void OnDestroy() {
-        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoadedAsOwner;
+        global::SceneManager.SceneLoaded -= OnSceneLoadedAsOwner;
     }
 
     private static Vector3 migrationPosition;
@@ -575,19 +551,25 @@ public class PlayerMovement : NetworkBehaviour {
     {
         if (Local == this) {
             if (NetworkHudCanvases.InLobby) SaveSystem.CaptureSessionData();
-            if (!dead && inCombatScene && currDimension == "Desert") {
+            if (!dead && global::SceneManager.InCombatScene && currDimension == "Desert") {
                 migrationPosition = transform.position;
                 migrationYaw = currentCameraRotationY;
                 migrationPositionTime = Time.realtimeSinceStartup;
             } else {
                 migrationPositionTime = float.NegativeInfinity;
             }
+            healParticles.healing = false;
             Local = null;
             started = false;
         }
-        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoadedAsOwner;
+        global::SceneManager.SceneLoaded -= OnSceneLoadedAsOwner;
         base.OnStopClient();
         if (borderInstance != null) Destroy(borderInstance.gameObject);
+        if (_borderMaterials != null) {
+            for (int i = 0; i < _borderMaterials.Length; i++)
+                if (_borderMaterials[i] != null) Destroy(_borderMaterials[i]);
+            _borderMaterials = null;
+        }
         if (allDimensions == null) return;
         for (int i = 0; i < allDimensions.Length; i++) {
             GameObject root = allDimensions[i].root;
@@ -632,7 +614,8 @@ public class PlayerMovement : NetworkBehaviour {
     private bool CanJump() { return isGrounded; }
 
     private void Update() {
-        if (ServerController.serverAnimationPlaying || !started) {
+        if (ServerController.serverAnimationPlaying || !started
+            || upgradeManager.Local == null || Shooting.Local == null || StaminaController.Local == null) {
             lastPosition = playerTransform.position;
             velocityTransform = Vector3.zero;
             return;
@@ -650,7 +633,6 @@ public class PlayerMovement : NetworkBehaviour {
 
         groundedPrev = isGrounded;
         isGrounded = isGround();
-        lastFrameMovement = movement;
         HandleCameraRotation();
         UpdateMovementVector();
         if (characterController.enabled) characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
@@ -780,6 +762,11 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void HandleCameraRotation() {
+        if (dead || Cursor.lockState != CursorLockMode.Locked) {
+            rotationX = 0f;
+            rotationY = 0f;
+            return;
+        }
         float mouseX = Input.GetAxisRaw("Mouse X");
         float mouseY = Input.GetAxisRaw("Mouse Y");
         rotationX = -(mouseY * rotationSpeed);
@@ -833,7 +820,6 @@ public class PlayerMovement : NetworkBehaviour {
             }
         } else {
             characterController.stepOffset = 0f;
-            groundBeneath = false;
             pendingLanding = true;
             if (groundedPrev) {
                 lastGroundedHeight = transform.position.y;
@@ -880,7 +866,7 @@ public class PlayerMovement : NetworkBehaviour {
         if (Input.GetKeyDown(KeyCode.R) && dead) Respawn();
 
         if (Input.GetKey(KeyCode.Q) && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
-            && isGrounded && !healParticles.healing && DamageControl.Local.health.Value < 180.0f)
+            && isGrounded && !healParticles.healing && DamageControl.Local != null && DamageControl.Local.health.Value < 180.0f)
             StartCoroutine(stationaryHealing());
 
         if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
@@ -999,33 +985,25 @@ public class PlayerMovement : NetworkBehaviour {
             else if (hitObject == portal2B) HandleTeleportation(portal2A.transform, spaceInfo);
             else if (hitObject == portal3A) HandleTeleportation(portal3B.transform, desertInfo);
             else if (hitObject == portal3B) HandleTeleportation(portal3A.transform, iceInfo);
-            else if (hitObject == portal4A) ChangeScene("BossScene");
-            else if (hitObject == portal4B) ChangeScene("CombatScene");
+            else if (hitObject == portal4A) ChangeScene(global::SceneManager.BossScene);
+            else if (hitObject == portal4B) ChangeScene(global::SceneManager.CombatScene);
         }
     }
 
     private void ChangeScene(string name) {
         if (!IsOwner) return;
         canTeleport = false;
-        pendingSceneTransfer = name;
+        global::SceneManager.BeginTransfer(name);
         RetroDither.isTeleporting = true;
         TransferToScene(name);
-        StartCoroutine(SceneTransferTimeout(name));
-    }
-
-    IEnumerator SceneTransferTimeout(string name) {
-        yield return new WaitForSecondsRealtime(15f);
-        if (pendingSceneTransfer != name) yield break;
-        Debug.LogWarning($"[PlayerMovement] Transfer to '{name}' never arrived; portals re-enabled.");
-        pendingSceneTransfer = null;
-        canTeleport = true;
+        StartCoroutine(global::SceneManager.TransferTimeout(name, () => canTeleport = true));
     }
 
     private void VelocityResetCheck(Vector3 hitNormal) {
         if (Vector3.Angle(dashVector, hitNormal) > 90f) { //check to reset dash if hit wall
             dashVector = Vector3.zero;
         }
-        if  (Vector3.Angle(hitNormal, Vector3.down) < characterController.slopeLimit) { //check to reset vertical velocity if hit ceiling
+        if  (newVelocity.y > 0f && Vector3.Angle(hitNormal, Vector3.down) < characterController.slopeLimit) { //check to reset vertical velocity if hit ceiling
             newVelocity.y = 0f;
         }
 
@@ -1050,10 +1028,6 @@ public class PlayerMovement : NetworkBehaviour {
         characterController.stepOffset = onIce ? 0f : 0.55f;
     }
 
-    private bool IsTopFaceCollision(ControllerColliderHit collision) {
-        return Vector3.Angle(collision.normal, Vector3.up) <= characterController.slopeLimit;
-    }
-
     private bool IsOnSlope() {
         RaycastHit hit;
         LayerMask layerMask = SlopeMask;
@@ -1071,7 +1045,7 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void BorderWarning() {
-        if (!inCombatScene) return;
+        if (!global::SceneManager.InCombatScene) return;
         float horizontalDistanceFromOrigin;
         float absX = Mathf.Abs(transform.position.x) - 60; //60 = x size of bounds
         float absZ = Mathf.Abs(transform.position.z) - 90; //90 = z size of bounds
@@ -1092,16 +1066,19 @@ public class PlayerMovement : NetworkBehaviour {
             newAlpha1 = yDistanceFromOrigin > 55f ? ((yDistanceFromOrigin - 55f) / 20f) * 255f : 0f;
         } else if (currDimension == "Space") {
             newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
-            newAlpha1 = Mathf.Abs(yDistanceFromOrigin) > 50f ? ((Mathf.Abs(yDistanceFromOrigin - 50f)) / 20f) * 255f : 0f;
+            newAlpha1 = Mathf.Abs(yDistanceFromOrigin) > 50f ? ((Mathf.Abs(yDistanceFromOrigin) - 50f) / 20f) * 255f : 0f;
         } else if (currDimension == "Ice") {
             newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
             newAlpha1 = yDistanceFromOrigin > 55f ? ((yDistanceFromOrigin - 55f) / 20f) * 255f : 0f;
+        } else {
+            newAlpha = 0f;
+            newAlpha1 = 0f;
         }
 
         float alphaToUse = Mathf.Clamp(Mathf.Max(newAlpha, newAlpha1), 0, 30f);
         Color borderColor = new Color(1f, 0f, 0f, alphaToUse / 255f);
-        for (int i = 0; i < _borderRenderers.Length; i++)
-            _borderRenderers[i].sharedMaterial.color = borderColor;
+        for (int i = 0; i < _borderMaterials.Length; i++)
+            _borderMaterials[i].color = borderColor;
     }
 
     public void Die() {
@@ -1109,7 +1086,7 @@ public class PlayerMovement : NetworkBehaviour {
         characterController.enabled = false;
         dead = true;
         if (DamageControl.Local != null) DamageControl.Local.ServerKillSelf();
-        respawnInit = Instantiate(respawnScreen);
+        Instantiate(respawnScreen);
         Cursor.lockState = CursorLockMode.None;
         Shooting.lockCursor = false;
         transform.position = new Vector3(0, -30, 0);
@@ -1145,8 +1122,9 @@ public class PlayerMovement : NetworkBehaviour {
         isSprinting = false;
         pendingLanding = false;
         jumpBufferTimer = 0f;
+        currentCameraRotationX = 0f;
 
-        if (!inCombatScene && bossArrival != null) {
+        if (!global::SceneManager.InCombatScene && bossArrival != null) {
             transform.position = bossArrival.position;
             FaceDirection(bossArrival.eulerAngles.y);
         } else {
@@ -1158,8 +1136,13 @@ public class PlayerMovement : NetworkBehaviour {
             else if (currDimension == "Ice" && iceSpawnVectors.Count > 0)
                 currentSpawns = iceSpawnVectors;
 
-            int num = Random.Range(0, currentSpawns.Count);
-            transform.position = currentSpawns[num];
+            if (currentSpawns.Count > 0) {
+                int num = Random.Range(0, currentSpawns.Count);
+                transform.position = currentSpawns[num];
+            } else {
+                Debug.LogWarning("[PlayerMovement] no spawn points found; respawning at the initial spawn position.");
+                transform.position = spawn;
+            }
 
             Vector3 targetDirection = new Vector3(17f - 13.94f, -9f, -27f + 3.89f) - transform.position;
             FaceDirection(Quaternion.LookRotation(targetDirection).eulerAngles.y);
@@ -1201,7 +1184,7 @@ public class PlayerMovement : NetworkBehaviour {
     private void HandleTeleportation(Transform destination, DimensionInfo target, float heightOffset = 3f) {
         characterController.enabled = false;
         SetActiveDimension(target);
-        if (inCombatScene && combatSceneLight != null)
+        if (global::SceneManager.InCombatScene && combatSceneLight != null)
             combatSceneLight.transform.localScale = (target.name == "Desert") ? Vector3.one * 150f : Vector3.zero;
         canTeleport = false;
         StartCoroutine(teleTrue());
@@ -1227,14 +1210,14 @@ public class PlayerMovement : NetworkBehaviour {
         Camera.main.GetComponent<FogShader>().ChangeDimension(target.name);
 
 
-        SetActiveIfPresent(portal1A, inCombatScene);
-        SetActiveIfPresent(portal1B, inCombatScene);
-        SetActiveIfPresent(portal2A, inCombatScene);
-        SetActiveIfPresent(portal2B, inCombatScene);
-        SetActiveIfPresent(portal3A, inCombatScene);
-        SetActiveIfPresent(portal3B, inCombatScene);
-        SetActiveIfPresent(portal4A, inCombatScene);
-        SetActiveIfPresent(portal4B, !inCombatScene);
+        SetActiveIfPresent(portal1A, global::SceneManager.InCombatScene);
+        SetActiveIfPresent(portal1B, global::SceneManager.InCombatScene);
+        SetActiveIfPresent(portal2A, global::SceneManager.InCombatScene);
+        SetActiveIfPresent(portal2B, global::SceneManager.InCombatScene);
+        SetActiveIfPresent(portal3A, global::SceneManager.InCombatScene);
+        SetActiveIfPresent(portal3B, global::SceneManager.InCombatScene);
+        SetActiveIfPresent(portal4A, global::SceneManager.InCombatScene);
+        SetActiveIfPresent(portal4B, !global::SceneManager.InCombatScene);
     }
 
     private static void SetActiveIfPresent(GameObject go, bool active) {
@@ -1259,22 +1242,22 @@ public class PlayerMovement : NetworkBehaviour {
         Vector3 capsuleBottom = transform.position + characterController.center - Vector3.up * (characterController.height / 2 - characterController.radius);
         Vector3 capsuleTop = transform.position + characterController.center + Vector3.up * (characterController.height / 2 - characterController.radius);
 
-        Collider[] hitColliders = Physics.OverlapCapsule(capsuleBottom, capsuleTop, characterController.radius, collisionMask);
-        if (hitColliders.Length == 0) return;
+        int stuckCount = Physics.OverlapCapsuleNonAlloc(capsuleBottom, capsuleTop, characterController.radius, _stuckHits, collisionMask);
+        if (stuckCount == 0) return;
 
         bool isBuildCollision = false;
-        foreach (var col in hitColliders) {
-            if (IsBuildCollider(col)) {
+        for (int i = 0; i < stuckCount; i++) {
+            if (IsBuildCollider(_stuckHits[i])) {
                 isBuildCollision = true;
                 break;
             }
         }
         if (!isBuildCollision) return;
-        Collider[] stuckColliders = hitColliders;
 
         Vector3 start = transform.position;
         Dictionary<Collider, int> originalLayers = new Dictionary<Collider, int>();
-        foreach (var col in hitColliders) {
+        for (int i = 0; i < stuckCount; i++) {
+            Collider col = _stuckHits[i];
             if (col.tag == "Ramp") {
                 originalLayers[col] = col.gameObject.layer;
                 col.gameObject.layer = 2;
@@ -1291,15 +1274,14 @@ public class PlayerMovement : NetworkBehaviour {
                 characterController.enabled = true;
                 capsuleBottom = transform.position + characterController.center - Vector3.up * (characterController.height / 2 - characterController.radius);
                 capsuleTop = transform.position + characterController.center + Vector3.up * (characterController.height / 2 - characterController.radius);
-                hitColliders = Physics.OverlapCapsule(capsuleBottom, capsuleTop, characterController.radius, collisionMask);
-                if (hitColliders.Length == 0) { unstuckFail = false; break; }
+                if (!Physics.CheckCapsule(capsuleBottom, capsuleTop, characterController.radius, collisionMask)) { unstuckFail = false; break; }
                 else unstuckFail = true;
             }
 
             if (unstuckFail) {
                 newVelocity.y = 0;
-                foreach (Collider thing in stuckColliders)
-                    if (IsBuildCollider(thing)) thing.transform.gameObject.layer = 11;
+                for (int i = 0; i < stuckCount; i++)
+                    if (IsBuildCollider(_stuckHits[i])) _stuckHits[i].transform.gameObject.layer = 11;
                 characterController.enabled = false;
                 transform.position = start;
                 characterController.enabled = true;
@@ -1307,8 +1289,8 @@ public class PlayerMovement : NetworkBehaviour {
             lastPosition = playerTransform.position; 
         } else {
             foreach (var entry in originalLayers) entry.Key.gameObject.layer = entry.Value;
-            foreach (Collider thing in stuckColliders)
-                if (IsBuildCollider(thing)) thing.transform.gameObject.layer = 11;
+            for (int i = 0; i < stuckCount; i++)
+                if (IsBuildCollider(_stuckHits[i])) _stuckHits[i].transform.gameObject.layer = 11;
         }
     }
 
@@ -1332,7 +1314,7 @@ public class PlayerMovement : NetworkBehaviour {
         while (elapsedHealTime < DamageControl.HealChannelTime / upgradeManager.Local.regenSpeedMultiplier) {
             healParticles.healing = true;
             if (!(Input.GetKey(KeyCode.Q) && !CameraZoom.moving && !Shaker.shooting
-                  && DamageControl.Local.health.Value < 180.0f && isGrounded && !Shooting.Local.reloading)) {
+                  && DamageControl.Local != null && DamageControl.Local.health.Value < 180.0f && isGrounded && !Shooting.Local.reloading)) {
                 healParticles.healing = false;
                 yield break;
             }
@@ -1475,12 +1457,12 @@ public class PlayerMovement : NetworkBehaviour {
         lerpingJump = true;
         if (jumpOffset > 0) {
             while (jumpOffset > 0) {
-                jumpOffset = Mathf.Clamp(jumpOffset - 0.025f * Time.deltaTime, 0, 0.0075f);
+                jumpOffset = Mathf.Clamp(jumpOffset - 0.025f * Time.deltaTime, 0, JumpOffsetMax);
                 yield return null;
             }
         } else {
             while (jumpOffset < 0) {
-                jumpOffset = Mathf.Clamp(jumpOffset + 0.025f * Time.deltaTime, -0.0075f, 0);
+                jumpOffset = Mathf.Clamp(jumpOffset + 0.025f * Time.deltaTime, -JumpOffsetMax, 0);
                 yield return null;
             }
         }
@@ -1500,22 +1482,6 @@ public class PlayerMovement : NetworkBehaviour {
         jumpOffsetTwo = 0;
     }
 
-    IEnumerator rotLerpX() {
-        lerpingXRot = true;
-        if (gunXRot > 0) {
-            while (rotationX == 0 && gunXRot > 0) {
-                gunXRot = Mathf.Clamp(gunXRot - 5f * Time.deltaTime, 0, Mathf.Infinity);
-                yield return null;
-            }
-        } else {
-            while (rotationX == 0 && gunXRot < 0) {
-                gunXRot = Mathf.Clamp(gunXRot + 5f * Time.deltaTime, -Mathf.Infinity, 0);
-                yield return null;
-            }
-        }
-        lerpingXRot = false;
-    }
-
     IEnumerator LerpDash() {
         Vector3 dashVectorRef = dashVector;
         float elapsedTime = 0f;
@@ -1529,21 +1495,6 @@ public class PlayerMovement : NetworkBehaviour {
         dashRoutine = null;
     }
 
-    IEnumerator rotLerpY() {
-        lerpingYRot = true;
-        if (gunYRot > 0) {
-            while (gunYRot > 0) {
-                gunYRot = Mathf.Clamp(gunYRot - 5f * Time.deltaTime, 0, Mathf.Infinity);
-                yield return null;
-            }
-        } else {
-            while (gunYRot < 0) {
-                gunYRot = Mathf.Clamp(gunYRot + 5f * Time.deltaTime, -Mathf.Infinity, 0);
-                yield return null;
-            }
-        }
-        lerpingYRot = false;
-    }
     private void SideMovementCameraTilt()
     {
         Vector3 horizontalMovement = new Vector3(movement.x, 0, movement.z);
@@ -1561,7 +1512,7 @@ public class PlayerMovement : NetworkBehaviour {
         sideTilt = Mathf.Lerp(sideTilt, targetSideTilt, Time.deltaTime * lerpSpeed);
     }
     private void LateUpdate() {
-        if (!IsOwner || ServerController.serverAnimationPlaying) return;
+        if (!IsOwner || ServerController.serverAnimationPlaying || Shooting.Local == null) return;
         if (!Shooting.Local.reloading) {
             akm.localPosition = akmBaseLocalPos;
             akm.localEulerAngles = akmBaseLocalRot;
@@ -1646,8 +1597,8 @@ public class PlayerMovement : NetworkBehaviour {
                 akm.localPosition += posOffset;
 
             Vector3 rotOffset = new Vector3(
-                2f * Mathf.Sin(jumpOffset / 0.0075f * Mathf.PI / 2f) * jumpAnimTune + BreathingAnim.yVal * 3.5f * breatheAnimTune + Shooting.changeRotOffset * shootAnimTune - Mathf.Abs(walkingShake.newY) * -16.5f * walkAnimTuneGun + walkVectorRot.x * walkAnimTuneGun - gunXRot * turnAnimTune * 0.6f + 0.4f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune,
-                -walkingShake.newX * 5.25f * walkAnimTuneGun + walkVectorRot.y * walkAnimTuneGun + gunYRot * turnAnimTune * 0.6f + Mathf.Clamp(0f, -Mathf.Infinity, 0),
+                2f * Mathf.Sin(jumpOffset / JumpOffsetMax * Mathf.PI / 2f) * jumpAnimTune + BreathingAnim.yVal * 3.5f * breatheAnimTune + Shooting.changeRotOffset * shootAnimTune - Mathf.Abs(walkingShake.newY) * -16.5f * walkAnimTuneGun + walkVectorRot.x * walkAnimTuneGun - gunXRot * turnAnimTune * 0.6f + 0.4f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune,
+                -walkingShake.newX * 5.25f * walkAnimTuneGun + walkVectorRot.y * walkAnimTuneGun + gunYRot * turnAnimTune * 0.6f,
                 walkingShake.newX * 2.25f * walkAnimTuneGun + walkVectorRot.z * walkAnimTuneGun + sideTilt * sidewaysAnimTune * 1.5f);
                 akm.localEulerAngles += rotOffset;
         }
@@ -1655,9 +1606,9 @@ public class PlayerMovement : NetworkBehaviour {
         sprintingPrev = isSprinting;
 
         if (rotationX != 0)
-            gunXRot = Mathf.Clamp(gunXRot + Mathf.Clamp(rotationX * -3.75f, -25f, 25f) * Time.deltaTime, -Mathf.Infinity, Mathf.Infinity);
+            gunXRot += Mathf.Clamp(rotationX * -3.75f, -25f, 25f) * GunSwayReferenceDelta;
         if (rotationY != 0)
-            gunYRot = Mathf.Clamp(gunYRot + Mathf.Clamp(rotationY * 3.75f, -40f, 40f) * Time.deltaTime, -Mathf.Infinity, Mathf.Infinity);
+            gunYRot += Mathf.Clamp(rotationY * 3.75f, -40f, 40f) * GunSwayReferenceDelta;
 
         gunXRot = Mathf.Lerp(gunXRot, 0f, Time.deltaTime * 5f);
         gunYRot = Mathf.Lerp(gunYRot, 0f, Time.deltaTime * 5f);
@@ -1668,19 +1619,11 @@ public class PlayerMovement : NetworkBehaviour {
                 StartCoroutine(jumpLerpTwo());
             }
         } else {
-            jumpOffset = Mathf.Clamp(jumpOffset + Mathf.Sign(characterController.velocity.y) * 0.01f * Time.deltaTime, -0.01f, 0.01f);
+            jumpOffset = Mathf.Clamp(jumpOffset + Mathf.Sign(characterController.velocity.y) * 0.01f * Time.deltaTime, -JumpOffsetMax, JumpOffsetMax);
         }
         if (transform.position.y < -58.5f) {
             transform.position = new Vector3(transform.position.x, 0, transform.position.z);
             Die();
         }
-    }
-
-    private bool IsValidVector3(Vector3 vector) {
-        return !(float.IsNaN(vector.x) || float.IsNaN(vector.y) || float.IsNaN(vector.z));
-    }
-
-    private bool IsValidQuaternion(Quaternion quaternion) {
-        return !(float.IsNaN(quaternion.x) || float.IsNaN(quaternion.y) || float.IsNaN(quaternion.z) || float.IsNaN(quaternion.w));
     }
 }

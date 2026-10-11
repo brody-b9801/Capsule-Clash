@@ -164,7 +164,7 @@ Shader "FlexibleCelShader/Comic Book Style"
             struct v2f
             {
                 float2 uv          : TEXCOORD0;
-                SHADOW_COORDS(1)
+                UNITY_SHADOW_COORDS(1)
                 float3 worldNormal : TEXCOORD2;
                 float4 worldPos    : TEXCOORD3;
                 float2 lightmapUV  : TEXCOORD4;
@@ -217,7 +217,7 @@ Shader "FlexibleCelShader/Comic Book Style"
                 o.worldNormal = UnityObjectToWorldNormal(v.normal);
                 o.lightmapUV  = v.texcoord1.xy * unity_LightmapST.xy + unity_LightmapST.zw;
 
-                TRANSFER_SHADOW(o);
+                UNITY_TRANSFER_SHADOW(o, v.texcoord1);
                 return o;
             }
 
@@ -232,7 +232,13 @@ Shader "FlexibleCelShader/Comic Book Style"
                 float3 N = normalize(i.worldNormal);
 
                 // ── Lean cel ramp ─────────────────────────────────────────
-                float shadow    = SHADOW_ATTENUATION(i);
+                UNITY_LIGHT_ATTENUATION(shadow, i, i.worldPos.xyz);
+                #if defined(HANDLE_SHADOWS_BLENDING_IN_GI)
+                    half  bakedAtten = UnitySampleBakedOcclusion(i.lightmapUV, i.worldPos.xyz);
+                    float zDist      = dot(_WorldSpaceCameraPos - i.worldPos.xyz, UNITY_MATRIX_V[2].xyz);
+                    float fadeDist   = UnityComputeShadowFadeDistance(i.worldPos.xyz, zDist);
+                    shadow = UnityMixRealtimeAndBakedShadows(shadow, bakedAtten, UnityComputeShadowFade(fadeDist));
+                #endif
                 float lightTerm = saturate(dot(N, lightDir) * _LightScalar) * shadow;
                 float celRamp   = ToonRamp(lightTerm);
 
@@ -297,9 +303,10 @@ Shader "FlexibleCelShader/Comic Book Style"
 
             struct appdata
             {
-                float4 vertex   : POSITION;
-                float3 normal   : NORMAL;
-                float2 texcoord : TEXCOORD0;
+                float4 vertex    : POSITION;
+                float3 normal    : NORMAL;
+                float2 texcoord  : TEXCOORD0;
+                float2 texcoord1 : TEXCOORD1;
             };
 
             struct v2f
@@ -308,7 +315,7 @@ Shader "FlexibleCelShader/Comic Book Style"
                 float3 worldNormal : TEXCOORD1;
                 float4 worldPos    : TEXCOORD2;
                 float4 pos         : SV_POSITION;
-                LIGHTING_COORDS(3, 4)
+                UNITY_LIGHTING_COORDS(3, 4)
             };
 
             float4    _Color;
@@ -343,7 +350,7 @@ Shader "FlexibleCelShader/Comic Book Style"
                 o.worldPos    = mul(unity_ObjectToWorld, v.vertex);
                 o.pos         = mul(UNITY_MATRIX_VP, o.worldPos);
                 o.worldNormal = UnityObjectToWorldNormal(v.normal);
-                TRANSFER_VERTEX_TO_FRAGMENT(o);
+                UNITY_TRANSFER_LIGHTING(o, v.texcoord1);
                 return o;
             }
 
