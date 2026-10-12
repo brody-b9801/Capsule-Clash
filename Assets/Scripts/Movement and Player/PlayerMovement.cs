@@ -137,15 +137,7 @@ public class PlayerMovement : NetworkBehaviour {
     public float unstuckDistance = 0.1f;
     private int maxUnstuckAttempts = 30;
     private List<Vector3> spawnVectors = new List<Vector3>();
-    public Transform spawnPosContainer;
-    
-    private Transform mazeSpawnPosContainer;
-    private Transform spaceSpawnPosContainer;
-    private Transform iceSpawnPosContainer;    
-    private List<Vector3> desertSpawnVectors = new List<Vector3>();
-    private List<Vector3> mazeSpawnVectors = new List<Vector3>();
-    private List<Vector3> spaceSpawnVectors = new List<Vector3>();
-    private List<Vector3> iceSpawnVectors = new List<Vector3>();
+    private Transform spawnPosContainer;
     public int hitCount = 0;
     public GameObject respawnScreen;
     public bool dead = false;
@@ -239,6 +231,7 @@ public class PlayerMovement : NetworkBehaviour {
         public float fric;
         public bool snow;
         public GameObject root;
+        public string scene;
     }
 
     private DimensionInfo desertInfo;
@@ -246,6 +239,8 @@ public class PlayerMovement : NetworkBehaviour {
     private DimensionInfo spaceInfo;
     private DimensionInfo iceInfo;
     private DimensionInfo[] allDimensions;
+    private DimensionInfo pendingDimension;
+    private string pendingArrival;
     Vector3 floorNormal = Vector3.up;
     private Vector3 ledgePushDir;
     [SerializeField] private float ledgeSupportFraction = 0.5f;
@@ -262,7 +257,8 @@ public class PlayerMovement : NetworkBehaviour {
             decel = baseGroundDeceleration,
             fric = baseFriction,
             snow = false,
-            root = GameObject.Find("Desert")
+            root = GameObject.Find("Desert"),
+            scene = global::SceneManager.DesertScene
         };
         mazeInfo = new DimensionInfo {
             name = "Maze",
@@ -274,7 +270,8 @@ public class PlayerMovement : NetworkBehaviour {
             decel = baseGroundDeceleration,
             fric = baseFriction,
             snow = false,
-            root = GameObject.Find("Maze")
+            root = GameObject.Find("Maze"),
+            scene = global::SceneManager.MazeScene
         };
         spaceInfo = new DimensionInfo {
             name = "Space",
@@ -286,7 +283,8 @@ public class PlayerMovement : NetworkBehaviour {
             decel = baseGroundDeceleration,
             fric = baseFriction,
             snow = false,
-            root = GameObject.Find("Void")
+            root = GameObject.Find("Void"),
+            scene = global::SceneManager.SpaceScene
         };
         iceInfo = new DimensionInfo {
             name = "Ice",
@@ -298,7 +296,8 @@ public class PlayerMovement : NetworkBehaviour {
             decel = 10f,
             fric = 1f,
             snow = true,
-            root = GameObject.Find("Ice")
+            root = GameObject.Find("Ice"),
+            scene = global::SceneManager.SnowScene
         };
         allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo };
     }
@@ -341,9 +340,6 @@ public class PlayerMovement : NetworkBehaviour {
             gunRenderer = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
             gunRenderer.enableGun();
             serverController = GetComponent<ServerController>();
-            iceSpawnPosContainer = GameObject.Find("IceSpawnContainer").transform;
-            spaceSpawnPosContainer = GameObject.Find("VoidSpawnContainer").transform;
-            mazeSpawnPosContainer = GameObject.Find("MazeSpawnContainer").transform;
             localShooting = GetComponent<Shooting>();
             localSpawner = GetComponent<ObjectSpawner>();
             if (localShooting != null) localShooting.canShoot = true;
@@ -356,7 +352,7 @@ public class PlayerMovement : NetworkBehaviour {
             if (upgradeManagers.Length > 0) PersistentSceneObject.Keep(upgradeManagers[0].gameObject, "UpgradeUI");
             else Debug.LogWarning("[PlayerMovement] no upgradeManager found; the HUD will not survive the scene load.");
 
-            global::SceneManager.Reset();
+            global::SceneManager.Instance.Reset();
             global::SceneManager.SceneLoaded += OnSceneLoadedAsOwner;
             if (_cachedBaseFOV < 0f) _cachedBaseFOV = playerCamera.fieldOfView;
             baseFOV = _cachedBaseFOV;
@@ -379,16 +375,7 @@ public class PlayerMovement : NetworkBehaviour {
             for (int i = 0; i < _borderRenderers.Length; i++) _borderMaterials[i] = _borderRenderers[i].material;
             spawn = transform.position;
             dashIcon = GameObject.Find("dashBG").GetComponent<RectTransform>();
-            
-            Transform desertContainer = spawnPosContainer;
-            foreach (Transform s in desertContainer) 
-                desertSpawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
-            foreach (Transform s in mazeSpawnPosContainer)
-                mazeSpawnVectors.Add(new Vector3(s.position.x, s.position.y + 5.0f, s.position.z));
-            foreach (Transform s in spaceSpawnPosContainer)
-                spaceSpawnVectors.Add(new Vector3(s.position.x, s.position.y + 5.0f, s.position.z));
-            foreach (Transform s in iceSpawnPosContainer)
-                    iceSpawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
+            CacheSpawnPositions();
             canTakeDamage = false;
             HealthController.updateHealth();
             if (localShooting != null) localShooting.reloadNum = 30;
@@ -405,7 +392,6 @@ public class PlayerMovement : NetworkBehaviour {
 
             RetroDither.isTeleporting = true;
             serverController.Initialize(playerCamera);
-            serverController.BeginOpeningScene();
             Camera.main.GetComponent<FogShader>().ChangeDimension("Desert");
 
             desertSky = RenderSettings.skybox;
@@ -415,7 +401,10 @@ public class PlayerMovement : NetworkBehaviour {
             usernameRenderer = usernameDisplay.GetComponent<MeshRenderer>();
             GetComponent<MeshRenderer>().enabled = false;
             started = true;
-            RestoreMigrationPosition();
+            bool resuming = MigrationPositionPending() && global::SceneManager.Instance.activeAdditiveScene == global::SceneManager.DesertScene;
+            ChangeScene(resuming ? global::SceneManager.DesertScene : global::SceneManager.BossScene, desertInfo);
+            if (resuming) RestoreMigrationPosition();
+            else migrationPositionTime = float.NegativeInfinity;
             ShowMigrationPopup();
         } else {
             foreach (Transform child in transform) {
@@ -425,7 +414,46 @@ public class PlayerMovement : NetworkBehaviour {
         if (!IsOwner) GetComponent<PlayerMovement>().enabled = false;
 
     }
+    private void CacheSpawnPositions()
+    {
+        spawnVectors.Clear();
+        if (!global::SceneManager.Instance.InCombatScene) return;
 
+        try
+        {
+            switch (currDimension)
+            {
+                case "Desert":
+                    spawnPosContainer = GameObject.Find("DesertSpawnContainer").transform;
+                    break;
+                case "Maze":
+                    spawnPosContainer = GameObject.Find("MazeSpawnContainer").transform;
+                    break;
+                case "Space":
+                    spawnPosContainer = GameObject.Find("VoidSpawnContainer").transform;
+                    break;
+                case "Ice":
+                    spawnPosContainer = GameObject.Find("IceSpawnContainer").transform;
+                    break;
+                default:
+                    break;
+            }
+
+            if (currDimension == "Desert" || currDimension == "Ice")
+            {
+                foreach (Transform s in spawnPosContainer)
+                    spawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
+            } else
+            {
+                foreach (Transform s in spawnPosContainer)
+                    spawnVectors.Add(new Vector3(s.position.x, s.position.y + 5.0f, s.position.z));
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[PlayerMovement] could not cache spawn positions for '{currDimension}': {e.Message}");
+        }
+    }
     public static bool getAvatarBool(NetworkObject avatar1) {
         return Local != null && avatar1 == Local.NetworkObject && Local.canTakeDamage;
     }
@@ -447,29 +475,42 @@ public class PlayerMovement : NetworkBehaviour {
         lastPosition = playerTransform.position;
         lastGroundedHeight = transform.position.y;
 
-        if (!global::SceneManager.CompleteTransfer(scene)) return;
+        if (!global::SceneManager.Instance.CompleteTransfer(scene)) return;
         ArriveInScene(scene);
     }
 
     private void ArriveInScene(Scene scene) {
-        System.Func<string, GameObject> find = global::SceneManager.Finder(scene);
+        System.Func<string, GameObject> inScene = global::SceneManager.Finder(scene);
+        System.Func<string, GameObject> find = name => {
+            GameObject go = inScene(name);
+            return go != null ? go : SceneLookup.FindInactive(name);
+        };
         ResolveSceneReferences(find);
-        ResolveHudReferences(find, scene);
-        bool inCombatScene = global::SceneManager.InCombatScene;
+        ResolveHudReferences(find);
+        if (serverController != null) serverController.CacheMasks(find);
+        bool inCombatScene = global::SceneManager.Instance.InCombatScene;
         if (borderInstance != null) borderInstance.gameObject.SetActive(inCombatScene);
         if (!inCombatScene && portal4B == null)
-            Debug.LogError($"[PlayerMovement] '{scene.name}' has no portal4B; there is no way back to CombatScene.");
+            Debug.LogError($"[PlayerMovement] '{scene.name}' has no portal4B; there is no way back to DesertScene.");
 
-        Transform destination = inCombatScene
-            ? (portal4A != null ? portal4A.transform : null)
-            : (bossArrival != null ? bossArrival : portal4B != null ? portal4B.transform : null);
+        Transform destination;
+        if (pendingArrival != null) {
+            GameObject arrival = find(pendingArrival);
+            destination = arrival != null ? arrival.transform : null;
+        } else {
+            destination = inCombatScene
+                ? (portal4A != null ? portal4A.transform : null)
+                : (bossArrival != null ? bossArrival : portal4B != null ? portal4B.transform : null);
+        }
         if (destination == null) {
-            Debug.LogError($"[PlayerMovement] '{scene.name}' has no arrival point (portal4A in CombatScene, BossArrival or portal4B in BossScene).");
+            Debug.LogError($"[PlayerMovement] '{scene.name}' has no arrival point ('{pendingArrival ?? "portal4A, BossArrival or portal4B"}').");
+            pendingArrival = null;
             canTeleport = true;
             return;
         }
 
-        HandleTeleportation(destination, desertInfo, destination == bossArrival ? 0f : 3f);
+        pendingArrival = null;
+        HandleTeleportation(destination, pendingDimension, destination == bossArrival ? 0f : 3f);
         if (destination == bossArrival) FaceDirection(bossArrival.eulerAngles.y);
     }
 
@@ -485,22 +526,29 @@ public class PlayerMovement : NetworkBehaviour {
         GameObject arrival = find("BossArrival");
         bossArrival = arrival != null ? arrival.transform : null;
         combatSceneLight = find("Scene Light");
+        CacheDimensionRoots(find);
+    }
 
+    private void CacheDimensionRoots(System.Func<string, GameObject> find) {
         if (allDimensions == null) return;
-        desertInfo.root = find("Desert");
-        mazeInfo.root = find("Maze");
-        spaceInfo.root = find("Void");
-        iceInfo.root = find("Ice");
+        try {
+            desertInfo.root = find("Desert");
+            mazeInfo.root = find("Maze");
+            spaceInfo.root = find("Void");
+            iceInfo.root = find("Ice");
+        } catch (System.Exception e) {
+            Debug.LogWarning($"[PlayerMovement] could not cache dimension roots: {e.Message}");
+        }
         allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo };
     }
 
-    private void ResolveHudReferences(System.Func<string, GameObject> find, Scene scene) {
-        if (dt == null || !global::SceneManager.SurvivesInto(dt.gameObject, scene)) {
+    private void ResolveHudReferences(System.Func<string, GameObject> find) {
+        if (dt == null) {
             GameObject dashText = find("DashText");
             dt = dashText != null ? dashText.GetComponent<TextMeshProUGUI>() : null;
             displayedDashes = -1;
         }
-        if (dashIcon == null || !global::SceneManager.SurvivesInto(dashIcon.gameObject, scene)) {
+        if (dashIcon == null) {
             GameObject dashBG = find("dashBG");
             dashIcon = dashBG != null ? dashBG.GetComponent<RectTransform>() : null;
         }
@@ -518,6 +566,12 @@ public class PlayerMovement : NetworkBehaviour {
     private static Vector3 migrationPosition;
     private static float migrationYaw;
     private static float migrationPositionTime = float.NegativeInfinity;
+
+    private static bool MigrationPositionPending() {
+        float now = Time.realtimeSinceStartup;
+        return now - NetworkHudCanvases.LastMigrationTime <= DamageControl.MigrationRestoreWindow
+            && now - migrationPositionTime <= DamageControl.MigrationRestoreWindow;
+    }
 
     private void RestoreMigrationPosition() {
         float now = Time.realtimeSinceStartup;
@@ -551,7 +605,7 @@ public class PlayerMovement : NetworkBehaviour {
     {
         if (Local == this) {
             if (NetworkHudCanvases.InLobby) SaveSystem.CaptureSessionData();
-            if (!dead && global::SceneManager.InCombatScene && currDimension == "Desert") {
+            if (!dead && global::SceneManager.Instance.InCombatScene && currDimension == "Desert") {
                 migrationPosition = transform.position;
                 migrationYaw = currentCameraRotationY;
                 migrationPositionTime = Time.realtimeSinceStartup;
@@ -979,24 +1033,43 @@ public class PlayerMovement : NetworkBehaviour {
 
     private void TeleportationCheck(GameObject hitObject) {        
         if (canTeleport) {
-            if (hitObject == portal1A) HandleTeleportation(portal1B.transform, desertInfo);
-            else if (hitObject == portal1B) HandleTeleportation(portal1A.transform, mazeInfo);
-            else if (hitObject == portal2A) HandleTeleportation(portal2B.transform, desertInfo);
-            else if (hitObject == portal2B) HandleTeleportation(portal2A.transform, spaceInfo);
-            else if (hitObject == portal3A) HandleTeleportation(portal3B.transform, desertInfo);
-            else if (hitObject == portal3B) HandleTeleportation(portal3A.transform, iceInfo);
-            else if (hitObject == portal4A) ChangeScene(global::SceneManager.BossScene);
-            else if (hitObject == portal4B) ChangeScene(global::SceneManager.CombatScene);
+            if (hitObject == portal1A) ChangeScene(desertInfo.scene, desertInfo, "portal1A");
+            else if (hitObject == portal1B) ChangeScene(mazeInfo.scene, mazeInfo, "portal1B");
+            else if (hitObject == portal2A) ChangeScene(desertInfo.scene, desertInfo, "portal2A");
+            else if (hitObject == portal2B) ChangeScene(spaceInfo.scene, spaceInfo, "portal2B");
+            else if (hitObject == portal3A) ChangeScene(desertInfo.scene, desertInfo, "portal3A");
+            else if (hitObject == portal3B) ChangeScene(iceInfo.scene, iceInfo, "portal3B");
+            else if (hitObject == portal4A) ChangeScene(global::SceneManager.BossScene, desertInfo);
+            else if (hitObject == portal4B) ChangeScene(global::SceneManager.DesertScene, desertInfo);
         }
     }
 
-    private void ChangeScene(string name) {
+    private void ChangeScene(string name, DimensionInfo target, string arrival = null) {
         if (!IsOwner) return;
+        global::SceneManager sceneManager = global::SceneManager.Instance;
         canTeleport = false;
-        global::SceneManager.BeginTransfer(name);
+        pendingDimension = target;
+        pendingArrival = arrival;
+        sceneManager.BeginTransfer(name);
+
+        if (sceneManager.TryGetActiveScene(name, out Scene loaded)) {
+            OnSceneLoadedAsOwner(loaded, LoadSceneMode.Additive);
+            return;
+        }
+        if (!sceneManager.LoadScene(name)) {
+            sceneManager.Reset();
+            pendingArrival = null;
+            canTeleport = true;
+            return;
+        }
+
         RetroDither.isTeleporting = true;
-        TransferToScene(name);
-        StartCoroutine(global::SceneManager.TransferTimeout(name, () => canTeleport = true));
+        characterController.enabled = false;
+        StartCoroutine(sceneManager.TransferTimeout(name, () => {
+            pendingArrival = null;
+            canTeleport = true;
+            characterController.enabled = true;
+        }));
     }
 
     private void VelocityResetCheck(Vector3 hitNormal) {
@@ -1045,7 +1118,7 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void BorderWarning() {
-        if (!global::SceneManager.InCombatScene) return;
+        if (!global::SceneManager.Instance.InCombatScene) return;
         float horizontalDistanceFromOrigin;
         float absX = Mathf.Abs(transform.position.x) - 60; //60 = x size of bounds
         float absZ = Mathf.Abs(transform.position.z) - 90; //90 = z size of bounds
@@ -1124,21 +1197,13 @@ public class PlayerMovement : NetworkBehaviour {
         jumpBufferTimer = 0f;
         currentCameraRotationX = 0f;
 
-        if (!global::SceneManager.InCombatScene && bossArrival != null) {
+        if (!global::SceneManager.Instance.InCombatScene && bossArrival != null) {
             transform.position = bossArrival.position;
             FaceDirection(bossArrival.eulerAngles.y);
         } else {
-            List<Vector3> currentSpawns = desertSpawnVectors; // default to desert spawns
-            if (currDimension == "Maze" && mazeSpawnVectors.Count > 0)
-                currentSpawns = mazeSpawnVectors;
-            else if (currDimension == "Space" && spaceSpawnVectors.Count > 0)
-                currentSpawns = spaceSpawnVectors;
-            else if (currDimension == "Ice" && iceSpawnVectors.Count > 0)
-                currentSpawns = iceSpawnVectors;
-
-            if (currentSpawns.Count > 0) {
-                int num = Random.Range(0, currentSpawns.Count);
-                transform.position = currentSpawns[num];
+            if (spawnVectors.Count > 0) {
+                int num = Random.Range(0, spawnVectors.Count);
+                transform.position = spawnVectors[num];
             } else {
                 Debug.LogWarning("[PlayerMovement] no spawn points found; respawning at the initial spawn position.");
                 transform.position = spawn;
@@ -1184,7 +1249,7 @@ public class PlayerMovement : NetworkBehaviour {
     private void HandleTeleportation(Transform destination, DimensionInfo target, float heightOffset = 3f) {
         characterController.enabled = false;
         SetActiveDimension(target);
-        if (global::SceneManager.InCombatScene && combatSceneLight != null)
+        if (global::SceneManager.Instance.InCombatScene && combatSceneLight != null)
             combatSceneLight.transform.localScale = (target.name == "Desert") ? Vector3.one * 150f : Vector3.zero;
         canTeleport = false;
         StartCoroutine(teleTrue());
@@ -1210,14 +1275,15 @@ public class PlayerMovement : NetworkBehaviour {
         Camera.main.GetComponent<FogShader>().ChangeDimension(target.name);
 
 
-        SetActiveIfPresent(portal1A, global::SceneManager.InCombatScene);
-        SetActiveIfPresent(portal1B, global::SceneManager.InCombatScene);
-        SetActiveIfPresent(portal2A, global::SceneManager.InCombatScene);
-        SetActiveIfPresent(portal2B, global::SceneManager.InCombatScene);
-        SetActiveIfPresent(portal3A, global::SceneManager.InCombatScene);
-        SetActiveIfPresent(portal3B, global::SceneManager.InCombatScene);
-        SetActiveIfPresent(portal4A, global::SceneManager.InCombatScene);
-        SetActiveIfPresent(portal4B, !global::SceneManager.InCombatScene);
+        SetActiveIfPresent(portal1A, global::SceneManager.Instance.InCombatScene);
+        SetActiveIfPresent(portal1B, global::SceneManager.Instance.InCombatScene);
+        SetActiveIfPresent(portal2A, global::SceneManager.Instance.InCombatScene);
+        SetActiveIfPresent(portal2B, global::SceneManager.Instance.InCombatScene);
+        SetActiveIfPresent(portal3A, global::SceneManager.Instance.InCombatScene);
+        SetActiveIfPresent(portal3B, global::SceneManager.Instance.InCombatScene);
+        SetActiveIfPresent(portal4A, global::SceneManager.Instance.InCombatScene);
+        SetActiveIfPresent(portal4B, !global::SceneManager.Instance.InCombatScene);
+        CacheSpawnPositions();
     }
 
     private static void SetActiveIfPresent(GameObject go, bool active) {
