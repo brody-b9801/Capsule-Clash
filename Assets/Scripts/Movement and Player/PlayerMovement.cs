@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.UI;
+using FishNet;
 using FishNet.Object;
-using FishNet.Transporting;
+using FishNet.Managing;
 using UnityEngine.SceneManagement;
 using TMPro;
+using FishNet.Connection;
+using FishNet.Component.Observing;
 
 [RequireComponent(typeof(ServerController))]
 public class PlayerMovement : NetworkBehaviour {
@@ -202,6 +204,9 @@ public class PlayerMovement : NetworkBehaviour {
     public static PlayerMovement Local {get; private set;}
     private Shooting localShooting;
     private ObjectSpawner localSpawner;
+    NetworkManager networkManager = InstanceFinder.NetworkManager;
+    private const int SharedMatch = 69420;
+    private int currentMatch = SharedMatch;
 
     private float _getHorizontal() => Input.GetAxisRaw("Horizontal");
     private float _getVertical() => Input.GetAxisRaw("Vertical");
@@ -510,9 +515,13 @@ public class PlayerMovement : NetworkBehaviour {
         }
 
         pendingArrival = null;
+
         HandleTeleportation(destination, pendingDimension, destination == bossArrival ? 0f : 3f);
+        AddOwnerToScene(scene.name);
         if (destination == bossArrival) FaceDirection(bossArrival.eulerAngles.y);
     }
+
+    [ServerRpc]
 
     private void ResolveSceneReferences(System.Func<string, GameObject> find) {
         portal1A = find("portal1B");
@@ -1274,7 +1283,6 @@ public class PlayerMovement : NetworkBehaviour {
         Camera.main.GetComponent<SnowParticles>().toggleParticles(target.snow);
         Camera.main.GetComponent<FogShader>().ChangeDimension(target.name);
 
-
         SetActiveIfPresent(portal1A, global::SceneManager.Instance.InCombatScene);
         SetActiveIfPresent(portal1B, global::SceneManager.Instance.InCombatScene);
         SetActiveIfPresent(portal2A, global::SceneManager.Instance.InCombatScene);
@@ -1284,6 +1292,35 @@ public class PlayerMovement : NetworkBehaviour {
         SetActiveIfPresent(portal4A, global::SceneManager.Instance.InCombatScene);
         SetActiveIfPresent(portal4B, !global::SceneManager.Instance.InCombatScene);
         CacheSpawnPositions();
+    }
+
+    [ServerRpc]
+    private void SetMatchCondition(bool enteringBossScene)
+    {
+        bool hasUniqueMatch = currentMatch != SharedMatch;
+        if (enteringBossScene && hasUniqueMatch) return;
+        if (!enteringBossScene && hasUniqueMatch) MatchManager.Instance.AddMatch(currentMatch);
+        int newMatch = enteringBossScene ? MatchManager.Instance.GetUniqueMatch() : SharedMatch;
+        MatchCondition.AddToMatch(newMatch, Owner, networkManager, true);
+        currentMatch = newMatch;
+    }
+
+    [ServerRpc]
+    private void AddOwnerToScene(string sceneName)
+    {
+        Scene scene = UnityEngine.SceneManagement.SceneManager.GetSceneByName(sceneName);
+        if (!scene.isLoaded) {
+            Debug.LogWarning($"[PlayerMovement] '{sceneName}' is not loaded on the server; connection {Owner.ClientId} was not added to it.");
+            return;
+        }
+        networkManager.SceneManager.AddConnectionToScene(Owner, scene);
+    }
+
+    public override void OnStopServer() {
+        base.OnStopServer();
+        if (currentMatch == SharedMatch || MatchManager.Instance == null) return;
+        MatchManager.Instance.AddMatch(currentMatch);
+        currentMatch = SharedMatch;
     }
 
     private static void SetActiveIfPresent(GameObject go, bool active) {
