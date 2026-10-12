@@ -8396,7 +8396,7 @@ MonoBehaviour:
   <PrefabId>k__BackingField: 65535
   <SpawnableCollectionId>k__BackingField: 0
   <AssetPathHash>k__BackingField: 0
-  SceneId: 0
+  SceneId: 3983244575
   SerializedTransformProperties:
     Position: {x: 0, y: 0, z: 0}
     Rotation: {x: 0, y: 0, z: 0, w: 0}
@@ -8779,6 +8779,19 @@ MonoBehaviour:
   _stateOrder: 1
   _dropExcessiveReplicates: 1
   _maximumServerReplicates: 15
+--- !u!114 &246362522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246362496}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa73cf5c0c2c4cc4784e59d71e16c78c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SceneManager
+  activeAdditiveScene: 
 --- !u!1001 &263380178
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -21461,6 +21474,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7443408887813606051, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
       insertIndex: -1
       addedObject: {fileID: 246362520}
+    - targetCorrespondingSourceObject: {fileID: 7443408887813606051, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 246362522}
   m_SourcePrefab: {fileID: 100100000, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
 --- !u!1 &1261316863
 GameObject:
@@ -24452,7 +24468,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 2147483647
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1667791937
 RectTransform:
   m_ObjectHideFlags: 0
@@ -31427,15 +31443,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2678098412597149870, guid: 2dd032eb1b1c02b428d7bfdaa845807c, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2678098412597149870, guid: 2dd032eb1b1c02b428d7bfdaa845807c, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2678098412597149870, guid: 2dd032eb1b1c02b428d7bfdaa845807c, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2678098412597149870, guid: 2dd032eb1b1c02b428d7bfdaa845807c, type: 3}
       propertyPath: m_LocalPosition.x

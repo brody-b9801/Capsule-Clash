@@ -74,11 +74,26 @@ public class ServerController : MonoBehaviour {
         cam = camera.transform;
         serverText = GameObject.Find("MaskText").GetComponent<TextMeshProUGUI>();
         portal4 = GameObject.Find("portal4");
-        mazeServerTransform = GameObject.Find("MaskMaze").transform;
-        spaceServerTransform = GameObject.Find("MaskSpace").transform;
-        iceServerTransform = GameObject.Find("MaskIce").transform;
         ui = GameObject.FindObjectsByType<BuildUI>(FindObjectsSortMode.None)[0];
         gun = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
+    }
+
+    public void CacheMasks(System.Func<string, GameObject> find) {
+        mazeServerTransform = CacheMask(find, "MaskMaze", mazeKeyAcquired);
+        spaceServerTransform = CacheMask(find, "MaskSpace", spaceKeyAcquired);
+        iceServerTransform = CacheMask(find, "MaskIce", iceKeyAcquired);
+    }
+
+    private Transform CacheMask(System.Func<string, GameObject> find, string name, bool keyAcquired) {
+        try {
+            GameObject mask = find(name);
+            if (mask == null) return null;
+            if (keyAcquired) mask.SetActive(false);
+            return mask.transform;
+        } catch (System.Exception e) {
+            Debug.LogWarning($"[ServerController] could not cache '{name}': {e.Message}");
+            return null;
+        }
     }
 
     public void BeginOpeningScene() {
@@ -147,16 +162,17 @@ public class ServerController : MonoBehaviour {
 
         if (PlayerMovement.Local.currDimension == "Desert") return;
 
-        GameObject serverToDetect = null;
+        Transform serverToDetect = null;
         ref bool seeing = ref seeingMazeServer;
         ref bool keyAcquired = ref mazeKeyAcquired;
         switch (PlayerMovement.Local.currDimension)
         {
-            case "Maze": serverToDetect = mazeServerTransform.gameObject;  break;
-            case "Space": serverToDetect = spaceServerTransform.gameObject; seeing = ref seeingSpaceServer; keyAcquired = ref spaceKeyAcquired; break;
-            case "Ice": serverToDetect = iceServerTransform.gameObject; seeing = ref seeingIceServer; keyAcquired = ref iceKeyAcquired; break;
+            case "Maze": serverToDetect = mazeServerTransform;  break;
+            case "Space": serverToDetect = spaceServerTransform; seeing = ref seeingSpaceServer; keyAcquired = ref spaceKeyAcquired; break;
+            case "Ice": serverToDetect = iceServerTransform; seeing = ref seeingIceServer; keyAcquired = ref iceKeyAcquired; break;
         }
-        if (!keyAcquired && Vector3.Distance(playerCamera.transform.position, serverToDetect.transform.position) < 5f && Vector3.Angle(playerCamera.transform.forward, serverToDetect.transform.position - playerCamera.transform.position) < 30f) {
+        if (serverToDetect == null) return;
+        if (!keyAcquired && Vector3.Distance(playerCamera.transform.position, serverToDetect.position) < 5f && Vector3.Angle(playerCamera.transform.forward, serverToDetect.position - playerCamera.transform.position) < 30f) {
             seeing = true;
         }
     }
@@ -543,13 +559,13 @@ public class ServerController : MonoBehaviour {
         switch (PlayerMovement.Local.currDimension)
         {
             case "Ice":
-                server = GameObject.Find("MaskIce").transform;
+                server = iceServerTransform;
                 break;
             case "Space":
-                server = GameObject.Find("MaskSpace").transform;
+                server = spaceServerTransform;
                 break;
             case "Maze":
-                server = GameObject.Find("MaskMaze").transform;
+                server = mazeServerTransform;
                 break;
             default:
                 server = null;
