@@ -215,10 +215,10 @@ MonoBehaviour:
   targetWalkZRot: 10
   arAimPos: {x: 0.12, y: 0.085, z: 0.05}
   shotgunAimPos: {x: 0.12, y: 0, z: 0.05}
-  sniperAimPos: {x: 0.12, y: -0.13, z: 0.05}
+  sniperAimPos: {x: 0.12, y: -0.15, z: 0.05}
   arAimRot: {x: -3, y: 0, z: 0}
   shotgunAimRot: {x: -3, y: 0, z: 0}
-  sniperAimRot: {x: -3, y: 0, z: 0}
+  sniperAimRot: {x: 0, y: 0, z: 0}
   dashVector: {x: 0, y: 0, z: 0}
   canTakeDamage: 1
   collisionMask:
@@ -228,7 +228,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 2561
   unstuckDistance: 0.1
-  spawnPosContainer: {fileID: 2334021776229870361, guid: e4846e6604ac0e5429579ce6c6593fdf, type: 3}
   hitCount: 0
   respawnScreen: {fileID: 6625595095732336869, guid: 2ab7af6ff7030084dadb50e37add15b7, type: 3}
   dead: 0
@@ -571,7 +570,7 @@ MonoBehaviour:
   - {fileID: 9158572828972272116}
   InitializedParentNetworkBehaviour: {fileID: 0}
   InitializedNestedNetworkObjects:
-  - {fileID: 3211300088221069289}
+  - {fileID: 0}
   RuntimeParentNetworkBehaviour: {fileID: 0}
   RuntimeChildNetworkBehaviours: []
   _isNetworked: 1
@@ -1012,7 +1011,7 @@ PrefabInstance:
     - target: {fileID: 6081214143165384429, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       propertyPath: _networkObjectCache
       value: 
-      objectReference: {fileID: 3211300088221069289}
+      objectReference: {fileID: 0}
     - target: {fileID: 8046000523938441231, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
       propertyPath: m_LocalPosition.y
       value: -0.0338842
@@ -1084,17 +1083,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5473319011589123556, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
   m_PrefabInstance: {fileID: 6116309573121906215}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &3211300088221069289 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 8678906300695345614, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
-  m_PrefabInstance: {fileID: 6116309573121906215}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 26b716c41e9b56b4baafaf13a523ba2e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Object.NetworkObject
 --- !u!1 &3368015021342264296 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8817178322116648399, guid: 96d54ea1a1420674d8675336c3b37ed0, type: 3}
@@ -1288,7 +1276,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: FishNet.Runtime::FishNet.Component.Transforming.NetworkTransform
   _componentIndexCache: 1
   _addedNetworkObject: {fileID: 1447310636841987035}
-  _networkObjectCache: {fileID: 3211300088221069289}
+  _networkObjectCache: {fileID: 0}
   _componentConfiguration: 0
   _synchronizeParent: 0
   _packing:

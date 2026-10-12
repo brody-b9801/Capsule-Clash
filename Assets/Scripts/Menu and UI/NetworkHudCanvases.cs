@@ -162,6 +162,7 @@ public class NetworkHudCanvases : MonoBehaviour
         _loadingCanvas.SetActive(true);
     }
 
+    public int GetMaxLobbyMembers => _maxLobbyMembers;
     private string GetNextStateText(LocalConnectionState state)
     {
         _roomMenu.enabled = state == LocalConnectionState.Stopped;
