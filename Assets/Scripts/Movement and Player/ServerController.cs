@@ -73,6 +73,7 @@ public class ServerController : MonoBehaviour {
         playerCamera = camera;
         cam = camera.transform;
         serverText = GameObject.Find("MaskText").GetComponent<TextMeshProUGUI>();
+        serverText.verticalAlignment = VerticalAlignmentOptions.Middle;
         portal4 = GameObject.Find("portal4");
         ui = GameObject.FindObjectsByType<BuildUI>(FindObjectsSortMode.None)[0];
         gun = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
@@ -129,7 +130,7 @@ public class ServerController : MonoBehaviour {
             yield return new WaitForSeconds(Random.Range(0, 0.1f));
         }
         serverText.text = input;
-        yield return new WaitForSeconds(3f);
+        yield return new WaitForSeconds(3f + input.Split('\n').Length - 1);
         serverText.text = "";
         serverText.color = new Color(1f, 1f, 1f, 1f);
         ServerSpeaking = false;
@@ -276,6 +277,8 @@ public class ServerController : MonoBehaviour {
             StartServerSpeak("Welcome to the Desert");
             desertEntered = true;
             while (ServerSpeaking) yield return null;
+            StartServerSpeak("• Normal gravity and movement\n• Dashing and building are enabled\n• All guns deal normal damage");
+            while (ServerSpeaking) yield return null;
             StartServerSpeak("Defeat Capsules to obtain their essence");
         }
         while (ServerSpeaking) yield return null;
@@ -303,7 +306,7 @@ public class ServerController : MonoBehaviour {
             StartServerSpeak("Welcome to the Maze");
             mazeEntered = true;
             while (ServerSpeaking) yield return null;
-            StartServerSpeak("Jump upgrades, dashing, and building are disabled here");
+            StartServerSpeak("• Visibility is limited\n• Dashing and building are disabled\n• Jump upgrades have no effect\n• Shotguns deal 1.5x damage");
         }
         while (ServerSpeaking) yield return null;
 
@@ -326,7 +329,7 @@ public class ServerController : MonoBehaviour {
             StartServerSpeak("Welcome to Space");
             spaceEntered = true;
             while (ServerSpeaking) yield return null;
-            StartServerSpeak("Gravity and dashing cooldowns are  reduced, you can jump higher");
+            StartServerSpeak("• Reduced gravity, higher jumping\n• Dashes recharge 4x faster\n• Fall damage is disabled\n• Snipers deal 1.5x damage");
         }
         while (ServerSpeaking) yield return null;
 
@@ -349,7 +352,7 @@ public class ServerController : MonoBehaviour {
             StartServerSpeak("Welcome to the Tundra");
             iceEntered = true;
             while (ServerSpeaking) yield return null;
-            StartServerSpeak("A slippery dimension where shooting propels you forward");
+            StartServerSpeak("• The ground is slippery\n• Shooting launches you backwards, shotguns the most and snipers the least\n• Reloading is 1.5x faster\n• Jumping and building are disabled\n• ARs deal 1.5x damage");
         }
         while (ServerSpeaking) yield return null;
 

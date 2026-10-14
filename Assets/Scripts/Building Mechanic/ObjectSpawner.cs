@@ -166,7 +166,7 @@ public class ObjectSpawner : NetworkBehaviour
         }
 
         if (!IsOwner) return;
-        if (PlayerMovement.Local == null || PlayerMovement.Local.dead || PlayerMovement.Local.currDimension == "Maze") return;
+        if (PlayerMovement.Local == null || PlayerMovement.Local.dead || !PlayerMovement.Local.CanBuild) return;
         if (Camera.main == null) return;
 
         Vector3 camPos = Camera.main.transform.position;
@@ -231,6 +231,9 @@ public class ObjectSpawner : NetworkBehaviour
 
         DamageControl damageControl = GetComponent<DamageControl>();
         if (damageControl != null && damageControl.health.Value <= 0f) return;
+
+        PlayerMovement movement = GetComponent<PlayerMovement>();
+        if (movement != null && !movement.CanBuild) return;
 
         switch (type)
         {

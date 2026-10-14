@@ -36,7 +36,8 @@ public class ReloadAnimation : MonoBehaviour
         ShootState = false;
         animator.ResetTrigger("Shoot");
         animator.ResetTrigger("NoReload");
-        animator.speed = upgradeManager.Local != null ? upgradeManager.Local.reloadSpeedMultiplier : 1f;
+        float dimensionModifier = PlayerMovement.Local != null ? PlayerMovement.Local.ReloadSpeedModifier : 1f;
+        animator.speed = (upgradeManager.Local != null ? upgradeManager.Local.reloadSpeedMultiplier : 1f) * dimensionModifier;
         animator.SetTrigger(ReloadTrigger);
     }
 

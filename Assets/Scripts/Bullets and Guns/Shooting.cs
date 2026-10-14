@@ -302,6 +302,7 @@ public class Shooting : NetworkBehaviour
                     bulletSpawn.transform.position, range,
                     bulletHole.position, bH.transform.position,
                     spreads);
+                PlayerMovement.Local.ApplyShotBoost(currentGun, cameraForward);
 
                 Shaker.shooting = true;
                 Shaker.StopShake();
@@ -633,7 +634,7 @@ public class Shooting : NetworkBehaviour
         (Local.currentGun == currGun.Sniper ? SniperReloadDuration
             : (Local.currentGun == currGun.Shotgun && Local.shottieNum == 1) ? ShotgunSingleShellReloadDuration
             : ReloadDuration)
-        / upgradeManager.Local.reloadSpeedMultiplier;
+        / (upgradeManager.Local.reloadSpeedMultiplier * PlayerMovement.Local.ReloadSpeedModifier);
 
     IEnumerator waitReload()
     {

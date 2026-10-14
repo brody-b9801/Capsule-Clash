@@ -49,20 +49,26 @@ public class BuildHealth : NetworkBehaviour
         if (transMesh != null)
             transMesh.enabled = false;
     }
-    public void TakeDamage(Shooting.currGun gun, float dist)
+    public void TakeDamage(Shooting.currGun gun, float dist, NetworkObject shooter = null)
     {
         if (IsServerStarted)
-            ApplyDamage(gun, dist);
+            ApplyDamage(gun, dist, GunDamageModifier(shooter, gun));
         else
-            ServerTakeDamage(gun, dist);
+            ServerTakeDamage(gun, dist, shooter != null);
     }
 
     [ServerRpc(RequireOwnership = false, RunLocally = false)]
-    private void ServerTakeDamage(Shooting.currGun gun, float dist, NetworkConnection conn = null)
+    private void ServerTakeDamage(Shooting.currGun gun, float dist, bool shot, NetworkConnection conn = null)
     {
         DamageControl sender = conn != null && conn.FirstObject != null ? conn.FirstObject.GetComponent<DamageControl>() : null;
         if (sender != null && (sender.health.Value <= 0f || !IsWithinBreakRange(sender.transform.position))) return;
-        ApplyDamage(gun, dist);
+        ApplyDamage(gun, dist, shot ? GunDamageModifier(conn.FirstObject, gun) : 1f);
+    }
+
+    private static float GunDamageModifier(NetworkObject shooter, Shooting.currGun gun)
+    {
+        PlayerMovement shooterMovement = shooter != null ? shooter.GetComponent<PlayerMovement>() : null;
+        return shooterMovement != null ? shooterMovement.GetGunDamageModifier(gun) : 1f;
     }
 
     private const float MaxBreakDistance = 10f;
@@ -75,18 +81,20 @@ public class BuildHealth : NetworkBehaviour
     }
 
     [Server]
-    private void ApplyDamage(Shooting.currGun gun, float dist) {
+    private void ApplyDamage(Shooting.currGun gun, float dist, float modifier) {
         if (currentHealth.Value <= 0f) return;
 
+        float damage;
         if (gun == Shooting.currGun.Sniper) {
-            currentHealth.Value -= 2f;
+            damage = 2f;
         } else if (gun != Shooting.currGun.Shotgun) {
-            currentHealth.Value--;
+            damage = 1f;
         } else if (dist < 3) {
-            currentHealth.Value -= 0.5f;
+            damage = 0.5f;
         } else {
-            currentHealth.Value -= Mathf.Clamp((1 - ((dist - 5) * 0.1f)) * .25f, 0.075f, 0.5f);
+            damage = Mathf.Clamp((1 - ((dist - 5) * 0.1f)) * .25f, 0.075f, 0.5f);
         }
+        currentHealth.Value -= damage * modifier;
 
         if (currentHealth.Value <= 0f)
             ObjectSpawner.DespawnObject(build);

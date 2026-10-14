@@ -24,7 +24,7 @@ public class SceneManager : MonoBehaviour {
 
     void Start()
     {
-        LoadScene(BossScene);
+        LoadScene(DesertScene);
     }
 
     public static event UnityAction<Scene, LoadSceneMode> SceneLoaded {

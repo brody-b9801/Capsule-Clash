@@ -127,7 +127,7 @@ public class BulletManager : NetworkBehaviour
             BuildHealth buildHealth = hitObject.GetComponent<BuildHealth>();
             if (buildHealth != null)
             {
-                buildHealth.TakeDamage(bulletData.gunType, hitDistance);
+                buildHealth.TakeDamage(bulletData.gunType, hitDistance, bulletData.shooter);
             }
 
             if (hitObject.CompareTag("DamageCollider"))

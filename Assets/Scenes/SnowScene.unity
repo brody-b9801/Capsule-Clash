@@ -45373,7 +45373,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1304721241231857869, guid: ed23f90b39ac3f14da9a17c6042c5d8c, type: 3}
       propertyPath: m_StaticEditorFlags
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1824131172359750263, guid: ed23f90b39ac3f14da9a17c6042c5d8c, type: 3}
       propertyPath: m_LocalScale.x
@@ -45438,6 +45438,10 @@ PrefabInstance:
     - target: {fileID: 7656802470511366517, guid: ed23f90b39ac3f14da9a17c6042c5d8c, type: 3}
       propertyPath: m_ProvidesContacts
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9181152215707753260, guid: ed23f90b39ac3f14da9a17c6042c5d8c, type: 3}
+      propertyPath: m_StaticEditorFlags
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

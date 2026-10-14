@@ -16,6 +16,7 @@ public class CameraZoom : MonoBehaviour
     [SerializeField] private Camera cameraToZoom;
     [SerializeField] private GameObject scope;
     private float targetZoom;
+    private float groundedZoom;
     private float currentVelocity1;
     private float currentVelocity2;
     [SerializeField] private GameObject GunThing;
@@ -50,6 +51,7 @@ public class CameraZoom : MonoBehaviour
     private float factor = 1.0f;
     float cameraToZoomFloat;
     float mainCamFloat;
+    private Camera mainCam;
     private float airFOVOffset = 0f;
     private float airFOVVelocity = 0f;
     [SerializeField] private GameObject ZoomedPos;
@@ -64,9 +66,12 @@ public class CameraZoom : MonoBehaviour
 
     private void Start()
     {
-        Camera.main.depthTextureMode = DepthTextureMode.Depth;
-        baseFOVTarget = Camera.main.fieldOfView;
+        mainCam = Camera.main;
+        mainCam.depthTextureMode = DepthTextureMode.Depth;
+        baseFOVTarget = mainCam.fieldOfView;
+        cameraToZoomFloat = cameraToZoom.fieldOfView;
         targetZoom = baseFOVTarget;
+        groundedZoom = baseFOVTarget;
         zoomCHFov = zoomCH;
         regCHFov = regCH;
         outCHFov = outCH;
@@ -149,7 +154,9 @@ public class CameraZoom : MonoBehaviour
             GunThing.transform.localEulerAngles = new Vector3(0f, 0f, 0f);
         }
         targetZoom = Mathf.Lerp(targetZoom, desiredZoom, Time.deltaTime * zoomSpeed);
-        
+        groundedZoom = Mathf.Lerp(groundedZoom, desiredZoom, Time.deltaTime * zoomSpeed);
+        bool sniperZoomed = isAiming && sniperEquipped && Mathf.Abs(groundedZoom - desiredZoom) < 0.5f;
+
         RaycastHit hit;
 
         float airFOVTarget = 0f;
@@ -161,12 +168,13 @@ public class CameraZoom : MonoBehaviour
         aimZoomOffset = targetZoom - baseFOVTarget;
         
         if (Shooting.Local.currentGun != Shooting.currGun.Shotgun) {
-            if (!_leftImg.enabled) {
-                _leftImg.enabled = true;
-                _rightImg.enabled = true;
-                _topImg.enabled = true;
-                _bottomImg.enabled = true;    
-
+            if (_leftImg.enabled == sniperZoomed) {
+                _leftImg.enabled = !sniperZoomed;
+                _rightImg.enabled = !sniperZoomed;
+                _topImg.enabled = !sniperZoomed;
+                _bottomImg.enabled = !sniperZoomed;
+            }
+            if (_topleftImg.enabled) {
                 _topleftImg.enabled = false;
                 _toprightImg.enabled = false;
                 _bottomleftImg.enabled = false;
@@ -177,7 +185,7 @@ public class CameraZoom : MonoBehaviour
             top.anchoredPosition = Vector2.Lerp(top.anchoredPosition, new Vector2(top.anchoredPosition.x, crosshairDelta), smoothTime);
             bottom.anchoredPosition = Vector2.Lerp(bottom.anchoredPosition, new Vector2(top.anchoredPosition.x, -crosshairDelta), smoothTime);
         } else {
-            if (_leftImg.enabled) {
+            if (!_topleftImg.enabled) {
                 _leftImg.enabled = false;
                 _rightImg.enabled = false;
                 _topImg.enabled = false;
@@ -198,8 +206,11 @@ public class CameraZoom : MonoBehaviour
     private void LateUpdate()
     {
         if (cameraToZoomFloat != Mathf.Clamp(targetZoom, 60, 80))
-            cameraToZoomFloat = Mathf.SmoothDamp(cameraToZoom.fieldOfView, Mathf.Clamp(targetZoom, 60, 80), ref currentVelocity1, 0.1f);
+            cameraToZoomFloat = Mathf.SmoothDamp(cameraToZoomFloat, Mathf.Clamp(targetZoom, 60, 80), ref currentVelocity1, 0.1f);
 
-        cameraToZoom.fieldOfView = cameraToZoomFloat;
+        bool sniperEquipped = Shooting.Local != null && Shooting.Local.currentGun == Shooting.currGun.Sniper;
+        cameraToZoom.fieldOfView = sniperEquipped && mainCam != null
+            ? Mathf.Min(cameraToZoomFloat, mainCam.fieldOfView)
+            : cameraToZoomFloat;
     }
 }
