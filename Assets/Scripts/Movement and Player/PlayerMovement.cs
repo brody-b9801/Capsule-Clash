@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using FishNet;
 using FishNet.Object;
+using FishNet.Object.Synchronizing;
 using FishNet.Managing;
 using UnityEngine.SceneManagement;
 using TMPro;
@@ -59,12 +60,17 @@ public class PlayerMovement : NetworkBehaviour {
     private GameObject portal4A;
     [HideInInspector] public GameObject portal4B;
     private Transform bossArrival;
+    private bool firstBossEntry;
     private GameObject combatSceneLight;
     private bool canTeleport = true;
     [SerializeField] private float launchForce;
     [SerializeField] private float dashForce = 10.0f;
     private int dashes = 0;
     private bool resettingDashes = false;
+    private readonly SyncVar<bool> canDash = new SyncVar<bool>(
+        true, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
+    private readonly SyncVar<float> dashReloadModifier = new SyncVar<float>(
+        1f, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
     public bool jumpedLast = false;
     public bool isTeleporting = false;
     public Vector3 newVelocity;
@@ -156,6 +162,8 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float turnAnimTune = 1f;
     [SerializeField] private float sidewaysAnimTune = 1f;
     [SerializeField] private float breatheAnimTune = 1f;
+    [SerializeField] private float aimBreatheScale = 0.3f;
+    private float breatheAimScale = 1f;
     [SerializeField] private Material selfMaterial;
     public float elapsedHealTime;
 
@@ -190,7 +198,23 @@ public class PlayerMovement : NetworkBehaviour {
 
 
     public string currDimension = "Desert";
-    private float gravity = 9.81f;
+    private readonly SyncVar<float> gravity = new SyncVar<float>(
+        9.81f, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
+    private readonly SyncVar<bool> canBuild = new SyncVar<bool>(
+        true, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
+    public bool CanBuild => canBuild.Value;
+    private readonly SyncVar<bool> canJump = new SyncVar<bool>(
+        true, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
+    private readonly SyncVar<bool> boostOnGunshot = new SyncVar<bool>(
+        false, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
+    private readonly SyncVar<float> reloadSpeedModifier = new SyncVar<float>(
+        1f, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
+    public float ReloadSpeedModifier => reloadSpeedModifier.Value;
+    [SerializeField] private float shotgunBoost = 24f;
+    [SerializeField] private float arBoost = 3.5f;
+    [SerializeField] private float sniperBoost = 16f;
+    [SerializeField] private float shotBoostDecay = 0.8f;
+    [SerializeField] private float maxShotBoost = 45f;
     private ServerController serverController;
 
     private Material desertSky;
@@ -230,7 +254,6 @@ public class PlayerMovement : NetworkBehaviour {
         public string materialName;
         public Material skybox;
         public float farClip;
-        public float gravity;
         public float accel;
         public float decel;
         public float fric;
@@ -238,6 +261,40 @@ public class PlayerMovement : NetworkBehaviour {
         public GameObject root;
         public string scene;
     }
+
+    private struct DimensionRules {
+        public bool canDash;
+        public float dashReloadModifier;
+        public float shotgunDamageModifier;
+        public float sniperDamageModifier;
+        public float arDamageModifier;
+        public float gravity;
+        public bool fallDamage;
+        public bool canBuild;
+        public bool canJump;
+        public bool boostOnGunshot;
+        public float reloadSpeedModifier;
+    }
+
+    private static readonly Dictionary<string, DimensionRules> rulesByScene = new Dictionary<string, DimensionRules> {
+        { global::SceneManager.DesertScene, new DimensionRules { canDash = true, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } },
+        { global::SceneManager.MazeScene, new DimensionRules { canDash = false, dashReloadModifier = 0f, shotgunDamageModifier = 1.5f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = false, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } },
+        { global::SceneManager.SpaceScene, new DimensionRules { canDash = true, dashReloadModifier = 4f, shotgunDamageModifier = 1f, sniperDamageModifier = 1.5f, arDamageModifier = 1f, gravity = 6f, fallDamage = false, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } },
+        { global::SceneManager.SnowScene, new DimensionRules { canDash = true, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1.5f, gravity = 9.81f, fallDamage = true, canBuild = false, canJump = false, boostOnGunshot = true, reloadSpeedModifier = 1.5f } },
+        { global::SceneManager.BossScene, new DimensionRules { canDash = true, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } }
+    };
+    private DimensionRules serverRules = rulesByScene[global::SceneManager.DesertScene];
+
+    public float GetGunDamageModifier(Shooting.currGun gun) {
+        switch (gun) {
+            case Shooting.currGun.Shotgun: return serverRules.shotgunDamageModifier;
+            case Shooting.currGun.Sniper: return serverRules.sniperDamageModifier;
+            case Shooting.currGun.AR: return serverRules.arDamageModifier;
+            default: return 1f;
+        }
+    }
+
+    public bool TakesFallDamage => serverRules.fallDamage;
 
     private DimensionInfo desertInfo;
     private DimensionInfo mazeInfo;
@@ -257,7 +314,6 @@ public class PlayerMovement : NetworkBehaviour {
             materialName = "Desert",
             skybox = desertSky,
             farClip = 1000f,
-            gravity = 9.81f,
             accel = baseGroundAcceleration,
             decel = baseGroundDeceleration,
             fric = baseFriction,
@@ -270,7 +326,6 @@ public class PlayerMovement : NetworkBehaviour {
             materialName = "Maze",
             skybox = null,
             farClip = 10f,
-            gravity = 9.81f,
             accel = baseGroundAcceleration,
             decel = baseGroundDeceleration,
             fric = baseFriction,
@@ -283,7 +338,6 @@ public class PlayerMovement : NetworkBehaviour {
             materialName = "Void",
             skybox = spaceSky,
             farClip = 400f,
-            gravity = 6f,
             accel = baseGroundAcceleration,
             decel = baseGroundDeceleration,
             fric = baseFriction,
@@ -296,10 +350,9 @@ public class PlayerMovement : NetworkBehaviour {
             materialName = "Ice",
             skybox = iceSky,
             farClip = 400f,
-            gravity = 9.81f,
-            accel = 10f,
-            decel = 10f,
-            fric = 1f,
+            accel = 5f,
+            decel = 4f,
+            fric = 0.4f,
             snow = true,
             root = GameObject.Find("Ice"),
             scene = global::SceneManager.SnowScene
@@ -308,7 +361,6 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void ApplyDimensionPhysics(DimensionInfo target) {
-        gravity = target.gravity;
         groundAcceleration = target.accel;
         groundDeceleration = target.decel;
         friction = target.fric;
@@ -407,9 +459,13 @@ public class PlayerMovement : NetworkBehaviour {
             GetComponent<MeshRenderer>().enabled = false;
             started = true;
             bool resuming = MigrationPositionPending() && global::SceneManager.Instance.activeAdditiveScene == global::SceneManager.DesertScene;
-            ChangeScene(resuming ? global::SceneManager.DesertScene : global::SceneManager.BossScene, desertInfo);
-            if (resuming) RestoreMigrationPosition();
-            else migrationPositionTime = float.NegativeInfinity;
+            if (resuming) {
+                ChangeScene(global::SceneManager.DesertScene, desertInfo);
+                RestoreMigrationPosition();
+            } else {
+                migrationPositionTime = float.NegativeInfinity;
+                StartCoroutine(LoadDesertThenEnterBoss());
+            }
             ShowMigrationPopup();
         } else {
             foreach (Transform child in transform) {
@@ -419,6 +475,21 @@ public class PlayerMovement : NetworkBehaviour {
         if (!IsOwner) GetComponent<PlayerMovement>().enabled = false;
 
     }
+    private IEnumerator LoadDesertThenEnterBoss() {
+        global::SceneManager sceneManager = global::SceneManager.Instance;
+        if (sceneManager.LoadScene(global::SceneManager.DesertScene)) {
+            float waited = 0f;
+            while (!sceneManager.TryGetActiveScene(global::SceneManager.DesertScene, out _) && waited < 15f) {
+                characterController.enabled = false;
+                waited += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            characterController.enabled = true;
+        }
+        firstBossEntry = true;
+        ChangeScene(global::SceneManager.BossScene, desertInfo);
+    }
+
     private void CacheSpawnPositions()
     {
         spawnVectors.Clear();
@@ -505,7 +576,7 @@ public class PlayerMovement : NetworkBehaviour {
         } else {
             destination = inCombatScene
                 ? (portal4A != null ? portal4A.transform : null)
-                : (bossArrival != null ? bossArrival : portal4B != null ? portal4B.transform : null);
+                : (firstBossEntry && bossArrival != null ? bossArrival : portal4B != null ? portal4B.transform : null);
         }
         if (destination == null) {
             Debug.LogError($"[PlayerMovement] '{scene.name}' has no arrival point ('{pendingArrival ?? "portal4A, BossArrival or portal4B"}').");
@@ -515,13 +586,12 @@ public class PlayerMovement : NetworkBehaviour {
         }
 
         pendingArrival = null;
+        firstBossEntry = false;
 
         HandleTeleportation(destination, pendingDimension, destination == bossArrival ? 0f : 3f);
         AddOwnerToScene(scene.name);
         if (destination == bossArrival) FaceDirection(bossArrival.eulerAngles.y);
     }
-
-    [ServerRpc]
 
     private void ResolveSceneReferences(System.Func<string, GameObject> find) {
         portal1A = find("portal1B");
@@ -698,7 +768,7 @@ public class PlayerMovement : NetworkBehaviour {
         isGrounded = isGround();
         HandleCameraRotation();
         UpdateMovementVector();
-        if (characterController.enabled) characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * 10 * Time.deltaTime);
+        if (characterController.enabled) characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
         UpdateVelocityEstimate();
         SetExtraneousStates(); //needs cleanup
         HandleLaunch();
@@ -799,7 +869,7 @@ public class PlayerMovement : NetworkBehaviour {
         if (_jump) serverController.TryFeed();
         
 
-        if (jumpBufferTimer > 0f && isGrounded && !serverController.LookingAtServer) {
+        if (jumpBufferTimer > 0f && isGrounded && canJump.Value && !serverController.LookingAtServer) {
             jumpBufferTimer = 0f;
             if (currDimension == "Maze")
                 newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
@@ -816,7 +886,7 @@ public class PlayerMovement : NetworkBehaviour {
             newVelocity.y = -2;
         } else {
             groundingForce = groundedPrev && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed() * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
-            newVelocity.y = Mathf.Max(newVelocity.y - gravity * Time.deltaTime, -50f);
+            newVelocity.y = Mathf.Max(newVelocity.y - gravity.Value * Time.deltaTime, -50f);
         }
 
         Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
@@ -893,7 +963,7 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void HandleDashing() {
-        if (_dash && dashes > 0 && !isGrounded && currDimension != "Maze") {
+        if (_dash && canDash.Value && dashes > 0 && !isGrounded) {
             Debug.Log("dashing");
             HealthController.noFDAnim = true;
             dashes--;
@@ -960,11 +1030,25 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void HandleShotBoost() {
-        if (currDimension != "Ice" || !isGrounded) {
+        if (!boostOnGunshot.Value) {
             shotBoost = Vector3.zero;
             return;
         }
-        shotBoost = Vector3.Lerp(shotBoost, Vector3.zero, Time.deltaTime);
+        shotBoost *= Mathf.Exp(-shotBoostDecay * Time.deltaTime);
+    }
+
+    public void ApplyShotBoost(Shooting.currGun gun, Vector3 aimDirection) {
+        if (!boostOnGunshot.Value) return;
+        Vector3 flatAim = new Vector3(aimDirection.x, 0f, aimDirection.z);
+        if (flatAim.sqrMagnitude < 1e-4f) return;
+
+        float strength;
+        switch (gun) {
+            case Shooting.currGun.Shotgun: strength = shotgunBoost; break;
+            case Shooting.currGun.Sniper: strength = sniperBoost; break;
+            default: strength = arBoost; break;
+        }
+        shotBoost = Vector3.ClampMagnitude(shotBoost + flatAim.normalized * strength, maxShotBoost);
     }
 
     private void UpdateDynamicFOV() {
@@ -995,25 +1079,12 @@ public class PlayerMovement : NetworkBehaviour {
         }
     }
     IEnumerator addDash() {
-        float elapsedTime = 0;
         if (dashes < 3) {
             resettingDashes = true;
-            float total = 10 * (1.0f / upgradeManager.Local.dashRegenMultiplier);
-            if (currDimension == "Space")
-            {
-                total *= 0.25f;
-            }
-            while (elapsedTime < total) {
-                elapsedTime += Time.deltaTime;
-                float percent = elapsedTime / total;
-                if (dashIcon != null) dashIcon.sizeDelta = new Vector2(75, percent * 72);
-                float totalPrev = total;
-                total = 10 * (1.0f / upgradeManager.Local.dashRegenMultiplier);
-                if (currDimension == "Space")
-                {
-                    total *= 0.25f;
-                }
-                if (totalPrev != total) elapsedTime = percent * total;
+            float percent = 0;
+            while (percent < 1f) {
+                percent += Time.deltaTime * upgradeManager.Local.dashRegenMultiplier * dashReloadModifier.Value / 10f;
+                if (dashIcon != null) dashIcon.sizeDelta = new Vector2(75, Mathf.Min(percent, 1f) * 72);
                 yield return null;
             }
             dashes++;
@@ -1084,6 +1155,10 @@ public class PlayerMovement : NetworkBehaviour {
     private void VelocityResetCheck(Vector3 hitNormal) {
         if (Vector3.Angle(dashVector, hitNormal) > 90f) { //check to reset dash if hit wall
             dashVector = Vector3.zero;
+        }
+        if (Vector3.Dot(shotBoost, hitNormal) > 0f && Vector3.Angle(hitNormal, Vector3.up) > characterController.slopeLimit) {
+            shotBoost = Vector3.ProjectOnPlane(shotBoost, hitNormal);
+            shotBoost.y = 0f;
         }
         if  (newVelocity.y > 0f && Vector3.Angle(hitNormal, Vector3.down) < characterController.slopeLimit) { //check to reset vertical velocity if hit ceiling
             newVelocity.y = 0f;
@@ -1314,6 +1389,24 @@ public class PlayerMovement : NetworkBehaviour {
             return;
         }
         networkManager.SceneManager.AddConnectionToScene(Owner, scene);
+        ApplyDimensionRules(sceneName);
+    }
+
+    [Server]
+    private void ApplyDimensionRules(string sceneName)
+    {
+        if (!rulesByScene.TryGetValue(sceneName, out DimensionRules rules)) {
+            Debug.LogWarning($"[PlayerMovement] no dimension rules for '{sceneName}'; keeping the current ones.");
+            return;
+        }
+        serverRules = rules;
+        canDash.Value = rules.canDash;
+        dashReloadModifier.Value = rules.canDash ? rules.dashReloadModifier : 0f;
+        gravity.Value = rules.gravity;
+        canBuild.Value = rules.canBuild;
+        canJump.Value = rules.canJump;
+        boostOnGunshot.Value = rules.boostOnGunshot;
+        reloadSpeedModifier.Value = rules.reloadSpeedModifier;
     }
 
     public override void OnStopServer() {
@@ -1616,6 +1709,9 @@ public class PlayerMovement : NetworkBehaviour {
     }
     private void LateUpdate() {
         if (!IsOwner || ServerController.serverAnimationPlaying || Shooting.Local == null) return;
+        bool sniperAiming = CameraZoom.isAiming && Shooting.Local.currentGun == Shooting.currGun.Sniper;
+        breatheAimScale = Mathf.Lerp(breatheAimScale, sniperAiming ? aimBreatheScale : 1f, Time.deltaTime * 8f);
+        float breatheTune = breatheAnimTune * breatheAimScale;
         if (!Shooting.Local.reloading) {
             akm.localPosition = akmBaseLocalPos;
             akm.localEulerAngles = akmBaseLocalRot;
@@ -1636,12 +1732,12 @@ public class PlayerMovement : NetworkBehaviour {
 
         if (!Shaker.shooting && isGrounded) {
                 playerCamera.gameObject.transform.localEulerAngles = new Vector3(
-                    jumpOffsetTwo * jumpAnimTune + BreathingAnim.yVal * -6 * breatheAnimTune + currentCameraRotationX - Shaker.easedRotationChange - Mathf.Abs(walkingShake.newY) * 10f * walkAnimTune,
+                    jumpOffsetTwo * jumpAnimTune + BreathingAnim.yVal * -6 * breatheTune + currentCameraRotationX - Shaker.easedRotationChange - Mathf.Abs(walkingShake.newY) * 10f * walkAnimTune,
                     currentCameraRotationY + Shaker.yRot + 2.5f * walkingShake.newX * walkAnimTune,
                     turnAnimTune * -1.2f * gunYRot + 2.1f * sideTilt * sidewaysAnimTune);
         } else {
                 playerCamera.gameObject.transform.localEulerAngles = new Vector3(
-                    breatheAnimTune * BreathingAnim.yVal * -10 + currentCameraRotationX - Shaker.easedRotationChange,
+                    breatheTune * BreathingAnim.yVal * -10 + currentCameraRotationX - Shaker.easedRotationChange,
                     currentCameraRotationY + Shaker.yRot * shootAnimTune,
                     shootAnimTune * Shaker.zRot + -1.2f * gunYRot * turnAnimTune + 2.1f * sideTilt * sidewaysAnimTune);
         }
@@ -1658,7 +1754,7 @@ public class PlayerMovement : NetworkBehaviour {
 
             playerCamera.gameObject.transform.localPosition +=
                 playerCamera.transform.right * ((walkingShake.newX / -10f) * walkAnimTune) +
-                playerCamera.transform.up * (0.25f * BreathingAnim.yVal * breatheAnimTune + Mathf.Abs((walkingShake.newY / 2.5f) * walkAnimTune));
+                playerCamera.transform.up * (0.25f * BreathingAnim.yVal * breatheTune + Mathf.Abs((walkingShake.newY / 2.5f) * walkAnimTune));
 
         if (!CameraZoom.isAiming && !lerpingAimEnd && !lerpingAimDoneEnd)
             StartCoroutine(lerpAimEnd());
@@ -1689,18 +1785,18 @@ public class PlayerMovement : NetworkBehaviour {
             if (!SprintGunPose) {
                 posOffset = new Vector3(
                     walkingShake.newX * 0.015f * walkAnimTuneGun + walkVectorPos.x,
-                    -0.01f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune + BreathingAnim.yVal * 0.025f * breatheAnimTune + Mathf.Abs(walkingShake.newY) * 0.03f * walkAnimTuneGun + walkVectorPos.y + jumpOffset * jumpAnimTune + Shooting.changeOffset * shootAnimTune,
+                    -0.01f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune + BreathingAnim.yVal * 0.025f * breatheTune + Mathf.Abs(walkingShake.newY) * 0.03f * walkAnimTuneGun + walkVectorPos.y + jumpOffset * jumpAnimTune + Shooting.changeOffset * shootAnimTune,
                     Mathf.Abs(walkingShake.newY) * 0.03f * walkAnimTuneGun + walkVectorPos.z);
             } else {
                 posOffset = new Vector3(
                     walkingShake.newX * 0.06f * walkAnimTuneGun + walkVectorPos.x,
-                    -0.01f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune + BreathingAnim.yVal * 0.025f * breatheAnimTune + Mathf.Abs(walkingShake.newY) * 0.045f * walkAnimTuneGun + walkVectorPos.y + jumpOffset * jumpAnimTune + Shooting.changeOffset * shootAnimTune,
+                    -0.01f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune + BreathingAnim.yVal * 0.025f * breatheTune + Mathf.Abs(walkingShake.newY) * 0.045f * walkAnimTuneGun + walkVectorPos.y + jumpOffset * jumpAnimTune + Shooting.changeOffset * shootAnimTune,
                     Mathf.Abs(walkingShake.newY) * 0.03f * walkAnimTuneGun + walkVectorPos.z);
             }
                 akm.localPosition += posOffset;
 
             Vector3 rotOffset = new Vector3(
-                2f * Mathf.Sin(jumpOffset / JumpOffsetMax * Mathf.PI / 2f) * jumpAnimTune + BreathingAnim.yVal * 3.5f * breatheAnimTune + Shooting.changeRotOffset * shootAnimTune - Mathf.Abs(walkingShake.newY) * -16.5f * walkAnimTuneGun + walkVectorRot.x * walkAnimTuneGun - gunXRot * turnAnimTune * 0.6f + 0.4f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune,
+                2f * Mathf.Sin(jumpOffset / JumpOffsetMax * Mathf.PI / 2f) * jumpAnimTune + BreathingAnim.yVal * 3.5f * breatheTune + Shooting.changeRotOffset * shootAnimTune - Mathf.Abs(walkingShake.newY) * -16.5f * walkAnimTuneGun + walkVectorRot.x * walkAnimTuneGun - gunXRot * turnAnimTune * 0.6f + 0.4f * Mathf.Abs(jumpOffsetTwo) * jumpAnimTune,
                 -walkingShake.newX * 5.25f * walkAnimTuneGun + walkVectorRot.y * walkAnimTuneGun + gunYRot * turnAnimTune * 0.6f,
                 walkingShake.newX * 2.25f * walkAnimTuneGun + walkVectorRot.z * walkAnimTuneGun + sideTilt * sidewaysAnimTune * 1.5f);
                 akm.localEulerAngles += rotOffset;

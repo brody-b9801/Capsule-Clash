@@ -184,6 +184,9 @@ public class DamageControl : NetworkBehaviour
             }
         }
 
+        PlayerMovement shooterMovement = shooter != null ? shooter.GetComponent<PlayerMovement>() : null;
+        if (shooterMovement != null) damageDealt *= shooterMovement.GetGunDamageModifier(gun);
+
         ApplyDamage(damageDealt, shooter);
         return true;
     }
@@ -230,6 +233,8 @@ public class DamageControl : NetworkBehaviour
     public void ServerApplyFallDamage(float amount)
     {
         if (amount <= 0f || health.Value <= 0f) return;
+        PlayerMovement movement = GetComponent<PlayerMovement>();
+        if (movement != null && !movement.TakesFallDamage) return;
         ApplyDamage(Mathf.Min(amount, MaxHealth), null);
     }
 
