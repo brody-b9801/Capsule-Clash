@@ -224,6 +224,8 @@ public class PlayerMovement : NetworkBehaviour {
     private GunThingAnim gunRenderer;
     private MeshRenderer usernameRenderer;
     private int displayedDashes = -1;
+    private bool displayedDashDisabled;
+    private Color dashTextColor = Color.white;
 
     public static PlayerMovement Local {get; private set;}
     private Shooting localShooting;
@@ -402,6 +404,7 @@ public class PlayerMovement : NetworkBehaviour {
             if (localShooting != null) localShooting.canShoot = true;
             Shooting.lockCursor = true;
             dt = GameObject.Find("DashText").GetComponent<TextMeshProUGUI>();
+            dashTextColor = dt.color;
             playerCamera = Camera.main;
             PersistentObjects.Ensure(playerCamera);
 
@@ -563,7 +566,10 @@ public class PlayerMovement : NetworkBehaviour {
         };
         ResolveSceneReferences(find);
         ResolveHudReferences(find);
-        if (serverController != null) serverController.CacheMasks(find);
+        if (serverController != null) {
+            serverController.CacheMasks(find);
+            serverController.CacheTextOutput(find);
+        }
         bool inCombatScene = global::SceneManager.Instance.InCombatScene;
         if (borderInstance != null) borderInstance.gameObject.SetActive(inCombatScene);
         if (!inCombatScene && portal4B == null)
@@ -625,6 +631,7 @@ public class PlayerMovement : NetworkBehaviour {
         if (dt == null) {
             GameObject dashText = find("DashText");
             dt = dashText != null ? dashText.GetComponent<TextMeshProUGUI>() : null;
+            if (dt != null) dashTextColor = dt.color;
             displayedDashes = -1;
         }
         if (dashIcon == null) {
@@ -757,9 +764,12 @@ public class PlayerMovement : NetworkBehaviour {
 
         IsOnSlope();
         CheckIfStuckAndMoveUp();
-        if (dt != null && dashes != displayedDashes) {
+        bool dashDisabled = !canDash.Value;
+        if (dt != null && (dashes != displayedDashes || dashDisabled != displayedDashDisabled)) {
             displayedDashes = dashes;
-            dt.text = dashes.ToString();
+            displayedDashDisabled = dashDisabled;
+            dt.text = dashDisabled ? "X" : dashes.ToString();
+            dt.color = dashDisabled ? Color.red : dashTextColor;
         }
 
         if (usernameRenderer != null) usernameRenderer.enabled = false;
@@ -1390,6 +1400,8 @@ public class PlayerMovement : NetworkBehaviour {
         }
         networkManager.SceneManager.AddConnectionToScene(Owner, scene);
         ApplyDimensionRules(sceneName);
+        DamageControl damageControl = GetComponent<DamageControl>();
+        if (damageControl != null) damageControl.GrantTeleportProtection();
     }
 
     [Server]
@@ -1425,6 +1437,7 @@ public class PlayerMovement : NetworkBehaviour {
         isTeleporting = true;
         yield return new WaitForSeconds(2f);
         isTeleporting = false;
+        yield return new WaitForSeconds(DamageControl.TeleportProtectionTime);
         canTeleport = true;
     }
     

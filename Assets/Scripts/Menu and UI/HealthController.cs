@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using FishNet;
+using UnityEngine.UI;
 
 public class HealthController : MonoBehaviour
 {
@@ -13,12 +14,18 @@ public class HealthController : MonoBehaviour
     public static bool noFDAnim;
     public static bool tpAnim;
     private float healthPrev;
+    [SerializeField] private Color invulnerableColor = new Color(1f, 0.85f, 0.2f, 1f);
+    [SerializeField] private float invulnerablePulseSpeed = 4f;
+    private Image healthBarImage;
+    private Color healthBarColor;
 
     private static bool PlayerReady =>
         DamageControl.Local != null && PlayerMovement.Local != null;
 
     private void Start() {
         healthBar = h1;
+        healthBarImage = h1 != null ? h1.GetComponent<Image>() : null;
+        if (healthBarImage != null) healthBarColor = healthBarImage.color;
         healthPrev = DamageControl.MaxHealth;
         updateHealth();
     }
@@ -33,6 +40,12 @@ public class HealthController : MonoBehaviour
         healthPrev = current;
 
         if (current != h) updateHealth();
+
+        if (healthBarImage != null) {
+            healthBarImage.color = DamageControl.Local.IsInvulnerable
+                ? Color.Lerp(healthBarColor, invulnerableColor, Mathf.PingPong(Time.time * invulnerablePulseSpeed, 1f))
+                : healthBarColor;
+        }
     }
 
     public static void updateHealth() {
