@@ -5,13 +5,15 @@ using FishNet.Object;
 
 public class ServerController : MonoBehaviour {
     private const string FeedPrompt = "Press Space to Feed Me 5 Capsules, I MUST GROW";
+    private const string ServerRoomTextName = "ServerRoomText";
 
     public static ServerController Local { get; private set; }
 
     [SerializeField] private GameObject keyPrefab;
 
     private Camera playerCamera;
-    private TextMeshProUGUI serverText;
+    private TMP_Text serverText;
+    private TextMeshProUGUI hudText;
     private GameObject portal4;
 
     private bool ServerSpeaking = false;
@@ -72,8 +74,9 @@ public class ServerController : MonoBehaviour {
         Local = this;
         playerCamera = camera;
         cam = camera.transform;
-        serverText = GameObject.Find("MaskText").GetComponent<TextMeshProUGUI>();
-        serverText.verticalAlignment = VerticalAlignmentOptions.Middle;
+        hudText = GameObject.Find("MaskText").GetComponent<TextMeshProUGUI>();
+        hudText.verticalAlignment = VerticalAlignmentOptions.Middle;
+        serverText = hudText;
         portal4 = GameObject.Find("portal4");
         ui = GameObject.FindObjectsByType<BuildUI>(FindObjectsSortMode.None)[0];
         gun = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
@@ -83,6 +86,21 @@ public class ServerController : MonoBehaviour {
         mazeServerTransform = CacheMask(find, "MaskMaze", mazeKeyAcquired);
         spaceServerTransform = CacheMask(find, "MaskSpace", spaceKeyAcquired);
         iceServerTransform = CacheMask(find, "MaskIce", iceKeyAcquired);
+    }
+
+    public void CacheTextOutput(System.Func<string, GameObject> find) {
+        TextMeshPro roomText = null;
+        if (!global::SceneManager.Instance.InCombatScene) {
+            GameObject roomTextObj = find(ServerRoomTextName);
+            if (roomTextObj != null) roomText = roomTextObj.GetComponent<TextMeshPro>();
+            if (roomText == null) Debug.LogWarning($"[ServerController] no 3D TextMeshPro named '{ServerRoomTextName}' in the server room; using HUD text.");
+        }
+
+        TMP_Text next = roomText != null ? roomText : hudText;
+        if (next == serverText) return;
+        ResetServerState();
+        serverText = next;
+        serverText.text = "";
     }
 
     private Transform CacheMask(System.Func<string, GameObject> find, string name, bool keyAcquired) {
@@ -259,7 +277,9 @@ public class ServerController : MonoBehaviour {
     private IEnumerator DisplayDimensionAfterPixelize(string dimension) {
         while (RetroDither.TeleportPixelizeActive) yield return null;
 
-        if (dimension == "Desert")
+        if (dimension == "Desert" && !global::SceneManager.Instance.InCombatScene)
+            activeSceneCoroutine = null;
+        else if (dimension == "Desert")
             yield return StartDesertScene();
         else if (dimension == "Maze")
             yield return StartMazeScene();
@@ -275,7 +295,6 @@ public class ServerController : MonoBehaviour {
             StartServerSpeak("Welcome back to the Desert");
         } else {
             StartServerSpeak("Welcome to the Desert");
-            desertEntered = true;
             while (ServerSpeaking) yield return null;
             StartServerSpeak("• Normal gravity and movement\n• Dashing and building are enabled\n• All guns deal normal damage");
             while (ServerSpeaking) yield return null;
@@ -295,6 +314,7 @@ public class ServerController : MonoBehaviour {
 
         while (ServerSpeaking) yield return null;
         serverText.color = initialColor;
+        desertEntered = true;
         activeSceneCoroutine = null;
     }
 
@@ -304,7 +324,6 @@ public class ServerController : MonoBehaviour {
             StartServerSpeak("Welcome back to the Maze");
         } else {
             StartServerSpeak("Welcome to the Maze");
-            mazeEntered = true;
             while (ServerSpeaking) yield return null;
             StartServerSpeak("• Visibility is limited\n• Dashing and building are disabled\n• Jump upgrades have no effect\n• Shotguns deal 1.5x damage");
         }
@@ -318,6 +337,7 @@ public class ServerController : MonoBehaviour {
             serverText.color = initialColor;
         }
 
+        mazeEntered = true;
         activeSceneCoroutine = null;
     }
 
@@ -327,7 +347,6 @@ public class ServerController : MonoBehaviour {
             StartServerSpeak("Welcome back to Space");
         } else {
             StartServerSpeak("Welcome to Space");
-            spaceEntered = true;
             while (ServerSpeaking) yield return null;
             StartServerSpeak("• Reduced gravity, higher jumping\n• Dashes recharge 4x faster\n• Fall damage is disabled\n• Snipers deal 1.5x damage");
         }
@@ -341,6 +360,7 @@ public class ServerController : MonoBehaviour {
             serverText.color = initialColor;
         }
 
+        spaceEntered = true;
         activeSceneCoroutine = null;
     }
 
@@ -350,7 +370,6 @@ public class ServerController : MonoBehaviour {
             StartServerSpeak("Welcome back to the Tundra");
         } else {
             StartServerSpeak("Welcome to the Tundra");
-            iceEntered = true;
             while (ServerSpeaking) yield return null;
             StartServerSpeak("• The ground is slippery\n• Shooting launches you backwards, shotguns the most and snipers the least\n• Reloading is 1.5x faster\n• Jumping and building are disabled\n• ARs deal 1.5x damage");
         }
@@ -364,6 +383,7 @@ public class ServerController : MonoBehaviour {
             serverText.color = initialColor;
         }
 
+        iceEntered = true;
         activeSceneCoroutine = null;
     }
 

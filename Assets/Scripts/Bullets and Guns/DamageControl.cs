@@ -11,6 +11,7 @@ public class DamageControl : NetworkBehaviour
     public const float HealAmount = 45f;
     public const float HealChannelTime = 3f;
     public const float MigrationRestoreWindow = 60f;
+    public const float TeleportProtectionTime = 3f;
 
     private const float HealIntervalTolerance = 0.8f;
     private const float RespawnRevealDelay = 0.25f;
@@ -36,10 +37,18 @@ public class DamageControl : NetworkBehaviour
     public readonly SyncVar<float> damageMultiplier = new SyncVar<float>(
         1f, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.Observers));
 
+    public readonly SyncVar<bool> teleportProtected = new SyncVar<bool>(
+        false, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.Observers));
+
+    public bool IsInvulnerable => spawnProtected.Value || teleportProtected.Value;
+
     [SerializeField] private int damage = 18;
     [SerializeField] private float maxSpawnProtectionTime = 15f;
 
     private Coroutine spawnProtectionFailsafe;
+    private Coroutine teleportProtectionRoutine;
+    private Coroutine blinkRoutine;
+    private const float BlinkInterval = 0.1f;
     private Coroutine revealRoutine;
     private Collider damageCollider;
     private bool bodyAlive = true;
@@ -50,6 +59,8 @@ public class DamageControl : NetworkBehaviour
     private void Awake()
     {
         health.OnChange += OnHealthChanged;
+        spawnProtected.OnChange += OnProtectionChanged;
+        teleportProtected.OnChange += OnProtectionChanged;
 
         foreach (Collider col in GetComponentsInChildren<Collider>(true))
         {
@@ -62,6 +73,8 @@ public class DamageControl : NetworkBehaviour
     private void OnDestroy()
     {
         health.OnChange -= OnHealthChanged;
+        spawnProtected.OnChange -= OnProtectionChanged;
+        teleportProtected.OnChange -= OnProtectionChanged;
     }
 
     public override void OnStartServer()
@@ -191,7 +204,7 @@ public class DamageControl : NetworkBehaviour
         return true;
     }
 
-    private bool CanBeDamaged() => health.Value > 0f && !spawnProtected.Value;
+    private bool CanBeDamaged() => health.Value > 0f && !IsInvulnerable;
 
     private void ApplyDamage(float amount, NetworkObject shooter)
     {
@@ -296,5 +309,44 @@ public class DamageControl : NetworkBehaviour
         yield return new WaitForSeconds(maxSpawnProtectionTime);
         spawnProtectionFailsafe = null;
         spawnProtected.Value = false;
+    }
+
+    [Server]
+    public void GrantTeleportProtection()
+    {
+        if (teleportProtectionRoutine != null) StopCoroutine(teleportProtectionRoutine);
+        teleportProtected.Value = true;
+        teleportProtectionRoutine = StartCoroutine(EndTeleportProtection());
+    }
+
+    IEnumerator EndTeleportProtection()
+    {
+        yield return new WaitForSeconds(TeleportProtectionTime);
+        teleportProtectionRoutine = null;
+        teleportProtected.Value = false;
+    }
+
+    private void OnProtectionChanged(bool prev, bool next, bool asServer)
+    {
+        if (asServer || IsOwner) return;
+        if (IsInvulnerable && blinkRoutine == null) blinkRoutine = StartCoroutine(BlinkWhileProtected());
+    }
+
+    IEnumerator BlinkWhileProtected()
+    {
+        Renderer[] bodyRenderers = GetComponentsInChildren<Renderer>(true);
+        bool hidden = false;
+        while (IsInvulnerable && bodyAlive)
+        {
+            if (revealRoutine == null)
+            {
+                hidden = !hidden;
+                foreach (Renderer bodyRenderer in bodyRenderers)
+                    if (bodyRenderer != null) bodyRenderer.forceRenderingOff = hidden;
+            }
+            yield return new WaitForSeconds(BlinkInterval);
+        }
+        blinkRoutine = null;
+        if (revealRoutine == null) SetBodyVisible(bodyAlive);
     }
 }

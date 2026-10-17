@@ -589,6 +589,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   h1: {fileID: 8926966991606923168}
+  invulnerableColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+  invulnerablePulseSpeed: 4
 --- !u!1 &8926966991821226908
 GameObject:
   m_ObjectHideFlags: 0

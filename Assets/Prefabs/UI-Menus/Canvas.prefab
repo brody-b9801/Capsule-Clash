@@ -3128,6 +3128,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   h1: {fileID: 5412836154007432284}
+  invulnerableColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+  invulnerablePulseSpeed: 4
 --- !u!1 &5412836154260345073
 GameObject:
   m_ObjectHideFlags: 0
