@@ -26,8 +26,6 @@ public class PersistentSceneObject : MonoBehaviour {
         if (marker == null) marker = go.AddComponent<PersistentSceneObject>();
         marker.key = key;
         kept[key] = marker;
-
-        Debug.Log($"[PersistentSceneObject] keeping '{go.name}' across scene loads (key '{key}').", go);
     }
 
     private void OnDestroy() {

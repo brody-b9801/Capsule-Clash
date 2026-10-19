@@ -2,6 +2,8 @@
 using UnityEngine;
 using TMPro;
 using FishNet.Object;
+using System;
+using Unity.VisualScripting;
 
 public class ServerController : MonoBehaviour {
     private const string FeedPrompt = "Press Space to Feed Me 5 Capsules, I MUST GROW";
@@ -36,6 +38,7 @@ public class ServerController : MonoBehaviour {
     public bool spaceKeyAcquired = false;
     public bool iceKeyAcquired = false;
     public static bool serverAnimationPlaying = false;
+    private bool screenAnimationDone = false;
 
     private bool desertEntered = false;
     private bool mazeEntered = false;
@@ -139,19 +142,94 @@ public class ServerController : MonoBehaviour {
         ServerSpeaking = true;
         Color color = serverText.color;
         serverText.color = new Color(0.871f, 0.451f, 0.337f, 1f);
-        serverText.text = generationVerbs[Random.Range(0, generationVerbs.Length)] + "...";
-        yield return new WaitForSeconds(Random.Range(0.2f, 2f));
+        serverText.text = generationVerbs[UnityEngine.Random.Range(0, generationVerbs.Length)] + "...";
+        yield return new WaitForSeconds(UnityEngine.Random.Range(0.2f, 2f));
         serverText.color = color;
 
-        for (int i = 0; i < input.Length; i += Random.Range(1, 5)) {
-            serverText.text = input.Substring(0, Mathf.Min(i + 1, input.Length));
-            yield return new WaitForSeconds(Random.Range(0, 0.1f));
+        for (int i = 0; i < input.Length; i += UnityEngine.Random.Range(1, 5)) {
+            serverText.text = input.Substring(0, Mathf.Min(i + 1, input.Length)) + "█";
+            yield return new WaitForSeconds(UnityEngine.Random.Range(0, 0.1f));
         }
         serverText.text = input;
         yield return new WaitForSeconds(3f + input.Split('\n').Length - 1);
         serverText.text = "";
         serverText.color = new Color(1f, 1f, 1f, 1f);
         ServerSpeaking = false;
+    }
+
+    IEnumerator ScreenViewAnimation(IEnumerator sceneToPlay)
+    {
+        float animationTime = 1f;
+        float elapsedTime = 0;
+        serverAnimationPlaying = true;
+        screenAnimationDone = true;
+        Camera main = Camera.main;
+
+        Quaternion startRot = main.transform.rotation;
+        Quaternion endRot = Quaternion.Euler(new Vector3(-20, 0 ,0));
+        float startY = startRot.eulerAngles.y;
+        float endY = endRot.eulerAngles.y;
+        
+        float startFOV = main.fieldOfView;
+        float endFOV = 40;
+
+        Vector3 startPos = main.transform.position;
+        Vector3 endPos = new Vector3(0, 2.25f, 50.5f);
+
+        Transform player = FindAnyObjectByType<PlayerMovement>().gameObject.transform;
+
+        Vector3 playerStartPos = player.position;
+        Vector3 playerEndPos = playerStartPos + (endPos - startPos);
+
+        Quaternion playerStartRot = player.rotation;
+        Quaternion playerEndRot = playerStartRot * Quaternion.Euler(new Vector3(0, startY - endY, 0));
+        
+        while (elapsedTime < animationTime)
+        {
+            float percentDone = elapsedTime/animationTime;
+
+            main.transform.rotation = Quaternion.Slerp(startRot, endRot, percentDone);
+            main.fieldOfView = Mathf.Lerp(startFOV, endFOV, percentDone);
+            main.transform.position = Vector3.Lerp(startPos, endPos, percentDone);
+            
+            player.position = Vector3.Lerp(playerStartPos, playerEndPos, percentDone);
+            player.rotation = Quaternion.Slerp(playerStartRot, playerEndRot, percentDone);
+
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+        
+        main.transform.rotation = endRot;
+        main.transform.position = endPos;
+        main.fieldOfView = endFOV;
+        player.position = playerEndPos;
+        player.rotation = playerEndRot;
+
+        yield return StartCoroutine(sceneToPlay);
+        elapsedTime = 0;
+
+        while (elapsedTime < animationTime)
+        {
+            float percentDone = elapsedTime/animationTime;
+
+            main.transform.rotation = Quaternion.Slerp(endRot, startRot, percentDone);
+            main.fieldOfView = Mathf.Lerp(endFOV, startFOV, percentDone);
+            main.transform.position = Vector3.Lerp(endPos, startPos, percentDone);
+
+            player.position = Vector3.Lerp(playerEndPos, playerStartPos, percentDone);
+            player.rotation = Quaternion.Slerp(playerEndRot, playerStartRot, percentDone);
+
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        main.transform.rotation = startRot;
+        main.transform.position = startPos;
+        main.fieldOfView = startFOV;
+        player.position = playerStartPos;
+        player.rotation = playerStartRot;
+
+        serverAnimationPlaying = false;
     }
 
     private void StartServerSpeak(string input) {
@@ -168,12 +246,32 @@ public class ServerController : MonoBehaviour {
         if (PlayerMovement.Local == null) return;
 
         UpdateServerDetection();
+        HandlePlatformEntry();
         UpdateServerPrompts();
         if (!serverAnimationPlaying) {
             RotateServer();
         }
     }
 
+    private void HandlePlatformEntry()
+    {
+        if (FindAnyObjectByType<PlayerMovement>().onScreenPlatform)
+        {   
+            if (!screenAnimationDone) {
+                IEnumerator action = ServerWelcomeScene();
+                StartCoroutine(ScreenViewAnimation(action));
+            }
+        } else
+        {
+            screenAnimationDone = false;
+        }
+    }
+
+    IEnumerator ServerWelcomeScene()
+    {
+        Debug.Log("start server welcome scene");
+        yield return new WaitForSeconds(2f);
+    }
     private void UpdateServerDetection() {
         seeingMazeServer = false;
         seeingSpaceServer = false;
@@ -531,12 +629,17 @@ public class ServerController : MonoBehaviour {
         cam.LookAt(server);
         Vector3 startRotation = cam.rotation.eulerAngles;
         Vector3 endRotation = cam.rotation.eulerAngles + new Vector3(14.04f, -90f, 0f);
+        float startFOV = playerCamera.fieldOfView;
+        float baseFOV = PlayerMovement.Local.BaseFOV;
         while (timeAcc < lerpTime) {
             timeAcc += Time.deltaTime;
             cam.position = Vector3.Lerp(startPosition, startPosition + posChange, timeAcc / lerpTime);
             cam.LookAt(server.position - transform.forward);
+            playerCamera.fieldOfView = Mathf.Lerp(startFOV, baseFOV, timeAcc / lerpTime);
             yield return null;
         }
+        playerCamera.fieldOfView = baseFOV;
+        PlayerMovement.Local.SnapToBaseFOV();
         yield break;
     }
 

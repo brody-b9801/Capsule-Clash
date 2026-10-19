@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using FishNet;
 using FishNet.Object;
@@ -8,7 +7,6 @@ using FishNet.Object.Synchronizing;
 using FishNet.Managing;
 using UnityEngine.SceneManagement;
 using TMPro;
-using FishNet.Connection;
 using FishNet.Component.Observing;
 
 [RequireComponent(typeof(ServerController))]
@@ -216,7 +214,7 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float shotBoostDecay = 0.8f;
     [SerializeField] private float maxShotBoost = 45f;
     private ServerController serverController;
-
+    public bool onScreenPlatform = false;
     private Material desertSky;
     public Material spaceSky;
     public Material iceSky;
@@ -591,12 +589,26 @@ public class PlayerMovement : NetworkBehaviour {
             return;
         }
 
+        bool firstSpawn = firstBossEntry && destination == bossArrival;
         pendingArrival = null;
         firstBossEntry = false;
 
         HandleTeleportation(destination, pendingDimension, destination == bossArrival ? 0f : 3f);
         AddOwnerToScene(scene.name);
         if (destination == bossArrival) FaceDirection(bossArrival.eulerAngles.y);
+        if (firstSpawn) StartCoroutine(PlaySpawnTeleportAnimation());
+    }
+
+    private IEnumerator PlaySpawnTeleportAnimation() {
+        int stableFrames = 0;
+        float waited = 0f;
+        while (stableFrames < 3 && waited < 5f) {
+            yield return null;
+            waited += Time.unscaledDeltaTime;
+            stableFrames = Time.unscaledDeltaTime < 0.1f ? stableFrames + 1 : 0;
+        }
+        RetroDither.isTeleporting = true;
+        HealthController.tpAnim = true;
     }
 
     private void ResolveSceneReferences(System.Func<string, GameObject> find) {
@@ -960,6 +972,12 @@ public class PlayerMovement : NetworkBehaviour {
                 {
                     setFrictionIce(true);
                 }
+            } else if (currDimension == "Server" && onScreenPlatform)
+            {
+                if (Physics.Raycast(transform.position, Vector3.down, out hit, 3f))
+                {
+                    onScreenPlatform = IsOnScreenPlatform(hit.transform.gameObject.name, hit.normal);
+                }
             }
         } else {
             characterController.stepOffset = 0f;
@@ -967,7 +985,9 @@ public class PlayerMovement : NetworkBehaviour {
             if (groundedPrev) {
                 lastGroundedHeight = transform.position.y;
             }
+            onScreenPlatform = false;
         }
+        Debug.Log("On Screen Platform" + onScreenPlatform);
         if (!canTakeDamage && invulnerableRoutine == null) invulnerableRoutine = StartCoroutine(Invulnerable());
         CameraZoom.moving = (Mathf.Abs(_horizontal) > 0.01f || Mathf.Abs(_vertical) > 0.01f);
     }
@@ -1061,6 +1081,14 @@ public class PlayerMovement : NetworkBehaviour {
         shotBoost = Vector3.ClampMagnitude(shotBoost + flatAim.normalized * strength, maxShotBoost);
     }
 
+    public float BaseFOV => baseFOV;
+
+    public void SnapToBaseFOV() {
+        velocityFOVBoost = 0f;
+        currentSprintFOV = 0f;
+        currentFOV = baseFOV;
+    }
+
     private void UpdateDynamicFOV() {
         float horizontalSpeed = new Vector3(velocityTransform.x, 0, velocityTransform.z).magnitude;
         velocityFOVBoost = Mathf.Lerp(velocityFOVBoost, isTeleporting ? 0f : (horizontalSpeed / 15f) * speedFOVBoost, Time.deltaTime * 5f);
@@ -1105,7 +1133,7 @@ public class PlayerMovement : NetworkBehaviour {
     void OnControllerColliderHit(ControllerColliderHit hit) {
         if (!IsOwner) return;
         
-        string hitTag = hit.transform.gameObject.tag;
+        string hitTag = hit.gameObject.tag;
         if (isGrounded) {
             if (pendingLanding) {
                 pendingLanding = false;
@@ -1115,12 +1143,20 @@ public class PlayerMovement : NetworkBehaviour {
             fastAir = false;
             resetPrev = false;
         }
+
+        onScreenPlatform = IsOnScreenPlatform(hit.gameObject.name, hit.normal);
         VelocityResetCheck(hit.normal);
         if (hit.gameObject.CompareTag("Launchpad")) launch = true;
         TeleportationCheck(hit.gameObject);
 
     }
 
+    bool IsOnScreenPlatform(string colliderName, Vector3 hitNormal)
+    {
+        if (colliderName != "ScreenPlatform") return false;
+        if (Vector3.Dot(hitNormal, Vector3.up) < 0.95f) return false;
+        return true;
+    }
     private void TeleportationCheck(GameObject hitObject) {        
         if (canTeleport) {
             if (hitObject == portal1A) ChangeScene(desertInfo.scene, desertInfo, "portal1A");
