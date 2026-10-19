@@ -80,6 +80,11 @@ public class ParticleTweaker : MonoBehaviour
 
         float theta = Mathf.Clamp(Mathf.Cos(UnityEngine.Vector3.SignedAngle(vec1, vec2, new UnityEngine.Vector3(0, 1, 0))), 0, 1);
         float val = Mathf.Clamp(15 * (velocity - 10f), 0, 50);
+        if (ServerController.serverAnimationPlaying)
+        {
+            val = 0f;
+            if (ps.particleCount > 0) ps.Clear();
+        }
         targetIntensity = val;
 
         emission.rateOverTime = targetIntensity;

@@ -29,13 +29,6 @@ public class BuildUI : MonoBehaviour
     {
         if (gate == _lastGate) return;
         _lastGate = gate;
-        Debug.Log($"[BuildUI] gate={gate} obj='{gameObject.name}' " +
-                  $"enabled={enabled} activeInHierarchy={gameObject.activeInHierarchy}", this);
-    }
-
-    private void OnEnable()
-    {
-        Debug.Log($"[BuildUI] OnEnable on '{gameObject.name}'", this);
     }
 
     void Update()
