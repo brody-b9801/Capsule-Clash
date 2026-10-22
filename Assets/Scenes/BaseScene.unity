@@ -25816,7 +25816,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7127484850027464541, guid: 3914713c08630f4489a2d0687a44e381, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -211.49985
+      value: -211.49983
       objectReference: {fileID: 0}
     - target: {fileID: 7345246892319229508, guid: 3914713c08630f4489a2d0687a44e381, type: 3}
       propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
@@ -41797,12 +41797,12 @@ PrefabInstance:
       value: 0.15
       objectReference: {fileID: 0}
     - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
-      propertyPath: maxHW
-      value: 0.15
-      objectReference: {fileID: 0}
-    - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: crtScale
       value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
+      propertyPath: edgeFade
+      value: 0.2
       objectReference: {fileID: 0}
     - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: crtEffect
