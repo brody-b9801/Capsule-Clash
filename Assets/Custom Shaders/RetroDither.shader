@@ -14,6 +14,7 @@ Shader "Hidden/RetroDither"
         _ScanlineDarkness ("Scanline Darkness", Range(0, 1)) = 1
         _EdgeFade ("Edge Fade Width", Range(0, 0.5)) = 0
         _EdgeSoftness ("Edge Fade Softness", Range(0, 1)) = 1
+        _CornerRadius ("Corner Radius", Range(0, 0.5)) = 0
         _RefHeight ("Reference Height", Float) = 1080
         _BloomTex ("Bloom", 2D) = "black" {}
         _BloomThreshold ("Bloom Threshold", Range(0, 1)) = 0.7
@@ -26,7 +27,6 @@ Shader "Hidden/RetroDither"
         _SubpixelBorder ("Subpixel Border", Range(0, 1)) = 0.5
         _SubpixelBrightness ("Subpixel Brightness", Range(1, 4)) = 3
         _MinHW ("Min Half-Width", Float) = 0.1
-        _MaxHW ("Max Half-Width", Float) = 0.5
         _Resolution ("Source Resolution", Vector) = (1920, 1080, 0, 0)
         _DitherRes ("Dither Buffer Resolution", Vector) = (1920, 1080, 0, 0)
         _ContentRes ("Content Buffer Resolution", Vector) = (1920, 1080, 0, 0)
@@ -67,6 +67,7 @@ Shader "Hidden/RetroDither"
     float _ScanlineDarkness;
     float _EdgeFade;
     float _EdgeSoftness;
+    float _CornerRadius;
     sampler2D _BloomTex;
     float _BloomThreshold;
     float _BloomKnee;
@@ -79,7 +80,6 @@ Shader "Hidden/RetroDither"
     float _SubpixelBorder;
     float _SubpixelBrightness;
     float _MinHW;
-    float _MaxHW;
     
     v2f vert(appdata v)
     {
@@ -120,7 +120,9 @@ Shader "Hidden/RetroDither"
 
     float random(float2 c)
     {
-        return frac(sin(dot(c.xy, float2(12.9898, 78.233))) * 43758.5453);
+        float3 p3 = frac(float3(c.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return frac((p3.x + p3.y) * p3.z);
     }
 
     float noise(in float2 st)
@@ -138,6 +140,12 @@ Shader "Hidden/RetroDither"
         return lerp(a, b, u.x) +
         (c - a)* u.y * (1.0 - u.x) +
         (d - b) * u.x * u.y;
+    }
+
+    float shakeOffset(float rowV)
+    {
+        float t = fmod(_Time.y, 1000.0);
+        return (noise(float2(rowV * _ShakeFrequency, t * 40.0)) - 0.5) * 0.0025 * _ShakeIntensity;
     }
     ENDCG
 
@@ -166,17 +174,19 @@ Shader "Hidden/RetroDither"
                 float threshold = bayerThreshold(cellPx) - 0.5;
                 color += threshold * _Bias / levels;
 
-                float3 w = (float3)clamp(_MinHW, 0.0, _MaxHW);
+                float3 w = (float3)max(_MinHW, 0.0);
 
                 return posterize3(color, w, levels);
             }
 
             fixed4 fragDither(v2f i) : SV_Target
             {
-                float2 cellPx = floor(i.uv * _ContentRes);
+                float2 cellPx = floor(i.uv * _DitherRes);
+                float rowV = (cellPx.y + 0.5) / _DitherRes.y;
+                float2 contentUV = float2(i.uv.x + shakeOffset(rowV), i.uv.y);
 
                 float4 col;
-                col.rgb = tex2D(_MainTex, i.uv).rgb;
+                col.rgb = tex2D(_MainTex, contentUV).rgb;
                 col.a = 1.0;
 
                 col.rgb = quantize(cellPx, col.rgb);
@@ -201,12 +211,8 @@ Shader "Hidden/RetroDither"
                 float2 sampleUV = curveUV(uv, _Curve);
 
                 float rowV = (floor(uv.y * res.y / cell) + 0.5) * cell / res.y;
-                float shake = (noise(float2(rowV * _ShakeFrequency, _Time.y * 40.0)) - 0.5) * 0.0025;
-
-                float2 imagePx = sampleUV * res;
-                imagePx.x += shake * _ShakeIntensity * res.x;
-                float2 shakenUV = imagePx / res;
-                float2 dUV = (floor(imagePx / cell) + 0.5) / _DitherRes;
+                float2 shakenUV = float2(sampleUV.x + shakeOffset(rowV), sampleUV.y);
+                float2 dUV = (floor(sampleUV * res / cell) + 0.5) / _DitherRes;
 
                 float2 fromCenter = shakenUV * 2.0 - 1.0;
                 float2 caOffset = float2(fromCenter.x * aspect, fromCenter.y) * _ChromaticAberration;
@@ -242,10 +248,14 @@ Shader "Hidden/RetroDither"
                     col.rgb *= mask;
                 }
 
-                float fade = max(_EdgeFade, 1e-5);
-                float ramp = max(fade * saturate(_EdgeSoftness), 1e-5);
-                float2 edge = smoothstep(fade - ramp, fade, sampleUV)*(1.-smoothstep(1.-fade, 1.-fade + ramp, sampleUV));
-                col.rgb *= edge.x * edge.y;
+                float fade = max(_EdgeFade, 0.0);
+                float ramp = fade * saturate(_EdgeSoftness);
+                float2 halfSize = float2(aspect, 1.0) * 0.5;
+                float radius = clamp(_CornerRadius, 0.0, min(halfSize.x, halfSize.y));
+                float2 q = abs((sampleUV - 0.5) * float2(aspect, 1.0)) - (halfSize - radius);
+                float inset = radius - length(max(q, 0.0)) - min(max(q.x, q.y), 0.0);
+                float aa = max(fwidth(inset), 1e-5);
+                col.rgb *= saturate((inset - (fade - ramp) + 0.5 * aa) / (ramp + aa));
 
                 col.rgb = saturate(col.rgb);
 

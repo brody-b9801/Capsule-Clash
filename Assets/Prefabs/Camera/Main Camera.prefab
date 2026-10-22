@@ -11113,8 +11113,8 @@ MonoBehaviour:
   maskIntensity: 0.075
   maskBorder: 0.25
   refHeight: 1080
-  scanlineSpeed: 100
-  scanlineFrequency: 2180
+  scanlineSpeed: 20
+  scanlineFrequency: 1000
   scanlineDarkness: 0.2
   shakeIntensity: 0.75
   shakeFrequency: 100

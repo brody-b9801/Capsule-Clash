@@ -11,20 +11,20 @@ public class RetroDither : MonoBehaviour
     [Range(1, 16)] public int ditherScale = 1;
     [Range(0, 0.5f)] public float curve = 0f;
     public float refHeight = 1080f;
-    [Range(0, 10000)] public float scanlineSpeed = 50f;
-    [Range(0, 10000)] public float scanlineFrequency = 2150f;
+    [Range(0, 10000)] public float scanlineSpeed = 20f;
+    [Range(0, 10000)] public float scanlineFrequency = 1000f;
     [Range(0, 1)] public float scanlineDarkness = 1f;
     [Range(0, 5)] public float shakeIntensity = 0.5f;
     [Range(0, 500)] public float shakeFrequency = 50f;
     [Range(0, 0.02f)] public float chromaticAberration = 0.002f;
-    [Tooltip("Width of the fade to black at the screen edges, in UV units. 0 = hard edge.")]
+    [Tooltip("Width of the fade to black at the screen edges, as a fraction of screen height (same on all sides). 0 = hard edge.")]
     [Range(0, 0.5f)] public float edgeFade = 0f;
     [Tooltip("Fraction of the edge fade width that is a gradient; the rest is solid black. 1 = gradient across the full width, 0 = hard cut.")]
     [Range(0, 1)] public float edgeSoftness = 1f;
+    [Tooltip("Radius of the rounded screen corners, as a fraction of screen height. 0 = square corners.")]
+    [Range(0, 0.5f)] public float cornerRadius = 0f;
     [Tooltip("Posterization edge softness, in level-units. 0 = hard steps.")]
-    [Range(0, 1)] public float minHW = 0.1f;
-    [Tooltip("Upper clamp on posterization edge softness.")]
-    [Range(0, 1)] public float maxHW = 0.5f;
+    [Range(0, 0.5f)] public float minHW = 0.1f;
 
     [Header("Bloom / Phosphor Glow")]
     public bool bloomEnabled = true;
@@ -161,10 +161,10 @@ public class RetroDither : MonoBehaviour
         _mat.SetFloat("_ChromaticAberration", chromaticAberration);
         _mat.SetFloat("_EdgeFade", edgeFade);
         _mat.SetFloat("_EdgeSoftness", edgeSoftness);
+        _mat.SetFloat("_CornerRadius", cornerRadius);
         _mat.SetFloat("_RefHeight", refHeight);
         _mat.SetVector("_Resolution", new Vector2(src.width, src.height));
         _mat.SetFloat("_MinHW", minHW);
-        _mat.SetFloat("_MaxHW", maxHW);
         _mat.SetVector("_DitherRes", new Vector2(ditherW, ditherH));
         _mat.SetVector("_ContentRes", new Vector2(contentW, contentH));
         _mat.SetFloat("_CellSize", cell);
