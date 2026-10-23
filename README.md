@@ -1,6 +1,6 @@
 # Capsule Clash
 
-A 3D multiplayer first-person shooter built in Unity 6. Fight other players, build cover on the fly, and travel between dimensions to feed capsule essence to a being called the Server.
+A 3D multiplayer first-person shooter built in Unity 6 about data, AI, and what players will trade away without a second thought. Fight other players, build cover on the fly, and travel between dimensions to feed capsule essence to a being called the Server.
 
 Everything is written in C# and hand-written HLSL on top of [Fish-Net](https://fish-networking.gitbook.io/docs) networking.
 
