@@ -46,6 +46,7 @@ public class Shaker : MonoBehaviour
     [SerializeField] private float shakeClampZ;
     [SerializeField] private float shakeClampY;
     public static float FOVModRef;
+    public static bool noSprintLerp = false;
     private static Shaker instance;
 
     private void Update() {
@@ -133,6 +134,7 @@ public class Shaker : MonoBehaviour
 
         if (!shakeStarted) {
             shakeStarted = true;
+            noSprintLerp = true;
         }
 
         while (elapsed < shakeDuration)
@@ -159,6 +161,9 @@ public class Shaker : MonoBehaviour
         while (elapsed < changeDownRot)
         {
             upRot = false;
+            if (elapsed > changeDownRot + (Shooting.Local.currentGun != Shooting.currGun.AR ? 0.2f : 0))  {
+                noSprintLerp = false;      
+            }
             if (!shooting) {
                 changeDownRot = downDuration;
             }
@@ -179,6 +184,7 @@ public class Shaker : MonoBehaviour
         setDownRot = true;
         changeDownRot = downDuration;
         shakeStarted = false;
+        noSprintLerp = false;
         previousERC = 0.0f;
         yield break;
     }
