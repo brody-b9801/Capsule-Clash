@@ -1791,7 +1791,7 @@ public class PlayerMovement : NetworkBehaviour {
                     shootAnimTune * Shaker.zRot + -1.2f * gunYRot * turnAnimTune + 2.1f * sideTilt * sidewaysAnimTune);
         }
 
-        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && SprintGunPose && !Shaker.shooting && !Shooting.Local.reloading && !lerpingWalk && !lerpingWalkDone && CameraZoom.moving)
+        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && SprintGunPose && !Shaker.shooting && !Shaker.noSprintLerp &&!Shooting.Local.reloading && !lerpingWalk && !lerpingWalkDone && CameraZoom.moving)
             StartCoroutine(lerpWalkStart());
         else if (SprintGunPose && (Shaker.shooting || Shooting.Local.reloading) && !lerpingWalkEnd && !lerpingWalkDoneEnd)
             StartCoroutine(lerpWalkEnd(0.05f));
