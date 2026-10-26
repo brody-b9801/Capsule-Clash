@@ -25,8 +25,12 @@ Material:
     serializedVersion: 3
     m_TexEnvs: []
     m_Ints: []
-    m_Floats: []
+    m_Floats:
+    - _HighIntensity: 1.5
+    - _LowIntensity: 1.25
     m_Colors:
     - _Color: {r: 0.76754713, g: 1, b: 0.6367924, a: 1}
+    - _HighColor: {r: 0.7686275, g: 1, b: 0.63529414, a: 1}
+    - _LowColor: {r: 0.7686275, g: 1, b: 0.63529414, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

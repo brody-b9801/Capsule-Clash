@@ -260,6 +260,7 @@ MonoBehaviour:
   currDimension: Desert
   spaceSky: {fileID: 2100000, guid: 1cf6f4c6e6e0518419839d3f5448dd99, type: 2}
   iceSky: {fileID: 2100000, guid: 2bd8959f5fbd3644aa33af1a155fc147, type: 2}
+  serverSky: {fileID: 2100000, guid: 1cf6f4c6e6e0518419839d3f5448dd99, type: 2}
   shotBoost: {x: 0, y: 0, z: 0}
   ledgeSupportFraction: 0.5
   ledgeDropTolerance: 0.6
