@@ -60,6 +60,19 @@ public class FogShader : MonoBehaviour
     [Range(0, 1)] public float skyFogFillSpace = 0f;
     public float skyFogPositionSpace = -0.02f;
 
+    [Header("Server (Boss) Parameters")]
+    public bool fogEnabledServer = true;
+    public bool affectSkyboxServer = false;
+    [Range(0, 1)] public float fogDensityServer = 0.5f;
+    public float fogStartServer = 150f;
+    public float fogEndServer = 300f;
+    public Color fogColorServer = new Color(1f, 0.7137255f, 0.45882353f, 1f);
+    [Range(0, 1)] public float skyFogIntensityServer = 1f;
+    [Range(0, 1)] public float skyFogHeightServer = 0.8f;
+    [Range(0.01f, 1)] public float skyFogSmoothnessServer = 0.01f;
+    [Range(0, 1)] public float skyFogFillServer = 0f;
+    public float skyFogPositionServer = 0.1f;
+
     private float fogDensity = 0.5f;
     private float fogStart = 0f;
     private float fogEnd = 100f;
@@ -132,6 +145,15 @@ public class FogShader : MonoBehaviour
                 affectSkybox = affectSkyboxIce;
                 fogEnabled = fogEnabledIce;
                 ApplySkyboxFog(fogEnabledIce, fogColorIce, skyFogIntensityIce, skyFogHeightIce, skyFogSmoothnessIce, skyFogFillIce, skyFogPositionIce);
+                break;
+            case "Server":
+                fogColor = fogColorServer;
+                fogStart = fogStartServer;
+                fogEnd = fogEndServer;
+                fogDensity = fogDensityServer;
+                affectSkybox = affectSkyboxServer;
+                fogEnabled = fogEnabledServer;
+                ApplySkyboxFog(fogEnabledServer, fogColorServer, skyFogIntensityServer, skyFogHeightServer, skyFogSmoothnessServer, skyFogFillServer, skyFogPositionServer);
                 break;
             default:
                 ChangeDimension("Desert");
