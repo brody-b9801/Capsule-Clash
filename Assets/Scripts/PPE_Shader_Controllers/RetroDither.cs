@@ -16,7 +16,9 @@ public class RetroDither : MonoBehaviour
     [Range(0, 1)] public float scanlineDarkness = 1f;
     [Range(0, 5)] public float shakeIntensity = 0.5f;
     [Range(0, 500)] public float shakeFrequency = 50f;
-    [Range(0, 0.02f)] public float chromaticAberration = 0.002f;
+    [Range(0, 0.02f)] public float minCA;
+    [Range(0, 0.02f)] public float maxCA;
+    [HideInInspector] public float chromaticAberration = 0.002f;
     [Tooltip("Width of the fade to black at the screen edges, as a fraction of screen height (same on all sides). 0 = hard edge.")]
     [Range(0, 0.5f)] public float edgeFade = 0f;
     [Tooltip("Fraction of the edge fade width that is a gradient; the rest is solid black. 1 = gradient across the full width, 0 = hard cut.")]

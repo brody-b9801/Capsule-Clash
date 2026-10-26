@@ -118,6 +118,22 @@ Shader "Hidden/RetroDither"
         return c * 0.5 + 0.5;
     }
 
+    float3 chromaticAberration(float2 uv, float2 res)
+    {
+        float aspect = res.x / max(1.0, res.y);
+        float texels = _ChromaticAberration * aspect * _DitherRes.x;
+        float whole = floor(texels);
+        float blend = texels - whole;
+        float2 step0 = float2(whole / _DitherRes.x, 0.0);
+        float2 step1 = float2((whole + 1.0) / _DitherRes.x, 0.0);
+
+        float3 col;
+        col.r = lerp(tex2D(_MainTex, uv + step0).r, tex2D(_MainTex, uv + step1).r, blend);
+        col.g = tex2D(_MainTex, uv).g;
+        col.b = lerp(tex2D(_MainTex, uv - step0).b, tex2D(_MainTex, uv - step1).b, blend);
+        return col;
+    }
+
     float random(float2 c)
     {
         float3 p3 = frac(float3(c.xyx) * 0.1031);
@@ -214,13 +230,8 @@ Shader "Hidden/RetroDither"
                 float2 shakenUV = float2(sampleUV.x + shakeOffset(rowV), sampleUV.y);
                 float2 dUV = (floor(sampleUV * res / cell) + 0.5) / _DitherRes;
 
-                float2 fromCenter = shakenUV * 2.0 - 1.0;
-                float2 caOffset = float2(fromCenter.x * aspect, fromCenter.y) * _ChromaticAberration;
-
                 float4 col;
-                col.r = tex2D(_MainTex, dUV + caOffset).r;
-                col.g = tex2D(_MainTex, dUV).g;
-                col.b = tex2D(_MainTex, dUV - caOffset).b;
+                col.rgb = chromaticAberration(dUV, res);
                 col.a = 1.0;
 
                 float scanV = sampleUV.y * (res.y / max(1.0, _RefHeight));

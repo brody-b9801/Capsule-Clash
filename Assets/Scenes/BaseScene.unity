@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 2100000, guid: 1cf6f4c6e6e0518419839d3f5448dd99, type: 2}
+  m_SkyboxMaterial: {fileID: 2100000, guid: cc421da483ed06c49933077a621bff25, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -8695,7 +8695,7 @@ MonoBehaviour:
   _stoppedColor: {r: 1, g: 0.60784316, b: 0.4117647, a: 1}
   _changingColor: {r: 1, g: 0.7809224, b: 0.6713836, a: 1}
   _startedColor: {r: 0.72327036, g: 0.39802617, b: 0.23540403, a: 1}
-  _serverIndicator: {fileID: 353666785}
+  _serverIndicator: {fileID: 0}
   _clientJoin: {fileID: 1458125403}
   _loadingCanvas: {fileID: 1729782251}
   _roomMenu: {fileID: 2048291304}
@@ -10612,17 +10612,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 346084727}
   m_CullTransparentMesh: 1
---- !u!114 &353666785 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 142834737, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
-  m_PrefabInstance: {fileID: 1252859488}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &356188437
 GameObject:
   m_ObjectHideFlags: 0
@@ -15855,6 +15844,17 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 3520117262332052255, guid: 4b26ef6c30b044a4fab06b155ab6f08f, type: 3}
   m_PrefabInstance: {fileID: 803507568}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &804890210 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
+  m_PrefabInstance: {fileID: 3231714653046129027}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8cd06035f38d9dc4f8aa51e05267a9db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &807594111
 GameObject:
   m_ObjectHideFlags: 0
@@ -41802,6 +41802,14 @@ PrefabInstance:
       value: 0.15
       objectReference: {fileID: 0}
     - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
+      propertyPath: maxCA
+      value: 0.005
+      objectReference: {fileID: 0}
+    - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
+      propertyPath: minCA
+      value: 0.002
+      objectReference: {fileID: 0}
+    - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: crtScale
       value: 3
       objectReference: {fileID: 0}
@@ -41889,6 +41897,10 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 8210080494686435896, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
+      propertyPath: rd
+      value: 
+      objectReference: {fileID: 804890210}
     - target: {fileID: 8210080494686435896, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: emitterDistance
       value: 4

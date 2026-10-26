@@ -1,4 +1,3 @@
-using System.Numerics;
 using UnityEngine;
 
 [RequireComponent(typeof(ParticleSystem))]
@@ -24,7 +23,10 @@ public class ParticleTweaker : MonoBehaviour
     private Camera _cam;
     private int _lastWidth;
     private int _lastHeight;
-
+    [SerializeField] private RetroDither rd;
+    private float minCA;
+    private float maxCA;
+    [SerializeField] private float speedCALerp = 4f;
 
     void Start()
     {
@@ -38,6 +40,9 @@ public class ParticleTweaker : MonoBehaviour
         var rateOverTime = emission.rateOverTime;
         rateOverTime.constant = emissionRate;
         emission.rateOverTime = rateOverTime;
+    
+        minCA = rd.minCA;
+        maxCA = rd.maxCA;
     }
 
     void Update()
@@ -80,9 +85,14 @@ public class ParticleTweaker : MonoBehaviour
 
         float theta = Mathf.Clamp(Mathf.Cos(UnityEngine.Vector3.SignedAngle(vec1, vec2, new UnityEngine.Vector3(0, 1, 0))), 0, 1);
         float val = Mathf.Clamp(15 * (velocity - 10f), 0, 50);
+        float targetCA = Mathf.Lerp(minCA, maxCA, velocity/20); //20 needs to be tuned
+
+        float smoothingFactor = 1f - Mathf.Exp(-speedCALerp * Time.deltaTime);
+        rd.chromaticAberration = Mathf.Lerp(rd.chromaticAberration, targetCA, smoothingFactor);
         if (ServerController.serverAnimationPlaying)
         {
             val = 0f;
+
             if (ps.particleCount > 0) ps.Clear();
         }
         targetIntensity = val;
