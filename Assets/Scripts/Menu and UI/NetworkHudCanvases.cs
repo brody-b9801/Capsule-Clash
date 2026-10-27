@@ -320,6 +320,7 @@ public class NetworkHudCanvases : MonoBehaviour
         _hostEpoch = 1;
         LobbyTelemetry.Record("Lobby created " + _lobbyId);
         AnnounceHost();
+        SteamMatchmaking.SetLobbyData(_lobbyId, LobbyCode.GameKey, LobbyCode.GameValue);
         SteamMatchmaking.SetLobbyData(_lobbyId, "name", SteamFriends.GetPersonaName() + "'s room");
 
         if (_serverState == LocalConnectionState.Stopped)

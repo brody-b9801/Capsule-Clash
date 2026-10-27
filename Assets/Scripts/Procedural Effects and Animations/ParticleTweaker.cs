@@ -87,16 +87,19 @@ public class ParticleTweaker : MonoBehaviour
         float val = Mathf.Clamp(15 * (velocity - 10f), 0, 50);
         float targetCA = Mathf.Lerp(minCA, maxCA, velocity/20); //20 needs to be tuned
 
-        float smoothingFactor = 1f - Mathf.Exp(-speedCALerp * Time.deltaTime);
-        rd.chromaticAberration = Mathf.Lerp(rd.chromaticAberration, targetCA, smoothingFactor);
+
         if (ServerController.serverAnimationPlaying)
         {
             val = 0f;
+            targetCA = 0;
 
             if (ps.particleCount > 0) ps.Clear();
         }
         targetIntensity = val;
 
+        float smoothingFactor = 1f - Mathf.Exp(-speedCALerp * Time.deltaTime);
+        rd.chromaticAberration = Mathf.Lerp(rd.chromaticAberration, targetCA, smoothingFactor);
+        
         emission.rateOverTime = targetIntensity;
     }
     private void FitRadiusToView()

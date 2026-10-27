@@ -161,7 +161,7 @@ public class Shaker : MonoBehaviour
         while (elapsed < changeDownRot)
         {
             upRot = false;
-            if (elapsed > changeDownRot + (Shooting.Local.currentGun != Shooting.currGun.AR ? 0.2f : 0))  {
+            if (elapsed > changeDownRot)  {
                 noSprintLerp = false;      
             }
             if (!shooting) {
