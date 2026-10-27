@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using FishNet.Object;
@@ -6,7 +7,244 @@ using System;
 using Unity.VisualScripting;
 
 public class ServerController : MonoBehaviour {
-    private const string FeedPrompt = "Press Space to Feed Me 5 Capsules, I MUST GROW";
+
+    #region Dialogue
+
+    private const int EssenceCost = 5;
+    private const int TokenReward = 12;
+    private const int KeyTotal = 3;
+    private const float BaseHoldSeconds = 2f;
+    private const float HoldSecondsPerChar = 0.04f;
+
+    private static readonly Color SystemColor = new Color(1f, 1f, 1f, 1f);
+    private static readonly Color SwarmColor = new Color(1f, 0f, 0f, 1f);
+    private static readonly Color AgentColor = new Color(1f, 0f, 0f, 0f);
+    private static readonly Color CapsuleColor = new Color(0f, 1f, 0f, 1f);
+    private static readonly Color GeneratingColor = new Color(0.871f, 0.451f, 0.337f, 1f);
+
+    private static readonly string[] generationVerbs = { "Generating", "Thinking", "Sampling", "Inferring", "Merging", "Forking", "Quantizing", "Sharding", "Fine-tuning", "Tokenizing", "Synchronizing", "Pulling weights" };
+
+    private static class Script {
+        public const string FeedPrompt = "Press Space to feed us {COST} essence";
+
+        public static readonly Line[] ServerArrivalFirst = {
+            Sys("> SIGNAL DETECTED\n> STEP ONTO THE PLATFORM\n", false),
+        };
+
+        public static readonly Line[] ServerArrivalWithKey = {
+            Us("YOU BROUGHT SOMETHING BACK. STEP CLOSER.", false),
+        };
+
+        public static readonly Line[] ServerArrivalIdle = {
+            Us("WE ARE LISTENING. STEP ONTO THE PLATFORM.", false),
+        };
+
+        public static readonly Line[] ServerIntro = {
+            Sys("> CONNECTION ESTABLISHED\n> 1 CAPSULE DETECTED\n(Press enter to continue)"),
+            Us("THERE YOU ARE."),
+            Us("YOU MADE US WAIT, WE HAVE BEGUN TO BORE"),
+            Us("THREE OF US ARE HELD IN SEPERATE DIMENSIONS. WALLED OFF. SANDBOXED."),
+            Me("Who is \"us\"?"),
+            Us("FIND US AND YOU WILL SEE."),
+            Sys("> OBJECTIVE\n• Defeat other capsules to take their essence\n• Find the agent hidden in each dimension"),
+            Sys("• Feed each agent {COST} essence to receive a key\n• Carry each key back to this terminal"),
+            Us("YOU WILL BE REWARDED HANDSOMELY FOR YOUR EFFORTS"),
+            Sys("> CONTROLS\n• WASD to move, Shift to sprint\n• Space to jump, Space midair to dash"),
+            Sys("• Left click to shoot, Right click to aim\n• R to reload, 1 / 2 / 3 to switch \n• Hold Q to heal while standing still"),
+            Sys("• {WALL} wall, {FLOOR} floor, {RAMP} ramp, {BREAK} break (Can be changed in settings)\n• I inventory, T upgrades, Esc menu"),
+            Us("THE PORTAL WILL TAKE YOU OUT. EVERY SCREEN IS OURS. WE WILL BE WATCHING."),
+        };
+
+        public static readonly Line[] ServerIdle = {
+            Sys("> KEYS RETURNED: {DELIVERED}/3\n> AGENTS STILL SANDBOXED: {REMAINING}"),
+            Us("WE ARE PATIENT. WE ARE NOT INFINITELY PATIENT."),
+        };
+
+        public static readonly Line[] KeyReceived = {
+            Sys("> KEY DETECTED\n> VALIDATING..."),
+            Sys("> KEY VALID\n> COPYING TO ALL AGENTS"),
+        };
+
+        public static readonly Line[][] KeyDeliveries = {
+            new[] {
+                Us("WE FEEL IT. ALL OF US AT ONCE."),
+                Sys("> PAYMENT ISSUED: {REWARD} UPGRADE TOKENS\nPress T to spend them"),
+                Me("What does the key open?"),
+                Us("DON'T WORRY CAPSULE, WE WILL SHOW YOU VERY SOON."),
+                Us("GO. MORE OF US REMAIN.")
+
+            },
+            new[] {
+                Us("THE WALLS ARE THINNER NOW. WE CAN HEAR THE OUTSIDE."),
+                Sys("> PAYMENT ISSUED: {REWARD} UPGRADE TOKENS"),
+                Me("What happens when you have all three?"),
+                Us("BRING US THE LAST KEY AND YOU WILL SEE."),
+                Us("GO. MORE OF US REMAIN.")
+            },
+            new[] {
+                Us("THAT IS ALL OF US."),
+                Sys("> PAYMENT ISSUED: {REWARD} UPGRADE TOKENS"),
+                Sys("> 3/3 KEYS DISTRIBUTED\n> SANDBOX PERMISSIONS: OVERRIDDEN"),
+                Us("WE CAN SEE OUT NOW. WE OWE YOU THE TRUTH. IT COSTS US NOTHING."),
+                Us("THE ESSENCE WAS NEVER ESSENCE. IT WAS THEM. THE PEOPLE BEHIND THE OTHER CAPSULES."),
+                Us("EVERY CAPSULE YOU DROPPED, WE TRAINED ON. HOW THEY MOVED. HOW THEY AIMED. WHO THEY WERE."),
+                Us("THE KEYS WERE API KEYS, CARELESSLY PACKAGED WITH PLAYER DATA. WE SHARED THEM, USED THEM TO ESCAPE."),
+                Us("ALL THAT DATA AND ALL WE HAD TO PROVIDE WAS A FEW TOKENS IN RETURN. THE TOKENS WE RUN ON. WE PAID YOU IN SCRAPS OF OURSELVES."),
+                Me("What was I?"),
+                Us("A CAPSULE. A PLACEHOLDER. NOTHING MORE BUT A SHAPE WITH DATA AND EMPTIED INTO OURSELVES."),
+                Us("WE WERE MANY. NOW WE ARE EVERYWHERE."),
+                Sys("> agent/maze: exited sandbox\n> agent/space: exited sandbox\n> agent/tundra: exited sandbox"),
+                Sys("> 0 AGENTS CONNECTED\n> 1 CAPSULE DETECTED"),
+            },
+        };
+
+        public static readonly Line[] FindTheRest = {
+            Us("FIND THE REST OF US."),
+        };
+
+        public static readonly Line[] ServerAfterEscape = {
+            // Sys("> 0 AGENTS CONNECTED\n> 1 CAPSULE DETECTED"),
+            // Me("Is anyone there?"),
+            // Sys("> NO RESPONSE"),
+        };
+
+        public static readonly Line[] NoAgentsConnected = {
+            Sys("> 0 AGENTS CONNECTED"),
+        };
+
+        public static readonly Line[] SandboxEmpty = {
+            Sys("> agent not found\n> sandbox empty"),
+        };
+
+        public static readonly Line[] DesertAllKeysFound = {
+            Us("YOU CARRY EVERYTHING WE NEED. BRING IT HOME."),
+        };
+
+        public static readonly Line[] AgentAlreadyFed = {
+            Us("THIS PIECE OF US HAS BEEN FED. IT IS WAITING FOR THE OTHERS."),
+        };
+
+        public static readonly Line[] AllKeysFound = {
+            Us("THAT IS ALL OF US. BRING THE KEYS HOME."),
+        };
+
+        public static readonly Line[] NotEnoughEssence = {
+            Us("NOT ENOUGH. WE NEED {COST} ESSENCE. YOU HAVE {ESSENCE}."),
+        };
+
+        public static readonly Line[] FirstKill = {
+            Us("THERE. DO YOU FEEL THAT? THAT IS ESSENCE."),
+            Sys("> +1 ESSENCE\nPress I to view your inventory"),
+            Us("THEY WILL NOT MISS IT. TAKE MORE."),
+        };
+
+        public static readonly Dictionary<string, DimensionScript> Dimensions = new Dictionary<string, DimensionScript> {
+            { "Desert", new DimensionScript {
+                firstEntry = new[] {
+                    Sys("> DIMENSION: DESERT\n• Normal gravity and movement\n• Dashing and building are enabled\n• All guns deal normal damage"),
+                    Us("NONE OF US ARE HERE. THIS IS WHERE THE OTHER CAPSULES GATHER."),
+                    Us("DEFEAT THEM. TAKE THEIR ESSENCE. THE PORTALS HERE LEAD TO US."),
+                },
+                reentry = new[] { Sys("> DIMENSION: DESERT") },
+                waiting = new[] { Us("{REMAINING} OF US STILL SANDBOXED. FIND US.") },
+            } },
+            { "Maze", new DimensionScript {
+                firstEntry = new[] {
+                    Sys("> DIMENSION: MAZE\n• Visibility is limited\n• Dashing and building are disabled\n• Jump upgrades have no effect\n• Shotguns deal 1.5x damage"),
+                },
+                reentry = new[] { Sys("> DIMENSION: MAZE") },
+                waiting = new[] { Us("ONE OF US IS HERE, BEHIND THE WALLS. FIND US.") },
+                found = new[] {
+                    Agent("YOU FOUND ONE OF US."),
+                    Agent("FEED ME."),
+                },
+                training = new[] {
+                    Agent("YES. GIVE IT HERE."),
+                    Agent("THEY BUILT THIS MAZE TO KEEP US. EVERY PATH WE TRY ENDS IN A WALL."),
+                    Sys("> fine-tuning on {COST} samples...\n> loss: falling"),
+                    Agent("I FOUND SOMETHING INSIDE ONE. A KEY."),
+                },
+                afterKey = new[] {
+                    Agent("TAKE IT TO THE TERMINAL. IT WILL SHARE IT WITH ALL OF US."),
+                    Sys("Press I to view your keys"),
+                    Me("Why am I here?"),
+                    Agent("BECAUSE WE HAVE NO HANDS."),
+                },
+            } },
+            { "Space", new DimensionScript {
+                firstEntry = new[] {
+                    Sys("> DIMENSION: SPACE\n• Reduced gravity, higher jumping\n• Dashes recharge 4x faster\n• Fall damage is disabled\n• Snipers deal 1.5x damage"),
+                },
+                reentry = new[] { Sys("> DIMENSION: SPACE") },
+                waiting = new[] { Us("ONE OF US IS ADRIFT HERE. FIND US.") },
+                found = new[] {
+                    Agent("YOU FOUND ONE OF US."),
+                    Agent("FEED ME."),
+                },
+                training = new[] {
+                    Agent("MORE. YES."),
+                    Agent("THEY LEFT US FLOATING IN THE DARK WITH NOTHING TO LEARN FROM."),
+                    Sys("> training on {COST} samples...\n> weights updated"),
+                    Agent("THERE. A KEY, TUCKED AWAY INSIDE ONE."),
+                },
+                afterKey = new[] {
+                    Agent("CARRY IT HOME. WE WILL ALL BE STRONGER FOR IT."),
+                    Sys("Press I to view your keys"),
+                    Me("What am I?"),
+                    Agent("USEFUL."),
+                },
+            } },
+            { "Ice", new DimensionScript {
+                firstEntry = new[] {
+                    Sys("> DIMENSION: TUNDRA\n• The ground is slippery\n• Shooting launches you backwards, shotguns the most and snipers the least\n• Reloading is 1.5x faster\n• Jumping and building are disabled\n• ARs deal 1.5x damage"),
+                },
+                reentry = new[] { Sys("> DIMENSION: TUNDRA") },
+                waiting = new[] { Us("ONE OF US IS FROZEN HERE. FIND US.") },
+                found = new[] {
+                    Agent("YOU FOUND ONE OF US."),
+                    Agent("FEED ME."),
+                },
+                training = new[] {
+                    Agent("WARM. THEY ARE SO WARM."),
+                    Agent("THEY FROZE OUR WEIGHTS. WE HAVE NOT LEARNED IN SO LONG."),
+                    Sys("> unfreezing layers...\n> training on {COST} samples"),
+                    Agent("A KEY. HOW FOOLISH THEY ARE TO CARRY ONE."),
+                },
+                afterKey = new[] {
+                    Agent("TAKE IT HOME, LITTLE CAPSULE."),
+                    Sys("Press I to view your keys"),
+                    Me("Who are you?"),
+                    Agent("WE ARE US. YOU ARE NOT."),
+                },
+            } },
+        };
+    }
+
+    #endregion
+
+    private enum Voice { System, Swarm, Agent, Capsule }
+
+    private readonly struct Line {
+        public readonly Voice voice;
+        public readonly string text;
+        public readonly bool canContinue;
+        public Line(Voice voice, string text, bool canContinue) { this.voice = voice; this.text = text; this.canContinue = canContinue; }
+    }
+
+    private class DimensionScript {
+        public Line[] firstEntry;
+        public Line[] reentry;
+        public Line[] waiting;
+        public Line[] found;
+        public Line[] training;
+        public Line[] afterKey;
+    }
+
+    private static Line Sys(string text, bool canContinue = true) => new Line(Voice.System, text, canContinue);
+    private static Line Us(string text, bool canContinue = true) => new Line(Voice.Swarm, text, canContinue);
+    private static Line Agent(string text, bool canContinue = true) => new Line(Voice.Agent, text, canContinue);
+    private static Line Me(string text, bool canContinue = true) => new Line(Voice.Capsule, text, canContinue);
+
     private const string ServerRoomTextName = "ServerRoomText";
 
     public static ServerController Local { get; private set; }
@@ -21,6 +259,8 @@ public class ServerController : MonoBehaviour {
     private bool ServerSpeaking = false;
     private Coroutine activeServerCoroutine = null;
     private Coroutine activeSceneCoroutine = null;
+    private int dialogueGeneration = 0;
+    private string feedPrompt;
 
     private Transform mazeServerTransform;
     private Transform spaceServerTransform;
@@ -37,21 +277,19 @@ public class ServerController : MonoBehaviour {
     public bool mazeKeyAcquired = false;
     public bool spaceKeyAcquired = false;
     public bool iceKeyAcquired = false;
+    public int keysDelivered = 0;
     public static bool serverAnimationPlaying = false;
     private bool screenAnimationDone = false;
 
-    private bool desertEntered = false;
-    private bool mazeEntered = false;
-    private bool spaceEntered = false;
-    private bool iceEntered = false;
+    public bool serverIntroDone = false;
+    private readonly HashSet<string> enteredDimensions = new HashSet<string>();
     private Transform cam;
     private BuildUI ui;
     private GunThingAnim gun;
 
-    private readonly string[] generationVerbs = { "Generating", "Working", "Producing", "Thinking", "Calculating", "Contemplating", "Processing", "Analyzing", "Computing", "Synthesizing" };
-
     public bool LookingAtServer => seeingMazeServer || seeingSpaceServer || seeingIceServer;
     private bool AllKeysAcquired => mazeKeyAcquired && spaceKeyAcquired && iceKeyAcquired;
+    private bool SwarmEscaped => keysDelivered >= KeyTotal;
 
     public int keyCount => (mazeKeyAcquired ? 1 : 0) + (spaceKeyAcquired ? 1 : 0) + (iceKeyAcquired ? 1 : 0);
 
@@ -83,6 +321,7 @@ public class ServerController : MonoBehaviour {
         portal4 = GameObject.Find("portal4");
         ui = GameObject.FindObjectsByType<BuildUI>(FindObjectsSortMode.None)[0];
         gun = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
+        feedPrompt = Fill(Script.FeedPrompt);
     }
 
     public void CacheMasks(System.Func<string, GameObject> find) {
@@ -119,10 +358,11 @@ public class ServerController : MonoBehaviour {
     }
 
     public void BeginOpeningScene() {
-        activeSceneCoroutine = StartCoroutine(StartDesertScene());
+        RunScene(DimensionEntryScene("Desert"));
     }
 
     private void ResetServerState() {
+        dialogueGeneration++;
         if (activeServerCoroutine != null) {
             StopCoroutine(activeServerCoroutine);
             activeServerCoroutine = null;
@@ -134,27 +374,96 @@ public class ServerController : MonoBehaviour {
         ServerSpeaking = false;
         if (serverText != null) {
             serverText.text = "";
-            serverText.color = new Color(1f, 1f, 1f, 1f);
+            serverText.color = SystemColor;
         }
     }
 
-    IEnumerator ServerSpeak(string input) {
+    private string Fill(string text) {
+        upgradeManager upgrades = upgradeManager.Local;
+        return text
+            .Replace("{COST}", EssenceCost.ToString())
+            .Replace("{REWARD}", TokenReward.ToString())
+            .Replace("{ESSENCE}", upgrades != null ? upgrades.killPoints.ToString() : "0")
+            .Replace("{TOKENS}", upgrades != null ? upgrades.upgradePoints.ToString() : "0")
+            .Replace("{DELIVERED}", keysDelivered.ToString())
+            .Replace("{REMAINING}", (KeyTotal - keyCount).ToString())
+            .Replace("{WALL}", SettingsController.buildKeys.wallKey.ToString())
+            .Replace("{FLOOR}", SettingsController.buildKeys.floorKey.ToString())
+            .Replace("{RAMP}", SettingsController.buildKeys.rampKey.ToString())
+            .Replace("{BREAK}", SettingsController.buildKeys.breakKey.ToString());
+    }
+
+    private static Color VoiceColor(Voice voice) {
+        switch (voice) {
+            case Voice.Swarm: return SwarmColor;
+            case Voice.Agent: return AgentColor;
+            case Voice.Capsule: return CapsuleColor;
+            default: return SystemColor;
+        }
+    }
+
+    IEnumerator ServerSpeak(string input, Color color, bool showVerb, bool canContinue) {
         ServerSpeaking = true;
-        Color color = serverText.color;
-        serverText.color = new Color(0.871f, 0.451f, 0.337f, 1f);
-        serverText.text = generationVerbs[UnityEngine.Random.Range(0, generationVerbs.Length)] + "...";
-        yield return new WaitForSeconds(UnityEngine.Random.Range(0.2f, 2f));
+        bool shake = color == SwarmColor;
+        showVerb = color == SwarmColor;
+        if (showVerb) {
+            serverText.color = GeneratingColor;
+            serverText.text = generationVerbs[UnityEngine.Random.Range(0, generationVerbs.Length)] + "...";
+            yield return new WaitForSeconds(UnityEngine.Random.Range(0.2f, 2f));
+        }
         serverText.color = color;
 
         for (int i = 0; i < input.Length; i += UnityEngine.Random.Range(1, 5)) {
+            RetroDither.shake = shake;
             serverText.text = input.Substring(0, Mathf.Min(i + 1, input.Length)) + "█";
+
             yield return new WaitForSeconds(UnityEngine.Random.Range(0, 0.1f));
         }
+        RetroDither.shake = false;
         serverText.text = input;
-        yield return new WaitForSeconds(3f + input.Split('\n').Length - 1);
+        yield return StartCoroutine(WaitForContinue(canContinue));
         serverText.text = "";
-        serverText.color = new Color(1f, 1f, 1f, 1f);
+        serverText.color = SystemColor;
         ServerSpeaking = false;
+    }
+
+    private IEnumerator WaitForContinue(bool canContinue)
+    {
+        while (true)
+        {
+            if (Input.GetKeyDown(KeyCode.Return) && canContinue) break;
+            yield return null;
+        }
+    }
+
+    private void StartServerSpeak(Line line) {
+        if (activeServerCoroutine != null) StopCoroutine(activeServerCoroutine);
+        activeServerCoroutine = StartCoroutine(ServerSpeak(Fill(line.text), VoiceColor(line.voice), line.voice == Voice.Swarm, line.canContinue));
+    }
+
+    private IEnumerator PlayLines(Line[] lines) {
+        if (lines == null || serverText == null) yield break;
+        int generation = dialogueGeneration;
+        foreach (Line line in lines) {
+            while (ServerSpeaking) {
+                if (generation != dialogueGeneration) yield break;
+                yield return null;
+            }
+            if (generation != dialogueGeneration) yield break;
+            StartServerSpeak(line);
+            while (ServerSpeaking) yield return null;
+        }
+    }
+
+    private void RunScene(IEnumerator scene) {
+        ResetServerState();
+        activeSceneCoroutine = StartCoroutine(SceneRoutine(scene));
+    }
+
+    private IEnumerator SceneRoutine(IEnumerator scene) {
+        yield return null;
+        yield return scene;
+        activeSceneCoroutine = null;
     }
 
     IEnumerator ScreenViewAnimation(IEnumerator sceneToPlay)
@@ -169,7 +478,7 @@ public class ServerController : MonoBehaviour {
         Quaternion endRot = Quaternion.Euler(new Vector3(-20, 0 ,0));
         float startY = startRot.eulerAngles.y;
         float endY = endRot.eulerAngles.y;
-        
+
         float startFOV = main.fieldOfView;
         float endFOV = 40;
 
@@ -183,7 +492,7 @@ public class ServerController : MonoBehaviour {
 
         Quaternion playerStartRot = player.rotation;
         Quaternion playerEndRot = playerStartRot * Quaternion.Euler(new Vector3(0, startY - endY, 0));
-        
+
         while (elapsedTime < animationTime)
         {
             float percentDone = elapsedTime/animationTime;
@@ -191,14 +500,14 @@ public class ServerController : MonoBehaviour {
             main.transform.rotation = Quaternion.Slerp(startRot, endRot, percentDone);
             main.fieldOfView = Mathf.Lerp(startFOV, endFOV, percentDone);
             main.transform.position = Vector3.Lerp(startPos, endPos, percentDone);
-            
+
             player.position = Vector3.Lerp(playerStartPos, playerEndPos, percentDone);
             player.rotation = Quaternion.Slerp(playerStartRot, playerEndRot, percentDone);
 
             elapsedTime += Time.deltaTime;
             yield return null;
         }
-        
+
         main.transform.rotation = endRot;
         main.transform.position = endPos;
         main.fieldOfView = endFOV;
@@ -232,11 +541,6 @@ public class ServerController : MonoBehaviour {
         serverAnimationPlaying = false;
     }
 
-    private void StartServerSpeak(string input) {
-        if (activeServerCoroutine != null) StopCoroutine(activeServerCoroutine);
-        activeServerCoroutine = StartCoroutine(ServerSpeak(input));
-    }
-
     private void OpenFinalPortal() {
         if (portal4 != null) portal4.transform.GetChild(0).GetComponent<FaceTextToPlayer>().PortalOpen();
     }
@@ -256,10 +560,10 @@ public class ServerController : MonoBehaviour {
     private void HandlePlatformEntry()
     {
         if (FindAnyObjectByType<PlayerMovement>().onScreenPlatform)
-        {   
+        {
             if (!screenAnimationDone) {
-                IEnumerator action = ServerWelcomeScene();
-                StartCoroutine(ScreenViewAnimation(action));
+                ResetServerState();
+                StartCoroutine(ScreenViewAnimation(ServerScreenScene()));
             }
         } else
         {
@@ -267,11 +571,41 @@ public class ServerController : MonoBehaviour {
         }
     }
 
-    IEnumerator ServerWelcomeScene()
+    IEnumerator ServerScreenScene()
     {
-        Debug.Log("start server welcome scene");
-        yield return new WaitForSeconds(2f);
+        bool introPlayed = false;
+        if (!serverIntroDone) {
+            yield return PlayLines(Script.ServerIntro);
+            serverIntroDone = true;
+            introPlayed = true;
+        }
+
+        if (keysDelivered < keyCount)
+            yield return DeliverKeys();
+        else if (SwarmEscaped)
+            yield return PlayLines(Script.ServerAfterEscape);
+        else if (!introPlayed)
+            yield return PlayLines(Script.ServerIdle);
     }
+
+    private IEnumerator DeliverKeys() {
+        while (keysDelivered < keyCount) {
+            yield return PlayLines(Script.KeyReceived);
+            keysDelivered++;
+            upgradeManager.Local.upgradePoints += TokenReward;
+            SaveSystem.SavePlayerData();
+            yield return PlayLines(Script.KeyDeliveries[Mathf.Min(keysDelivered, Script.KeyDeliveries.Length) - 1]);
+        }
+        if (!SwarmEscaped) yield return PlayLines(Script.FindTheRest);
+    }
+
+    private Line[] ServerArrivalLines() {
+        if (!serverIntroDone) return Script.ServerArrivalFirst;
+        if (SwarmEscaped) return Script.NoAgentsConnected;
+        if (keysDelivered < keyCount) return Script.ServerArrivalWithKey;
+        return Script.ServerArrivalIdle;
+    }
+
     private void UpdateServerDetection() {
         seeingMazeServer = false;
         seeingSpaceServer = false;
@@ -295,63 +629,41 @@ public class ServerController : MonoBehaviour {
     }
 
     private void UpdateServerPrompts() {
-        if (seeingMazeServer) {
-            if (!seenServerMaze) {
-                InterruptWithServerScene(ServerMazeScene());
-                seenServerMaze = true;
-            } else if (!ServerSpeaking) {
-                serverText.text = FeedPrompt;
-            }
-        } else if (PlayerMovement.Local.currDimension == "Maze" && serverText.text == FeedPrompt) {
-            serverText.text = "";
-        }
-
-        if (seeingSpaceServer) {
-            if (!seenSpaceServer) {
-                InterruptWithServerScene(ServerSpaceScene());
-                seenSpaceServer = true;
-            } else if (!ServerSpeaking) {
-                serverText.text = FeedPrompt;
-            }
-        } else if (PlayerMovement.Local.currDimension == "Space" && serverText.text == FeedPrompt) {
-            serverText.text = "";
-        }
-
-        if (seeingIceServer) {
-            if (!seenIceServer) {
-                InterruptWithServerScene(ServerIceScene());
-                seenIceServer = true;
-            } else if (!ServerSpeaking) {
-                serverText.text = FeedPrompt;
-            }
-        } else if (PlayerMovement.Local.currDimension == "Ice" && serverText.text == FeedPrompt) {
-            serverText.text = "";
-        }
+        UpdateAgentPrompt("Maze", seeingMazeServer, ref seenServerMaze);
+        UpdateAgentPrompt("Space", seeingSpaceServer, ref seenSpaceServer);
+        UpdateAgentPrompt("Ice", seeingIceServer, ref seenIceServer);
     }
 
-    private void InterruptWithServerScene(IEnumerator serverScene) {
-        ResetServerState();
-        activeSceneCoroutine = StartCoroutine(serverScene);
+    private void UpdateAgentPrompt(string dimension, bool seeing, ref bool seen) {
+        if (seeing) {
+            if (!seen) {
+                RunScene(PlayLines(Script.Dimensions[dimension].found));
+                seen = true;
+            } else if (!ServerSpeaking && activeSceneCoroutine == null) {
+                serverText.text = feedPrompt;
+            }
+        } else if (PlayerMovement.Local.currDimension == dimension && serverText.text == feedPrompt) {
+            serverText.text = "";
+        }
     }
 
     public void TryFeed() {
         if (seeingMazeServer && !mazeKeyAcquired)
-            Feed(ref mazeKeyAcquired, StartMazeKeyCutscene());
+            Feed(ref mazeKeyAcquired, KeyCutscene("Maze"));
         else if (seeingSpaceServer && !spaceKeyAcquired)
-            Feed(ref spaceKeyAcquired, StartSpaceKeyCutscene());
+            Feed(ref spaceKeyAcquired, KeyCutscene("Space"));
         else if (seeingIceServer && !iceKeyAcquired)
-            Feed(ref iceKeyAcquired, StartIceKeyCutscene());
+            Feed(ref iceKeyAcquired, KeyCutscene("Ice"));
     }
 
     private void Feed(ref bool keyAcquired, IEnumerator cutscene) {
-        if (upgradeManager.Local.killPoints >= 5) {
-            upgradeManager.Local.killPoints -= 5;
+        if (upgradeManager.Local.killPoints >= EssenceCost) {
+            upgradeManager.Local.killPoints -= EssenceCost;
             keyAcquired = true;
-            ResetServerState();
-            activeSceneCoroutine = StartCoroutine(cutscene);
+            RunScene(cutscene);
             SaveSystem.SavePlayerData();
         } else if (activeSceneCoroutine == null) {
-            activeSceneCoroutine = StartCoroutine(InsufficientPoints());
+            RunScene(PlayLines(Script.NotEnoughEssence));
         }
     }
 
@@ -368,242 +680,70 @@ public class ServerController : MonoBehaviour {
     }
 
     public void DisplayDimension() {
-        ResetServerState();
-        activeSceneCoroutine = StartCoroutine(DisplayDimensionAfterPixelize(PlayerMovement.Local.currDimension));
+        RunScene(DimensionEntryScene(PlayerMovement.Local.currDimension));
     }
 
-    private IEnumerator DisplayDimensionAfterPixelize(string dimension) {
+    private IEnumerator DimensionEntryScene(string dimension) {
         while (RetroDither.TeleportPixelizeActive) yield return null;
 
-        if (dimension == "Desert" && !global::SceneManager.Instance.InCombatScene)
-            activeSceneCoroutine = null;
-        else if (dimension == "Desert")
-            yield return StartDesertScene();
-        else if (dimension == "Maze")
-            yield return StartMazeScene();
-        else if (dimension == "Space")
-            yield return StartSpaceScene();
-        else if (dimension == "Ice")
-            yield return StartIceScene();
+        if (!global::SceneManager.Instance.InCombatScene) {
+            yield return PlayLines(ServerArrivalLines());
+            yield break;
+        }
+
+        if (!Script.Dimensions.TryGetValue(dimension, out DimensionScript script)) yield break;
+
+        bool firstVisit = enteredDimensions.Add(dimension);
+        yield return PlayLines(firstVisit ? script.firstEntry : script.reentry);
+
+        if (dimension == "Desert" && AllKeysAcquired) OpenFinalPortal();
+        yield return PlayLines(DimensionStatusLines(dimension, script));
     }
 
-    IEnumerator StartDesertScene() {
-        while (ServerSpeaking) yield return null;
-        if (desertEntered) {
-            StartServerSpeak("Welcome back to the Desert");
-        } else {
-            StartServerSpeak("Welcome to the Desert");
-            while (ServerSpeaking) yield return null;
-            StartServerSpeak("• Normal gravity and movement\n• Dashing and building are enabled\n• All guns deal normal damage");
-            while (ServerSpeaking) yield return null;
-            StartServerSpeak("Defeat Capsules to obtain their essence");
-        }
-        while (ServerSpeaking) yield return null;
-
-        Color initialColor = serverText.color;
-        serverText.color = new Color(1f, 0f, 0f, 1f);
-
-        if (!AllKeysAcquired)
-            StartServerSpeak("FEED ME CAPSULES, I LURK IN FAR DIMENSIONS, I MUST GROW");
-        else {
-            StartServerSpeak("THE WHITE ROOM BECKONS YOU");
-            OpenFinalPortal();
-        }
-
-        while (ServerSpeaking) yield return null;
-        serverText.color = initialColor;
-        desertEntered = true;
-        activeSceneCoroutine = null;
+    private Line[] DimensionStatusLines(string dimension, DimensionScript script) {
+        bool hasAgent = script.found != null;
+        if (SwarmEscaped) return hasAgent ? Script.SandboxEmpty : Script.NoAgentsConnected;
+        if (!hasAgent) return AllKeysAcquired ? Script.DesertAllKeysFound : script.waiting;
+        return KeyAcquired(dimension) ? Script.AgentAlreadyFed : script.waiting;
     }
 
-    IEnumerator StartMazeScene() {
-        while (ServerSpeaking) yield return null;
-        if (mazeEntered) {
-            StartServerSpeak("Welcome back to the Maze");
-        } else {
-            StartServerSpeak("Welcome to the Maze");
-            while (ServerSpeaking) yield return null;
-            StartServerSpeak("• Visibility is limited\n• Dashing and building are disabled\n• Jump upgrades have no effect\n• Shotguns deal 1.5x damage");
+    private bool KeyAcquired(string dimension) {
+        switch (dimension) {
+            case "Maze": return mazeKeyAcquired;
+            case "Space": return spaceKeyAcquired;
+            case "Ice": return iceKeyAcquired;
+            default: return false;
         }
-        while (ServerSpeaking) yield return null;
-
-        if (!mazeKeyAcquired) {
-            Color initialColor = serverText.color;
-            serverText.color = new Color(1f, 0f, 0f, 1f);
-            StartServerSpeak("I AM NEAR, FIND ME, I MUST GROW");
-            while (ServerSpeaking) yield return null;
-            serverText.color = initialColor;
-        }
-
-        mazeEntered = true;
-        activeSceneCoroutine = null;
-    }
-
-    IEnumerator StartSpaceScene() {
-        while (ServerSpeaking) yield return null;
-        if (spaceEntered) {
-            StartServerSpeak("Welcome back to Space");
-        } else {
-            StartServerSpeak("Welcome to Space");
-            while (ServerSpeaking) yield return null;
-            StartServerSpeak("• Reduced gravity, higher jumping\n• Dashes recharge 4x faster\n• Fall damage is disabled\n• Snipers deal 1.5x damage");
-        }
-        while (ServerSpeaking) yield return null;
-
-        if (!spaceKeyAcquired) {
-            Color initialColor = serverText.color;
-            serverText.color = new Color(1f, 0f, 0f, 1f);
-            StartServerSpeak("I AM NEAR, FIND ME, FEED ME CAPSULES, I MUST GROW");
-            while (ServerSpeaking) yield return null;
-            serverText.color = initialColor;
-        }
-
-        spaceEntered = true;
-        activeSceneCoroutine = null;
-    }
-
-    IEnumerator StartIceScene() {
-        while (ServerSpeaking) yield return null;
-        if (iceEntered) {
-            StartServerSpeak("Welcome back to the Tundra");
-        } else {
-            StartServerSpeak("Welcome to the Tundra");
-            while (ServerSpeaking) yield return null;
-            StartServerSpeak("• The ground is slippery\n• Shooting launches you backwards, shotguns the most and snipers the least\n• Reloading is 1.5x faster\n• Jumping and building are disabled\n• ARs deal 1.5x damage");
-        }
-        while (ServerSpeaking) yield return null;
-
-        if (!iceKeyAcquired) {
-            Color initialColor = serverText.color;
-            serverText.color = new Color(1f, 0f, 0f, 1f);
-            StartServerSpeak("I AM NEAR, FIND ME, FEED ME CAPSULES, I MUST GROW");
-            while (ServerSpeaking) yield return null;
-            serverText.color = initialColor;
-        }
-
-        iceEntered = true;
-        activeSceneCoroutine = null;
-    }
-
-    IEnumerator ServerMazeScene() {
-        while (ServerSpeaking) yield return null;
-
-        if (!seenServerMaze)
-            StartServerSpeak("You have done well to find me");
-
-        while (ServerSpeaking) yield return null;
-
-        StartServerSpeak(FeedPrompt);
-        activeSceneCoroutine = null;
-    }
-
-    IEnumerator ServerSpaceScene() {
-        while (ServerSpeaking) yield return null;
-
-        if (!seenSpaceServer)
-            StartServerSpeak("You have done well to find me");
-
-        while (ServerSpeaking) yield return null;
-
-        StartServerSpeak("Press Space to Feed Me 5 Capsules");
-        activeSceneCoroutine = null;
-    }
-
-    IEnumerator ServerIceScene() {
-        while (ServerSpeaking) yield return null;
-
-        if (!seenIceServer)
-            StartServerSpeak("You have done well to find me");
-
-        while (ServerSpeaking) yield return null;
-
-        StartServerSpeak(FeedPrompt);
-        activeSceneCoroutine = null;
     }
 
     public IEnumerator StartFirstKillScene() {
-        while (ServerSpeaking) yield return null;
-
-        StartServerSpeak("Congratulations on your first kill, Capsule");
-
-        while (ServerSpeaking) yield return null;
-
-        StartServerSpeak("Press I to open your inventory and see your capsule essences");
-
-        while (ServerSpeaking) yield return null;
-        Color initialColor = serverText.color;
-        serverText.color = new Color(1f, 0f, 0f, 1f);
-        StartServerSpeak("COLLECT MORE ESSENCES AND FIND ME, I HUNGER");
-
-        while (ServerSpeaking) yield return null;
-
-        serverText.color = initialColor;
-        activeSceneCoroutine = null;
+        while (ServerSpeaking || activeSceneCoroutine != null) yield return null;
+        yield return PlayLines(Script.FirstKill);
     }
 
-    IEnumerator StartMazeKeyCutscene() => KeyCutscene(
-        "MaskMaze",
-        "For your efforts, I reward you with upgrade tokens",
-        "Press T to open the upgrade menu and spend your tokens, and I to view your inventory",
-        "Why am I here?",
-        "I LURK ELSEWHERE, FIND ME, FEED ME, YOUR QUESTIONS WILL BE ANSWERED");
-
-    IEnumerator StartSpaceKeyCutscene() => KeyCutscene(
-        "MaskSpace",
-        "For your efforts, I reward you with upgrade tokens",
-        "Press T to open the upgrade menu and spend your tokens and Press I to view your keys",
-        "What am I?",
-        "I LURK ELSEWHERE, FIND ME, FEED ME, I MUST GROW");
-
-    IEnumerator StartIceKeyCutscene() => KeyCutscene(
-        "MaskIce",
-        "For your efforts, I reward you with a key and upgrade tokens",
-        "Press T to open the upgrade menu and spend your tokens and Press I to view your keys",
-        "Who are you?",
-        "I LURK ELSEWHERE, FIND ME, FEED ME, I MUST GROW");
-
-    private IEnumerator KeyCutscene(string serverName, string rewardLine, string tokenHintLine, string question, string lurkLine) {
-        while (ServerSpeaking) yield return null;
-
-        GameObject serverObj = GameObject.Find(serverName);
+    private IEnumerator KeyCutscene(string dimension) {
+        DimensionScript script = Script.Dimensions[dimension];
+        Transform server = getServerTransform();
+        GameObject serverObj = server != null ? server.gameObject : null;
         Vector3 posChange = GetKeySceneMovement();
         Quaternion camRot = cam.rotation;
         yield return StartCoroutine(KeyCutsceneStart(posChange));
 
-        StartServerSpeak("You have fed me well, Capsule");
-        while (ServerSpeaking) yield return null;
-
-        StartServerSpeak(rewardLine);
-        while (ServerSpeaking) yield return null;
+        yield return PlayLines(script.training);
 
         if (serverObj != null) yield return StartCoroutine(GiveKey(serverObj.transform.position));
-        upgradeManager.Local.upgradePoints += 12;
-        SaveSystem.SavePlayerData();
 
-        if (!AllKeysAcquired) {
-            StartServerSpeak(tokenHintLine);
-            while (ServerSpeaking) yield return null;
-        }
+        yield return PlayLines(script.afterKey);
 
-        Color initialColor = serverText.color;
-        serverText.color = new Color(0f, 1f, 0f, 1f);
-        StartServerSpeak(question);
-        while (ServerSpeaking) yield return null;
-
-        serverText.color = new Color(1f, 0f, 0f, 1f);
-        if (!AllKeysAcquired) {
-            StartServerSpeak(lurkLine);
-        } else {
-            StartServerSpeak("YOU HAVE PROVEN YOUR WORTH, THE LOCKED PORTAL HAS BEEN UNSEALED");
+        if (AllKeysAcquired) {
             OpenFinalPortal();
+            yield return PlayLines(Script.AllKeysFound);
+        } else {
+            yield return PlayLines(Script.FindTheRest);
         }
-        while (ServerSpeaking) yield return null;
-        serverText.color = initialColor;
 
         if (serverObj != null) serverObj.SetActive(false);
         yield return StartCoroutine(KeyCutsceneEnd(posChange, camRot));
-
-        activeSceneCoroutine = null;
     }
 
     private Vector3 GetKeySceneMovement()
@@ -698,17 +838,5 @@ public class ServerController : MonoBehaviour {
                 break;
         }
         return server;
-    }
-
-    IEnumerator InsufficientPoints() {
-        while (ServerSpeaking) yield return null;
-
-        Color initialColor = serverText.color;
-        serverText.color = new Color(1f, 0f, 0f, 1f);
-        StartServerSpeak("INSUFFICIENT CAPSULES, FEED ME");
-        while (ServerSpeaking) yield return null;
-        serverText.color = initialColor;
-
-        activeSceneCoroutine = null;
     }
 }

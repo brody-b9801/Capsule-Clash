@@ -23,8 +23,9 @@ public class PlayerData
 
     public int[] upgradeLevels;
     public int lifetimeKills;
+    public int keysDelivered;
 
-    public PlayerData(float volume, float rotationSpeed, bool mazeKeyAcquired, bool spaceKeyAcquired, bool iceKeyAcquired, int capsuleEssence, int killPoints, BuildKeys buildKeys, int[] upgradeLevels, int lifetimeKills)
+    public PlayerData(float volume, float rotationSpeed, bool mazeKeyAcquired, bool spaceKeyAcquired, bool iceKeyAcquired, int capsuleEssence, int killPoints, BuildKeys buildKeys, int[] upgradeLevels, int lifetimeKills, int keysDelivered)
     {
         this.volume = volume;
         this.rotationSpeed = rotationSpeed;
@@ -36,6 +37,7 @@ public class PlayerData
         this.buildKeys = buildKeys;
         this.upgradeLevels = upgradeLevels;
         this.lifetimeKills = lifetimeKills;
+        this.keysDelivered = keysDelivered;
     }
 }
 public class SaveSystem : MonoBehaviour
@@ -63,6 +65,7 @@ public class SaveSystem : MonoBehaviour
     static bool pendingMazeKeyAcquired;
     static bool pendingSpaceKeyAcquired;
     static bool pendingIceKeyAcquired;
+    static int pendingKeysDelivered;
 
     public static void CaptureSessionData()
     {
@@ -80,6 +83,7 @@ public class SaveSystem : MonoBehaviour
             pendingMazeKeyAcquired = server.mazeKeyAcquired;
             pendingSpaceKeyAcquired = server.spaceKeyAcquired;
             pendingIceKeyAcquired = server.iceKeyAcquired;
+            pendingKeysDelivered = server.keysDelivered;
         }
 
         if (PlayerMovement.Local != null)
@@ -91,6 +95,7 @@ public class SaveSystem : MonoBehaviour
         server.mazeKeyAcquired = pendingMazeKeyAcquired;
         server.spaceKeyAcquired = pendingSpaceKeyAcquired;
         server.iceKeyAcquired = pendingIceKeyAcquired;
+        server.keysDelivered = pendingKeysDelivered;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -134,6 +139,7 @@ public class SaveSystem : MonoBehaviour
         pendingMazeKeyAcquired = playerData.mazeKeyAcquired;
         pendingSpaceKeyAcquired = playerData.spaceKeyAcquired;
         pendingIceKeyAcquired = playerData.iceKeyAcquired;
+        pendingKeysDelivered = playerData.keysDelivered;
         pendingKillPoints = playerData.capsuleEssence;
         pendingUpgradePoints = playerData.killPoints;
         SettingsController.buildKeys = new SettingsController.Keys
@@ -166,6 +172,7 @@ public class SaveSystem : MonoBehaviour
         bool savedMazeKey = server != null ? server.mazeKeyAcquired : pendingMazeKeyAcquired;
         bool savedSpaceKey = server != null ? server.spaceKeyAcquired : pendingSpaceKeyAcquired;
         bool savedIceKey = server != null ? server.iceKeyAcquired : pendingIceKeyAcquired;
+        int savedKeysDelivered = server != null ? server.keysDelivered : pendingKeysDelivered;
 
         PlayerData playerData = new PlayerData(
             SettingsController.volumePercent,
@@ -183,7 +190,8 @@ public class SaveSystem : MonoBehaviour
                 breakKey = SettingsController.buildKeys.breakKey
             },
             savedUpgradesPurchased,
-            PlayerMovement.Local != null ? PlayerMovement.Local.killCount : pendingLifetimeKills
+            PlayerMovement.Local != null ? PlayerMovement.Local.killCount : pendingLifetimeKills,
+            savedKeysDelivered
         );
         string json = JsonConvert.SerializeObject(playerData);
         string path = Application.persistentDataPath + "/playerdata.json";
