@@ -40,6 +40,12 @@ public class ChangeMat : NetworkBehaviour
     public Color iceHardEdgeLightColor = Color.white;
     public Color icePlayerUnlitColor = Color.white;
 
+    [Header("Server Colors")]
+    public Color serverLitColor = new Color(1f, 0.7137255f, 0.64705884f, 1f);
+    public Color serverUnlitColor = new Color(0.7058824f, 0.7058824f, 1f, 1f);
+    public Color serverHardEdgeLightColor = new Color(0f, 0f, 0.19607843f, 1f);
+    public Color serverPlayerUnlitColor = new Color(0.60784316f, 0.60784316f, 1f, 1f);
+
     private static readonly int LitColorID = Shader.PropertyToID("_HighColor");
     private static readonly int UnlitColorID = Shader.PropertyToID("_LowColor");
     private static readonly int HardEdgeLightColorID = Shader.PropertyToID("_RimColor");
@@ -88,6 +94,8 @@ public class ChangeMat : NetworkBehaviour
             ApplyDimensionColors(iceLitColor, iceUnlitColor, iceHardEdgeLightColor, icePlayerUnlitColor);
         } else if (materialDimension == "Maze") {
             ApplyDimensionColors(mazeLitColor, mazeUnlitColor, mazeHardEdgeLightColor, mazePlayerUnlitColor);
+        } else if (materialDimension == "Server") {
+            ApplyDimensionColors(serverLitColor, serverUnlitColor, serverHardEdgeLightColor, serverPlayerUnlitColor);
         } else {
             Debug.LogError("dimension typed wrong in dimensionMaterialChange: " + materialDimension);
         }

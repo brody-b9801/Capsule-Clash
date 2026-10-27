@@ -155,7 +155,7 @@ public class MenuHandler : MonoBehaviour
         pendingCodeLobby = CSteamID.Nil;
         loadingCanvas.SetActive(false);
 
-        if (pCallback.m_bSuccess == 0 || SteamMatchmaking.GetLobbyData(lobbyId, "HostAddress") == "") {
+        if (pCallback.m_bSuccess == 0 || SteamMatchmaking.GetLobbyData(lobbyId, "HostAddress") == "" || SteamMatchmaking.GetLobbyData(lobbyId, LobbyCode.GameKey) != LobbyCode.GameValue) {
             showError("Room not found,\ncheck the code and try again");
             return;
         }
@@ -182,6 +182,7 @@ public class MenuHandler : MonoBehaviour
             StartCoroutine(RefreshAnimation());
         }
         awaitingLobbyList = true;
+        SteamMatchmaking.AddRequestLobbyListStringFilter(LobbyCode.GameKey, LobbyCode.GameValue, ELobbyComparison.k_ELobbyComparisonEqual);
         SteamAPICall_t handle = SteamMatchmaking.RequestLobbyList();
         m_LobbyMatchList.Set(handle);
     }

@@ -20450,7 +20450,7 @@ MonoBehaviour:
   affectSkyboxServer: 0
   fogDensityServer: 0.5
   fogStartServer: 5
-  fogEndServer: 20
+  fogEndServer: 50
   fogColorServer: {r: 1, g: 0.7137255, b: 1, a: 1}
   skyFogIntensityServer: 0.5
   skyFogHeightServer: 0.9
@@ -20493,6 +20493,7 @@ MonoBehaviour:
   spaceKeyAcquired: 0
   iceKeyAcquired: 0
   keysDelivered: 0
+  serverIntroDone: 0
 --- !u!114 &1166955017
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -28064,6 +28065,10 @@ PrefabInstance:
     - target: {fileID: 281119612894147856, guid: 2dd032eb1b1c02b428d7bfdaa845807c, type: 3}
       propertyPath: m_CastShadows
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 281608167742910849, guid: 2dd032eb1b1c02b428d7bfdaa845807c, type: 3}
+      propertyPath: m_Size.y
+      value: -1.4
       objectReference: {fileID: 0}
     - target: {fileID: 282621814912771103, guid: 2dd032eb1b1c02b428d7bfdaa845807c, type: 3}
       propertyPath: m_CastShadows
@@ -41803,11 +41808,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: maxCA
-      value: 0.005
+      value: 0.0025
       objectReference: {fileID: 0}
     - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: minCA
-      value: 0.002
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: crtScale
@@ -41831,7 +41836,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: pixelSize
-      value: 5
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: fogDensity
@@ -41851,7 +41856,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: ditherScale
-      value: 5
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 7157617636596894083, guid: f41da99d3acdfaa4fa9088d60a802078, type: 3}
       propertyPath: bloomEnabled

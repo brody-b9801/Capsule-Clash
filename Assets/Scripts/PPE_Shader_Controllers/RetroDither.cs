@@ -46,7 +46,7 @@ public class RetroDither : MonoBehaviour
     [Header("Start Screen")]
     [Tooltip("Shake intensity used before the game starts (higher = more CRT wobble on the title screen).")]
     [Range(0, 5)] public float startScreenShakeIntensity = 1.5f;
-    public static bool isStartScreen = false;
+    public static bool shake = false;
 
     [Header("Teleport Pixelize")]
     [Tooltip("Peak pixel size when teleporting.")]
@@ -82,7 +82,7 @@ public class RetroDither : MonoBehaviour
             _mat = new Material(ditherShader);
 
         _currentPixelSize = pixelSize;
-        _currentShake = isStartScreen ? startScreenShakeIntensity : shakeIntensity;
+        _currentShake = shake ? startScreenShakeIntensity : shakeIntensity;
     }
 
     void OnDisable()
@@ -117,7 +117,7 @@ public class RetroDither : MonoBehaviour
             }
         }
 
-        float baseShake = isStartScreen ? startScreenShakeIntensity : shakeIntensity;
+        float baseShake = shake ? startScreenShakeIntensity : shakeIntensity;
 
         if (shotgunFired)
         {
