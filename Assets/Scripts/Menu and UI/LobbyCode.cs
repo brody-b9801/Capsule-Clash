@@ -4,6 +4,8 @@ using Steamworks;
 public static class LobbyCode
 {
     public const int Length = 7;
+    public const string GameKey = "game";
+    public const string GameValue = "CapsuleClash";
     private const string Alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
     private const ulong LobbyIdPrefix = 0x01860000UL << 32;
 
