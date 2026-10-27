@@ -218,6 +218,7 @@ public class PlayerMovement : NetworkBehaviour {
     private Material desertSky;
     public Material spaceSky;
     public Material iceSky;
+    public Material serverSky;
     public Vector3 shotBoost;
     private GunThingAnim gunRenderer;
     private MeshRenderer usernameRenderer;
@@ -230,7 +231,8 @@ public class PlayerMovement : NetworkBehaviour {
     private ObjectSpawner localSpawner;
     NetworkManager networkManager = InstanceFinder.NetworkManager;
     private const int SharedMatch = 69420;
-    private int currentMatch = SharedMatch;
+    private const int NoMatch = -1;
+    private int currentMatch = NoMatch;
 
     private float _getHorizontal() => Input.GetAxisRaw("Horizontal");
     private float _getVertical() => Input.GetAxisRaw("Vertical");
@@ -300,6 +302,7 @@ public class PlayerMovement : NetworkBehaviour {
     private DimensionInfo mazeInfo;
     private DimensionInfo spaceInfo;
     private DimensionInfo iceInfo;
+    private DimensionInfo serverInfo;
     private DimensionInfo[] allDimensions;
     private DimensionInfo pendingDimension;
     private string pendingArrival;
@@ -357,7 +360,19 @@ public class PlayerMovement : NetworkBehaviour {
             root = GameObject.Find("Ice"),
             scene = global::SceneManager.SnowScene
         };
-        allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo };
+        serverInfo = new DimensionInfo {
+            name = "Server",
+            materialName = "Server",
+            skybox = serverSky,
+            farClip = 1000f,
+            accel = baseGroundAcceleration,
+            decel = baseGroundDeceleration,
+            fric = baseFriction,
+            snow = false,
+            root = null,
+            scene = global::SceneManager.BossScene
+        };
+        allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo, serverInfo };
     }
 
     private void ApplyDimensionPhysics(DimensionInfo target) {
@@ -488,7 +503,7 @@ public class PlayerMovement : NetworkBehaviour {
             characterController.enabled = true;
         }
         firstBossEntry = true;
-        ChangeScene(global::SceneManager.BossScene, desertInfo);
+        ChangeScene(serverInfo.scene, serverInfo);
     }
 
     private void CacheSpawnPositions()
@@ -595,6 +610,7 @@ public class PlayerMovement : NetworkBehaviour {
 
         HandleTeleportation(destination, pendingDimension, destination == bossArrival ? 0f : 3f);
         AddOwnerToScene(scene.name);
+        SetMatchCondition(!inCombatScene);
         if (destination == bossArrival) FaceDirection(bossArrival.eulerAngles.y);
         if (firstSpawn) StartCoroutine(PlaySpawnTeleportAnimation());
     }
@@ -636,7 +652,7 @@ public class PlayerMovement : NetworkBehaviour {
         } catch (System.Exception e) {
             Debug.LogWarning($"[PlayerMovement] could not cache dimension roots: {e.Message}");
         }
-        allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo };
+        allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo, serverInfo };
     }
 
     private void ResolveHudReferences(System.Func<string, GameObject> find) {
@@ -1148,7 +1164,6 @@ public class PlayerMovement : NetworkBehaviour {
         VelocityResetCheck(hit.normal);
         if (hit.gameObject.CompareTag("Launchpad")) launch = true;
         TeleportationCheck(hit.gameObject);
-
     }
 
     bool IsOnScreenPlatform(string colliderName, Vector3 hitNormal)
@@ -1158,15 +1173,15 @@ public class PlayerMovement : NetworkBehaviour {
         return true;
     }
     private void TeleportationCheck(GameObject hitObject) {        
-        if (canTeleport) {
+        if (canTeleport && ServerController.Local.serverIntroDone) {
             if (hitObject == portal1A) ChangeScene(desertInfo.scene, desertInfo, "portal1A");
             else if (hitObject == portal1B) ChangeScene(mazeInfo.scene, mazeInfo, "portal1B");
             else if (hitObject == portal2A) ChangeScene(desertInfo.scene, desertInfo, "portal2A");
             else if (hitObject == portal2B) ChangeScene(spaceInfo.scene, spaceInfo, "portal2B");
             else if (hitObject == portal3A) ChangeScene(desertInfo.scene, desertInfo, "portal3A");
             else if (hitObject == portal3B) ChangeScene(iceInfo.scene, iceInfo, "portal3B");
-            else if (hitObject == portal4A) ChangeScene(global::SceneManager.BossScene, desertInfo);
-            else if (hitObject == portal4B) ChangeScene(global::SceneManager.DesertScene, desertInfo);
+            else if (hitObject == portal4A) ChangeScene(serverInfo.scene, serverInfo);
+            else if (hitObject == portal4B) ChangeScene(desertInfo.scene, desertInfo);
         }
     }
 
@@ -1418,9 +1433,10 @@ public class PlayerMovement : NetworkBehaviour {
     [ServerRpc]
     private void SetMatchCondition(bool enteringBossScene)
     {
-        bool hasUniqueMatch = currentMatch != SharedMatch;
+        bool hasUniqueMatch = currentMatch != SharedMatch && currentMatch != NoMatch;
         if (enteringBossScene && hasUniqueMatch) return;
-        if (!enteringBossScene && hasUniqueMatch) MatchManager.Instance.AddMatch(currentMatch);
+        if (!enteringBossScene && currentMatch == SharedMatch) return;
+        if (hasUniqueMatch) MatchManager.Instance.AddMatch(currentMatch);
         int newMatch = enteringBossScene ? MatchManager.Instance.GetUniqueMatch() : SharedMatch;
         MatchCondition.AddToMatch(newMatch, Owner, networkManager, true);
         currentMatch = newMatch;
@@ -1459,9 +1475,9 @@ public class PlayerMovement : NetworkBehaviour {
 
     public override void OnStopServer() {
         base.OnStopServer();
-        if (currentMatch == SharedMatch || MatchManager.Instance == null) return;
+        if (currentMatch == SharedMatch || currentMatch == NoMatch || MatchManager.Instance == null) return;
         MatchManager.Instance.AddMatch(currentMatch);
-        currentMatch = SharedMatch;
+        currentMatch = NoMatch;
     }
 
     private static void SetActiveIfPresent(GameObject go, bool active) {
