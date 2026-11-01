@@ -125,7 +125,7 @@ public class RoomMenu : MonoBehaviour
         if (TitleText != null) TitleText.text = "In Game";
     }
 
-    private static bool IsPortInUse(ushort port)
+    public static bool IsPortInUse(ushort port)
     {
         try
         {

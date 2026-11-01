@@ -8,6 +8,8 @@
     "com.unity.feature.development": "1.0.2",
     "com.unity.inputsystem": "1.19.0",
     "com.unity.multiplayer.center": "1.0.1",
+    "com.unity.multiplayer.center.quickstart": "1.1.2",
+    "com.unity.multiplayer.playmode": "2.0.2",
     "com.unity.nuget.newtonsoft-json": "3.2.2",
     "com.unity.postprocessing": "3.5.4",
     "com.unity.shadergraph": "17.3.0",

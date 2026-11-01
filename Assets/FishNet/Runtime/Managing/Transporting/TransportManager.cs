@@ -12,7 +12,9 @@ using System.Collections.Generic;
 using FishNet.Managing.Statistic;
 using GameKit.Dependencies.Utilities;
 using UnityEngine;
+
 using UnityEngine.Serialization;
+using FishNet.Transporting.Tugboat;
 
 namespace FishNet.Managing.Transporting
 {
@@ -60,10 +62,14 @@ namespace FishNet.Managing.Transporting
         internal event Action<bool> OnIterateIncomingEnd;
         /// <summary>
         /// The current Transport being used.
-        /// </summary>
-        [Tooltip("The current Transport being used.")]
-        public Transport Transport;
+        /// </summary>     
+        //[Tooltip("The current Transport being used.")]
+        [HideInInspector]public Transport Transport;
         #endregion
+        
+        public Transport FishySteamRef;
+        public Transport TugboatRef;
+        public bool localTesting;
 
         #region Serialized.
         /// <summary>
@@ -203,6 +209,15 @@ namespace FishNet.Managing.Transporting
         internal void InitializeOnce_Internal(NetworkManager manager)
         {
             _networkManager = manager;
+            if (localTesting) {
+                Transport = TugboatRef;
+                FishySteamRef.enabled = false;
+            } else { 
+                Transport = FishySteamRef;
+                TugboatRef.enabled = false;
+            }
+
+
             TryAddDefaultTransport();
             Transport.Initialize(_networkManager, 0);
             SetLowestMTUs();

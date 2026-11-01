@@ -68,6 +68,9 @@ public class SteamManager : MonoBehaviour {
 		}
 		s_instance = this;
 
+		var transportManager = GetComponent<FishNet.Managing.Transporting.TransportManager>();
+		if (transportManager != null && transportManager.localTesting) return;
+
 		if(s_EverInitialized) {
 			// This is almost always an error.
 			// The most common case where this happens is when SteamManager gets destroyed because of Application.Quit(),
@@ -96,7 +99,7 @@ public class SteamManager : MonoBehaviour {
 			// Once you get a Steam AppID assigned by Valve, you need to replace AppId_t.Invalid with it and
 			// remove steam_appid.txt from the game depot. eg: "(AppId_t)480" or "new AppId_t(480)".
 			// See the Valve documentation for more information: https://partner.steamgames.com/doc/sdk/api#initialization_and_shutdown
-			if (SteamAPI.RestartAppIfNecessary((AppId_t)480)) {
+			if (SteamAPI.RestartAppIfNecessary((AppId_t)5395480)) {
 				Debug.Log("[Steamworks.NET] Shutting down because RestartAppIfNecessary returned true. Steam will restart the application.");
 
 				Application.Quit();

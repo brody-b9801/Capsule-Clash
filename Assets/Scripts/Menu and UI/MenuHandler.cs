@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Steamworks;
 using TMPro;
+using FishNet.Managing;
 
 public class MenuHandler : MonoBehaviour
 {
@@ -29,6 +30,7 @@ public class MenuHandler : MonoBehaviour
     private bool browserOpen = false;
     private bool awaitingLobbyList = false;
     private NetworkHudCanvases networkHud;
+    private bool localTesting;
     private static MenuHandler instance;
 
     public static void ShowPopup(string message)
@@ -77,6 +79,11 @@ public class MenuHandler : MonoBehaviour
         networkHud = FindObjectOfType<NetworkHudCanvases>();
         Camera.main.transform.position = new Vector3(4f,14.6f,-26.5f);
         Camera.main.transform.localEulerAngles = new Vector3(15,-13.5f,0);
+
+        var _networkManager = FindObjectOfType<NetworkManager>();
+        localTesting = _networkManager.GetComponent<FishNet.Managing.Transporting.TransportManager>().localTesting;
+        
+        if (localTesting) return;
         if (SteamManager.Initialized) {
 			m_LobbyMatchList = CallResult<LobbyMatchList_t>.Create(OnLobbyMatchList);
 			m_LobbyDataUpdate = Callback<LobbyDataUpdate_t>.Create(OnLobbyDataUpdate);
@@ -171,7 +178,7 @@ public class MenuHandler : MonoBehaviour
     public void browseClicked()
     {
         if (!SteamManager.Initialized || m_LobbyMatchList == null) {
-            Debug.Log("Steam is not initialized, cannot browse lobbies.");
+            networkHud.OnClick_Client_Start();
             return;
         }
 
