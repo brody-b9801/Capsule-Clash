@@ -24,8 +24,9 @@ public class PlayerData
     public int[] upgradeLevels;
     public int lifetimeKills;
     public int keysDelivered;
+    public bool introDone;
 
-    public PlayerData(float volume, float rotationSpeed, bool mazeKeyAcquired, bool spaceKeyAcquired, bool iceKeyAcquired, int capsuleEssence, int killPoints, BuildKeys buildKeys, int[] upgradeLevels, int lifetimeKills, int keysDelivered)
+    public PlayerData(float volume, float rotationSpeed, bool mazeKeyAcquired, bool spaceKeyAcquired, bool iceKeyAcquired, int capsuleEssence, int killPoints, BuildKeys buildKeys, int[] upgradeLevels, int lifetimeKills, int keysDelivered, bool introDone)
     {
         this.volume = volume;
         this.rotationSpeed = rotationSpeed;
@@ -38,6 +39,7 @@ public class PlayerData
         this.upgradeLevels = upgradeLevels;
         this.lifetimeKills = lifetimeKills;
         this.keysDelivered = keysDelivered;
+        this.introDone = introDone;
     }
 }
 public class SaveSystem : MonoBehaviour
@@ -66,6 +68,7 @@ public class SaveSystem : MonoBehaviour
     static bool pendingSpaceKeyAcquired;
     static bool pendingIceKeyAcquired;
     static int pendingKeysDelivered;
+    static bool pendingIntroDone;
 
     public static void CaptureSessionData()
     {
@@ -84,6 +87,7 @@ public class SaveSystem : MonoBehaviour
             pendingSpaceKeyAcquired = server.spaceKeyAcquired;
             pendingIceKeyAcquired = server.iceKeyAcquired;
             pendingKeysDelivered = server.keysDelivered;
+            pendingIntroDone = server.serverIntroDone;
         }
 
         if (PlayerMovement.Local != null)
@@ -96,6 +100,7 @@ public class SaveSystem : MonoBehaviour
         server.spaceKeyAcquired = pendingSpaceKeyAcquired;
         server.iceKeyAcquired = pendingIceKeyAcquired;
         server.keysDelivered = pendingKeysDelivered;
+        server.serverIntroDone = pendingIntroDone;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -152,6 +157,7 @@ public class SaveSystem : MonoBehaviour
         if (playerData.upgradeLevels != null)
             pendingUpgradesPurchased = playerData.upgradeLevels;
         pendingLifetimeKills = playerData.lifetimeKills;
+        pendingIntroDone = playerData.introDone;
 
         if (upgradeManager.Local != null)
             ApplyPendingUpgradeData(upgradeManager.Local);
@@ -173,6 +179,7 @@ public class SaveSystem : MonoBehaviour
         bool savedSpaceKey = server != null ? server.spaceKeyAcquired : pendingSpaceKeyAcquired;
         bool savedIceKey = server != null ? server.iceKeyAcquired : pendingIceKeyAcquired;
         int savedKeysDelivered = server != null ? server.keysDelivered : pendingKeysDelivered;
+        bool introDone = server != null ? server.serverIntroDone : pendingIntroDone;
 
         PlayerData playerData = new PlayerData(
             SettingsController.volumePercent,
@@ -191,7 +198,8 @@ public class SaveSystem : MonoBehaviour
             },
             savedUpgradesPurchased,
             PlayerMovement.Local != null ? PlayerMovement.Local.killCount : pendingLifetimeKills,
-            savedKeysDelivered
+            savedKeysDelivered,
+            introDone
         );
         string json = JsonConvert.SerializeObject(playerData);
         string path = Application.persistentDataPath + "/playerdata.json";
