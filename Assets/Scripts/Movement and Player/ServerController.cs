@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using FishNet.Object;
-using System;
-using Unity.VisualScripting;
 
 public class ServerController : MonoBehaviour {
 
@@ -282,6 +280,7 @@ public class ServerController : MonoBehaviour {
     private bool screenAnimationDone = false;
 
     public bool serverIntroDone = false;
+    private bool testingLocal = false;
     private readonly HashSet<string> enteredDimensions = new HashSet<string>();
     private Transform cam;
     private BuildUI ui;
@@ -295,6 +294,7 @@ public class ServerController : MonoBehaviour {
 
     private void Awake() {
         SaveSystem.ApplyPendingServerData(this);
+        testingLocal = SaveSystem.testingLocal;
     }
 
     private void OnEnable() {
@@ -574,7 +574,7 @@ public class ServerController : MonoBehaviour {
     IEnumerator ServerScreenScene()
     {
         bool introPlayed = false;
-        if (!serverIntroDone) {
+        if (!serverIntroDone && !testingLocal) {
             yield return PlayLines(Script.ServerIntro);
             serverIntroDone = true;
             SaveSystem.SavePlayerData();

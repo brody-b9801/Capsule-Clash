@@ -1,5 +1,7 @@
 using UnityEngine;
 using Newtonsoft.Json;
+using FishNet.Managing;
+using FishNet.Managing.Transporting;
 
 [System.Serializable]
 public class PlayerData
@@ -50,6 +52,7 @@ public class SaveSystem : MonoBehaviour
     static int pendingUpgradePoints = 0;
     static int[] pendingUpgradesPurchased;
     static int pendingLifetimeKills = 0;
+    public static bool testingLocal = false;
 
     public static void ApplyPendingKillData(PlayerMovement player)
     {
@@ -115,11 +118,12 @@ public class SaveSystem : MonoBehaviour
     {
         if (!loaded)
             LoadPlayerData();
+        testingLocal = FindObjectOfType<NetworkManager>().GetComponent<TransportManager>().localTesting;
     }
 
     private static void LoadPlayerData()
     {   
-        return;
+        if (testingLocal) return;
         string path = Application.persistentDataPath + "/playerdata.json";
         if (!System.IO.File.Exists(path))
             return;
@@ -168,7 +172,7 @@ public class SaveSystem : MonoBehaviour
     }
     public static void SavePlayerData()
     {
-        return;
+        if (testingLocal) return;
         upgradeManager manager = upgradeManager.Local;
         int savedKillPoints = manager != null ? manager.killPoints : pendingKillPoints;
         int savedUpgradePoints = manager != null ? manager.upgradePoints : pendingUpgradePoints;

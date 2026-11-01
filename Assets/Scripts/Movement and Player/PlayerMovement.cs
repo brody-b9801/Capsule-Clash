@@ -1173,7 +1173,7 @@ public class PlayerMovement : NetworkBehaviour {
         return true;
     }
     private void TeleportationCheck(GameObject hitObject) {        
-        if (canTeleport && ServerController.Local.serverIntroDone) {
+        if (canTeleport && (ServerController.Local.serverIntroDone || SaveSystem.testingLocal)) {
             if (hitObject == portal1A) ChangeScene(desertInfo.scene, desertInfo, "portal1A");
             else if (hitObject == portal1B) ChangeScene(mazeInfo.scene, mazeInfo, "portal1B");
             else if (hitObject == portal2A) ChangeScene(desertInfo.scene, desertInfo, "portal2A");
