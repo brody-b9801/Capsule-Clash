@@ -23,6 +23,7 @@ public class GunRotation : NetworkBehaviour
     private bool casingEnabledPrev;
     private bool magEnabledPrev;
     private bool sentOnce;
+    private Transform mainCam;
 
     public override void OnStartClient()
     {
@@ -33,6 +34,7 @@ public class GunRotation : NetworkBehaviour
         g1 = SceneLookup.FindInactive("CamAKM").transform;
         gm1 = SceneLookup.FindInactive("MC.Magazine").transform;
         c1 = SceneLookup.FindInactive("CamCasing").transform;
+        mainCam = Camera.main.transform;
         if (!IsOwner) return;
 
         c1Renderer = c1.GetComponent<MeshRenderer>();
@@ -84,12 +86,26 @@ public class GunRotation : NetworkBehaviour
         sentOnce = true;
     }
 
+    private float x = 0.45f;
+    private float y = -0.4f;
+    private float z = -0.35f;
     private void positionGun()
     {
+        bool decrease = Input.GetKey(KeyCode.H);
+        if (Input.GetKeyDown(KeyCode.J)) 
+            x += decrease ? -0.05f : 0.05f;
+        if (Input.GetKeyDown(KeyCode.K)) 
+            y += decrease ? -0.05f : 0.05f;
+        if (Input.GetKeyDown(KeyCode.L))
+            z += decrease ? -0.05f : 0.05f;
+
         if (g1 == null || gun == null) return;
         if (!IsValidVector3(g1.position) || !IsValidQuaternion(g1.rotation)) return;
-
-        gun.SetPositionAndRotation(g1.position - new Vector3(0f, 0.35f, 0f), g1.rotation);
+        bool aiming = PlayerMovement.Local.isAiming;
+        gun.SetPositionAndRotation(g1.position + transform.rotation * new Vector3(aiming ? x + 0.1f : x, y, aiming ? z + 0.1f : z), g1.rotation);
+        //gr.rotation = Quaternion.Euler(new Vector3(0,0,0));
+        Debug.Log(gr.rotation.eulerAngles.x);
+        Debug.Log($"[{x}, {y}, {z}]");
     }
 
     [ServerRpc(RunLocally = true)]
