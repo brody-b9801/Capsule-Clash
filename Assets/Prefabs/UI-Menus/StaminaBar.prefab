@@ -84,7 +84,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7248730970588849641}
-  - component: {fileID: -6313201560607893925}
   m_Layer: 5
   m_Name: StaminaBar
   m_TagString: Untagged
@@ -115,21 +114,6 @@ RectTransform:
   m_AnchoredPosition: {x: 251.03351, y: 87.999985}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &-6313201560607893925
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3329851303793239322}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a6a39c46bf52104ba8efe3100bce3f7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Object.EmptyNetworkBehaviour
-  _componentIndexCache: 0
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
 --- !u!1 &4438101076201202455
 GameObject:
   m_ObjectHideFlags: 0

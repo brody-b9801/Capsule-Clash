@@ -577,6 +577,7 @@ public class ServerController : MonoBehaviour {
         if (!serverIntroDone) {
             yield return PlayLines(Script.ServerIntro);
             serverIntroDone = true;
+            SaveSystem.SavePlayerData();
             introPlayed = true;
         }
 

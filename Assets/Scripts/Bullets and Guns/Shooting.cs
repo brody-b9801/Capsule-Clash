@@ -234,7 +234,6 @@ public class Shooting : NetworkBehaviour
         _casingPool = new ObjectPool<Transform>(
             bulletCasingPrefab.GetComponent<Transform>(),
             CasingPoolSize, _casingPoolRoot);
-        if (!IsOwner) GetComponent<Shooting>().enabled = false;
     }
 
     public override void OnStartServer()
@@ -251,6 +250,7 @@ public class Shooting : NetworkBehaviour
 
     void Update()
     {
+        if (!IsOwner) return;
         isShooting = false;
 
         muzzleFlashCamera.color = new Color(muzzleFlashCamera.color.r, muzzleFlashCamera.color.g, muzzleFlashCamera.color.b, alphaVal);

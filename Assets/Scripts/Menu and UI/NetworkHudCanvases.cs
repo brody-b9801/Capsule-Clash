@@ -4,6 +4,7 @@ using Steamworks;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SocialPlatforms;
 using UnityEngine.UI;
 
 public class NetworkHudCanvases : MonoBehaviour
@@ -121,7 +122,7 @@ public class NetworkHudCanvases : MonoBehaviour
     private int _connectRetriesLeft;
     private float _connectRetryTimer;
     private float _steamCheckTimer;
-
+    private bool localTesting;
     public static bool ConsumeMigrationNotice(out bool hostChanged)
     {
         hostChanged = _migrationChangedHost;
@@ -193,14 +194,20 @@ public class NetworkHudCanvases : MonoBehaviour
         }
         else
         {
-            //UpdateColor(LocalConnectionState.Stopped, ref _serverIndicator);
-            //UpdateColor(LocalConnectionState.Stopped, ref _clientJoin);
+            localTesting = _networkManager.GetComponent<FishNet.Managing.Transporting.TransportManager>().localTesting;
             _networkManager.ServerManager.OnServerConnectionState += ServerManager_OnServerConnectionState;
             _networkManager.ClientManager.OnClientConnectionState += ClientManager_OnClientConnectionState;
-            _lobbyCreated = CallResult<LobbyCreated_t>.Create(OnLobbyCreated);
-            _lobbyEntered = CallResult<LobbyEnter_t>.Create(OnLobbyEntered);
-            _lobbyChatUpdate = Callback<LobbyChatUpdate_t>.Create(OnLobbyChatUpdate);
-            _lobbyDataUpdate = Callback<LobbyDataUpdate_t>.Create(OnLobbyDataUpdate);
+            if (localTesting)
+            {
+                UpdateColor(LocalConnectionState.Stopped, ref _serverIndicator);
+                UpdateColor(LocalConnectionState.Stopped, ref _clientJoin);
+            } else
+            {
+                _lobbyCreated = CallResult<LobbyCreated_t>.Create(OnLobbyCreated);
+                _lobbyEntered = CallResult<LobbyEnter_t>.Create(OnLobbyEntered);
+                _lobbyChatUpdate = Callback<LobbyChatUpdate_t>.Create(OnLobbyChatUpdate);
+                _lobbyDataUpdate = Callback<LobbyDataUpdate_t>.Create(OnLobbyDataUpdate);   
+            }
         }
     }
 
@@ -217,6 +224,7 @@ public class NetworkHudCanvases : MonoBehaviour
         _loadingCanvas.SetActive(false);
         _networkManager.ServerManager.OnServerConnectionState -= ServerManager_OnServerConnectionState;
         _networkManager.ClientManager.OnClientConnectionState -= ClientManager_OnClientConnectionState;
+        if (localTesting) return;
         _lobbyChatUpdate?.Dispose();
         _lobbyDataUpdate?.Dispose();
     }
@@ -250,6 +258,11 @@ public class NetworkHudCanvases : MonoBehaviour
             _connectingToHost = false;
         else if (obj.ConnectionState == LocalConnectionState.Stopped)
         {
+            if (localTesting)
+            {
+                GetNextStateText(_clientState);
+                return;
+            }
             if (_migrating)
                 return;
             if (_connectingToHost)
@@ -286,6 +299,11 @@ public class NetworkHudCanvases : MonoBehaviour
     {
         if (_networkManager == null || _creatingLobby || _joiningLobby)
             return;
+        if (localTesting)
+        {
+            StartLocalSession();
+            return;
+        }
 
         try
         {
@@ -300,6 +318,15 @@ public class NetworkHudCanvases : MonoBehaviour
 
         _creatingLobby = true;
         ShowLoading();
+    }
+
+    private void StartLocalSession()
+    {
+        ushort port = _networkManager.TransportManager.Transport.GetPort();
+        if (_serverState == LocalConnectionState.Stopped && !RoomMenu.IsPortInUse(port))
+            _networkManager.ServerManager.StartConnection();
+        _networkManager.ClientManager.StartConnection();
+        GetNextStateText(_clientState);
     }
 
     private void OnLobbyCreated(LobbyCreated_t pCallback, bool bIOFailure)

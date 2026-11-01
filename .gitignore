@@ -101,3 +101,6 @@ FISHNET_MIGRATION.md
 # Discord webhook for disconnect reports (keep out of the public repo)
 /Assets/Resources/ReportWebhook.txt
 /Assets/Resources/ReportWebhook.txt.meta
+
+# Local multiplayer TODO list
+/todo.md

@@ -3012,7 +3012,6 @@ GameObject:
   - component: {fileID: 670123998239315898}
   - component: {fileID: 8331028519773111629}
   - component: {fileID: 7028926774348276005}
-  - component: {fileID: 923465399272583641}
   m_Layer: 0
   m_Name: Cube 1(Clone)
   m_TagString: Ramp
@@ -3067,26 +3066,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &923465399272583641
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 136404406074249330}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 29
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 9201778096820024973}
-  maxHealth: 4
-  build: {fileID: 136404406074249330}
-  panelStage: 0
-  transMesh: {fileID: 3885423660635280639}
 --- !u!1 &140343589570054412
 GameObject:
   m_ObjectHideFlags: 0
@@ -10224,7 +10203,6 @@ GameObject:
   - component: {fileID: 8944230286958000565}
   - component: {fileID: 3089773489236144766}
   - component: {fileID: 4672695170621395071}
-  - component: {fileID: 1042007818304561701}
   m_Layer: 0
   m_Name: Cube 1(Clone)
   m_TagString: Ramp
@@ -10279,26 +10257,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1042007818304561701
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 671625882722414700}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 8
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 5524471381899895127}
-  maxHealth: 4
-  build: {fileID: 671625882722414700}
-  panelStage: 0
-  transMesh: {fileID: 7443926814136388993}
 --- !u!1 &671890116985510143
 GameObject:
   m_ObjectHideFlags: 0
@@ -14720,7 +14678,6 @@ GameObject:
   - component: {fileID: 5922914801100375316}
   - component: {fileID: 3011489609394861722}
   - component: {fileID: 6767988577556333068}
-  - component: {fileID: 4593614192828800206}
   m_Layer: 0
   m_Name: Cube 3(Clone)
   m_TagString: Floor
@@ -14775,26 +14732,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &4593614192828800206
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 989343662546709392}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 28
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 7233570068482547196}
-  maxHealth: 4
-  build: {fileID: 989343662546709392}
-  panelStage: 0
-  transMesh: {fileID: 7403165680339037638}
 --- !u!1 &1004382707496437596
 GameObject:
   m_ObjectHideFlags: 0
@@ -15436,7 +15373,6 @@ GameObject:
   - component: {fileID: 7373956380317137232}
   - component: {fileID: 5508198059147038198}
   - component: {fileID: 3573953012435208590}
-  - component: {fileID: 176136462196368808}
   m_Layer: 0
   m_Name: Cube 1(Clone)
   m_TagString: Ramp
@@ -15491,26 +15427,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &176136462196368808
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1040772055867564577}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 9
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 4161455058846227728}
-  maxHealth: 4
-  build: {fileID: 1040772055867564577}
-  panelStage: 0
-  transMesh: {fileID: 5716137510742969130}
 --- !u!1 &1041947897633887750
 GameObject:
   m_ObjectHideFlags: 0
@@ -16242,7 +16158,6 @@ GameObject:
   - component: {fileID: 7620645977603836789}
   - component: {fileID: 853263394803715780}
   - component: {fileID: 968364469531688226}
-  - component: {fileID: 853546429542539493}
   m_Layer: 0
   m_Name: Cube 3(Clone)
   m_TagString: Floor
@@ -16297,26 +16212,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &853546429542539493
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1080962450933348471}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 15
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 2207091361643645025}
-  maxHealth: 4
-  build: {fileID: 1080962450933348471}
-  panelStage: 0
-  transMesh: {fileID: 7859377402613236005}
 --- !u!1 &1082113804632846249
 GameObject:
   m_ObjectHideFlags: 0
@@ -16530,7 +16425,6 @@ GameObject:
   - component: {fileID: 6451912616952605207}
   - component: {fileID: 4700099834634482063}
   - component: {fileID: 3115990822689615046}
-  - component: {fileID: 5529964774791147384}
   m_Layer: 0
   m_Name: Cube 1(Clone)
   m_TagString: Ramp
@@ -16585,26 +16479,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &5529964774791147384
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1086822623880312682}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 33
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 6438829808816980220}
-  maxHealth: 4
-  build: {fileID: 1086822623880312682}
-  panelStage: 0
-  transMesh: {fileID: 1525916633552473995}
 --- !u!1 &1089092049777315170
 GameObject:
   m_ObjectHideFlags: 0
@@ -17088,7 +16962,6 @@ GameObject:
   - component: {fileID: 6224278621808187114}
   - component: {fileID: 2673772297346504835}
   - component: {fileID: 2811083587702207405}
-  - component: {fileID: 7683495047336056222}
   m_Layer: 0
   m_Name: Cube 3(Clone)
   m_TagString: Floor
@@ -17143,26 +17016,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &7683495047336056222
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1142833329097723948}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 5
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 6350985199251241998}
-  maxHealth: 4
-  build: {fileID: 1142833329097723948}
-  panelStage: 0
-  transMesh: {fileID: 678197211839349980}
 --- !u!1 &1149640289037488771
 GameObject:
   m_ObjectHideFlags: 0
@@ -18906,7 +18759,6 @@ GameObject:
   - component: {fileID: 646698976681743162}
   - component: {fileID: 4482241131022317663}
   - component: {fileID: 5245993503394773483}
-  - component: {fileID: 6990854331652596870}
   m_Layer: 0
   m_Name: Cube 1(Clone)
   m_TagString: Ramp
@@ -18961,26 +18813,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &6990854331652596870
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1200891679235773915}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 3
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 1688553878578176015}
-  maxHealth: 4
-  build: {fileID: 1200891679235773915}
-  panelStage: 0
-  transMesh: {fileID: 1642358156690826060}
 --- !u!1 &1207692160993314368
 GameObject:
   m_ObjectHideFlags: 0
@@ -24153,7 +23985,6 @@ GameObject:
   - component: {fileID: 1830950042592575866}
   - component: {fileID: 3546459040156291025}
   - component: {fileID: 6733139712373591136}
-  - component: {fileID: 490314649450112540}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -24208,26 +24039,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &490314649450112540
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1533988336384902463}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 18
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 3938781872512984554}
-  maxHealth: 4
-  build: {fileID: 1533988336384902463}
-  panelStage: 0
-  transMesh: {fileID: 980178726971069610}
 --- !u!1 &1546743486333071860
 GameObject:
   m_ObjectHideFlags: 0
@@ -36446,7 +36257,6 @@ GameObject:
   - component: {fileID: 7647048211991685305}
   - component: {fileID: 2367717330301276470}
   - component: {fileID: 1549675511078188675}
-  - component: {fileID: 5537329273701031534}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -36501,26 +36311,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &5537329273701031534
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2366674465474451770}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 31
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 4192942565172609590}
-  maxHealth: 4
-  build: {fileID: 2366674465474451770}
-  panelStage: 0
-  transMesh: {fileID: 2949050344072544261}
 --- !u!1 &2367692405823599189
 GameObject:
   m_ObjectHideFlags: 0
@@ -37342,7 +37132,6 @@ GameObject:
   - component: {fileID: 5648825423017937374}
   - component: {fileID: 1132131457349048385}
   - component: {fileID: 115993186684210724}
-  - component: {fileID: 7978537844130590627}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -37397,26 +37186,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &7978537844130590627
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2409980971939060932}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 26
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 8510744271016404798}
-  maxHealth: 4
-  build: {fileID: 2409980971939060932}
-  panelStage: 0
-  transMesh: {fileID: 4504264397053670008}
 --- !u!1 &2410216955250618663
 GameObject:
   m_ObjectHideFlags: 0
@@ -51646,7 +51415,6 @@ GameObject:
   - component: {fileID: 6757025647404936051}
   - component: {fileID: 4245152618030282184}
   - component: {fileID: 292085096885309400}
-  - component: {fileID: 7524130445280956918}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -51701,26 +51469,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &7524130445280956918
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3477956852018786831}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 30
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 4777764892090567265}
-  maxHealth: 4
-  build: {fileID: 3477956852018786831}
-  panelStage: 0
-  transMesh: {fileID: 2040815339832570416}
 --- !u!1 &3482797738401800256
 GameObject:
   m_ObjectHideFlags: 0
@@ -58355,7 +58103,6 @@ GameObject:
   - component: {fileID: 6355433364299151037}
   - component: {fileID: 1889745530626730827}
   - component: {fileID: 8995888472049206110}
-  - component: {fileID: 8693190810746421143}
   m_Layer: 0
   m_Name: Cube 1(Clone)
   m_TagString: Ramp
@@ -58410,26 +58157,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &8693190810746421143
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3839572161317651885}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 12
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 6567086413275086237}
-  maxHealth: 4
-  build: {fileID: 3839572161317651885}
-  panelStage: 0
-  transMesh: {fileID: 4648554355293023062}
 --- !u!1 &3840313674728413267
 GameObject:
   m_ObjectHideFlags: 0
@@ -61216,7 +60943,6 @@ GameObject:
   - component: {fileID: 8501619022720355846}
   - component: {fileID: 4345147077070809768}
   - component: {fileID: 1367674336723016631}
-  - component: {fileID: 8382099890851898360}
   m_Layer: 11
   m_Name: Cube 1(Clone)
   m_TagString: Ramp
@@ -61271,26 +60997,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &8382099890851898360
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3955367564448484491}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 24
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 777857841211006857}
-  maxHealth: 4
-  build: {fileID: 3955367564448484491}
-  panelStage: 0
-  transMesh: {fileID: 2376038383848486043}
 --- !u!1 &3963319248945063093
 GameObject:
   m_ObjectHideFlags: 0
@@ -65522,7 +65228,6 @@ GameObject:
   - component: {fileID: 8378904352637132439}
   - component: {fileID: 8123768951202001731}
   - component: {fileID: 539188237020118790}
-  - component: {fileID: 6766386757169519667}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -65577,26 +65282,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &6766386757169519667
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4222237580655443818}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 16
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 1654134773416440247}
-  maxHealth: 4
-  build: {fileID: 4222237580655443818}
-  panelStage: 0
-  transMesh: {fileID: 5976524631310051296}
 --- !u!1 &4247147476246955746
 GameObject:
   m_ObjectHideFlags: 0
@@ -67722,7 +67407,6 @@ GameObject:
   - component: {fileID: 3633416306666705417}
   - component: {fileID: 2102107502946829943}
   - component: {fileID: 2382025937306419850}
-  - component: {fileID: 5928964490412616203}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -67777,26 +67461,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &5928964490412616203
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4381679722802255775}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 6
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 7932914484761466277}
-  maxHealth: 4
-  build: {fileID: 4381679722802255775}
-  panelStage: 0
-  transMesh: {fileID: 557636253897840137}
 --- !u!1 &4387486687302503737
 GameObject:
   m_ObjectHideFlags: 0
@@ -76002,7 +75666,6 @@ GameObject:
   - component: {fileID: 7218318992966408211}
   - component: {fileID: 3100126698508239628}
   - component: {fileID: 2239025217737337123}
-  - component: {fileID: 2235602967195976770}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -76057,26 +75720,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &2235602967195976770
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4839805107185840848}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 2
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 1599035916120945027}
-  maxHealth: 4
-  build: {fileID: 4839805107185840848}
-  panelStage: 0
-  transMesh: {fileID: 7422258257899026849}
 --- !u!1 &4849015906685908680
 GameObject:
   m_ObjectHideFlags: 0
@@ -76698,7 +76341,6 @@ GameObject:
   - component: {fileID: 5157156797658127500}
   - component: {fileID: 7748293093464696958}
   - component: {fileID: 7168723878357426109}
-  - component: {fileID: 1635276867668926869}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -76753,26 +76395,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1635276867668926869
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4897361442843801180}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 23
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 360383853924461516}
-  maxHealth: 4
-  build: {fileID: 4897361442843801180}
-  panelStage: 0
-  transMesh: {fileID: 2871050555106332471}
 --- !u!1 &4900156348462496651
 GameObject:
   m_ObjectHideFlags: 0
@@ -79064,7 +78686,6 @@ GameObject:
   - component: {fileID: 918733782507740275}
   - component: {fileID: 2014233589854647874}
   - component: {fileID: 4810552533111549413}
-  - component: {fileID: 1835776822660925440}
   m_Layer: 0
   m_Name: Cube 1(Clone)
   m_TagString: Ramp
@@ -79119,26 +78740,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1835776822660925440
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5036850366531971211}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 4
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 4323856484650491045}
-  maxHealth: 4
-  build: {fileID: 5036850366531971211}
-  panelStage: 0
-  transMesh: {fileID: 1250769254179068020}
 --- !u!1 &5040493413800181409
 GameObject:
   m_ObjectHideFlags: 0
@@ -85592,7 +85193,6 @@ GameObject:
   - component: {fileID: 9131245057332578773}
   - component: {fileID: 666391535318831998}
   - component: {fileID: 2565367118359830858}
-  - component: {fileID: 1332785382788557420}
   m_Layer: 0
   m_Name: Cube 3(Clone)
   m_TagString: Floor
@@ -85647,26 +85247,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1332785382788557420
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5483501140106512905}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 10
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 7715009765269188404}
-  maxHealth: 4
-  build: {fileID: 5483501140106512905}
-  panelStage: 0
-  transMesh: {fileID: 6105302673586279561}
 --- !u!1 &5503865749424080349
 GameObject:
   m_ObjectHideFlags: 0
@@ -92503,7 +92083,6 @@ GameObject:
   - component: {fileID: 7070747514437626165}
   - component: {fileID: 8827053821728517336}
   - component: {fileID: 79390193463690146}
-  - component: {fileID: 6738120079817026759}
   m_Layer: 0
   m_Name: Cube 3(Clone)
   m_TagString: Floor
@@ -92558,26 +92137,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &6738120079817026759
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5952016686885666865}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 20
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 3043059964535663840}
-  maxHealth: 4
-  build: {fileID: 5952016686885666865}
-  panelStage: 0
-  transMesh: {fileID: 2648213684523055517}
 --- !u!1 &5955761822146851184
 GameObject:
   m_ObjectHideFlags: 0
@@ -95794,7 +95353,6 @@ GameObject:
   - component: {fileID: 6220897479769224117}
   - component: {fileID: 8361317078730556195}
   - component: {fileID: 4757466531488493748}
-  - component: {fileID: 1077898328275288439}
   m_Layer: 0
   m_Name: Cube 3(Clone)
   m_TagString: Floor
@@ -95849,26 +95407,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1077898328275288439
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6237042192604423490}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 17
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 4030193328781939655}
-  maxHealth: 4
-  build: {fileID: 6237042192604423490}
-  panelStage: 0
-  transMesh: {fileID: 3556033756870125099}
 --- !u!1 &6249984518270552171
 GameObject:
   m_ObjectHideFlags: 0
@@ -97410,7 +96948,6 @@ GameObject:
   - component: {fileID: 992500361714381770}
   - component: {fileID: 8960750870608008648}
   - component: {fileID: 7937883448505993244}
-  - component: {fileID: 4291332323683237935}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -97465,26 +97002,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &4291332323683237935
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6365243090615947451}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 35
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 8552582436596049231}
-  maxHealth: 4
-  build: {fileID: 6365243090615947451}
-  panelStage: 0
-  transMesh: {fileID: 4634393016077749949}
 --- !u!1 &6365542831434419963
 GameObject:
   m_ObjectHideFlags: 0
@@ -97676,7 +97193,6 @@ GameObject:
   - component: {fileID: 6512872238205809101}
   - component: {fileID: 7695394375493637398}
   - component: {fileID: 6163972553113226180}
-  - component: {fileID: 3975556278028967497}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -97731,26 +97247,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &3975556278028967497
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6376652384885201436}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 34
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 3078758736098567006}
-  maxHealth: 4
-  build: {fileID: 6376652384885201436}
-  panelStage: 0
-  transMesh: {fileID: 894298052137946537}
 --- !u!1 &6379125800458813041
 GameObject:
   m_ObjectHideFlags: 0
@@ -102410,7 +101906,6 @@ GameObject:
   - component: {fileID: 1365694197996763904}
   - component: {fileID: 1978583946894786128}
   - component: {fileID: 7914934637204699423}
-  - component: {fileID: 4502771549072957948}
   m_Layer: 0
   m_Name: Cube 3(Clone)
   m_TagString: Floor
@@ -102465,26 +101960,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &4502771549072957948
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6641685444666820787}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 22
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 8396944474173628408}
-  maxHealth: 4
-  build: {fileID: 6641685444666820787}
-  panelStage: 0
-  transMesh: {fileID: 2016434451107688458}
 --- !u!1 &6642960504790906337
 GameObject:
   m_ObjectHideFlags: 0
@@ -104422,7 +103897,6 @@ GameObject:
   - component: {fileID: 5393084333755562036}
   - component: {fileID: 8033719413639198811}
   - component: {fileID: 675778046219188557}
-  - component: {fileID: 8363733155910406471}
   m_Layer: 0
   m_Name: Cube 3(Clone)
   m_TagString: Floor
@@ -104477,26 +103951,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &8363733155910406471
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6778077816255396528}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 19
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 4544628071581389343}
-  maxHealth: 4
-  build: {fileID: 6778077816255396528}
-  panelStage: 0
-  transMesh: {fileID: 8619771880475147747}
 --- !u!1 &6783416542156738352
 GameObject:
   m_ObjectHideFlags: 0
@@ -107291,7 +106745,6 @@ GameObject:
   - component: {fileID: 1676485462394857021}
   - component: {fileID: 1029808855560373665}
   - component: {fileID: 1827542228658397665}
-  - component: {fileID: 4451816719612336877}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -107346,26 +106799,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &4451816719612336877
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7017956161984827859}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 13
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 6840318341044223663}
-  maxHealth: 4
-  build: {fileID: 7017956161984827859}
-  panelStage: 0
-  transMesh: {fileID: 4144818827741649370}
 --- !u!1 &7035329291847157977
 GameObject:
   m_ObjectHideFlags: 0
@@ -107737,7 +107170,6 @@ GameObject:
   - component: {fileID: 2207380589940362409}
   - component: {fileID: 7133329746144699264}
   - component: {fileID: 4576827987935146515}
-  - component: {fileID: 5041049279771340289}
   m_Layer: 0
   m_Name: Cube 1(Clone)
   m_TagString: Ramp
@@ -107792,26 +107224,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &5041049279771340289
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7057443262348400707}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 1
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 5188690441088985111}
-  maxHealth: 4
-  build: {fileID: 7057443262348400707}
-  panelStage: 0
-  transMesh: {fileID: 8304141461524275056}
 --- !u!1 &7060457634068940498
 GameObject:
   m_ObjectHideFlags: 0
@@ -109577,7 +108989,6 @@ GameObject:
   - component: {fileID: 3170335416497039299}
   - component: {fileID: 4634573633575933031}
   - component: {fileID: 8888882057505459445}
-  - component: {fileID: 427284655376590231}
   m_Layer: 0
   m_Name: Cube 3(Clone)
   m_TagString: Floor
@@ -109632,26 +109043,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &427284655376590231
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7158365517610377439}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 25
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 1258717130612540174}
-  maxHealth: 4
-  build: {fileID: 7158365517610377439}
-  panelStage: 0
-  transMesh: {fileID: 9159483947968416741}
 --- !u!1 &7158512085586747948
 GameObject:
   m_ObjectHideFlags: 0
@@ -117800,7 +117191,6 @@ GameObject:
   - component: {fileID: 2413915427295464913}
   - component: {fileID: 7851879759673443624}
   - component: {fileID: 599270174190615378}
-  - component: {fileID: 3919876945204048817}
   m_Layer: 0
   m_Name: Cube 3(Clone)
   m_TagString: Floor
@@ -117855,26 +117245,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &3919876945204048817
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7743308421000250552}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 32
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 5342511767508086008}
-  maxHealth: 4
-  build: {fileID: 7743308421000250552}
-  panelStage: 0
-  transMesh: {fileID: 1019289747980470020}
 --- !u!1 &7749269279369154514
 GameObject:
   m_ObjectHideFlags: 0
@@ -117976,7 +117346,6 @@ GameObject:
   - component: {fileID: 4256563434531132365}
   - component: {fileID: 2897417875001387683}
   - component: {fileID: 7829392043683302326}
-  - component: {fileID: 8548645665502710197}
   m_Layer: 0
   m_Name: Cube 1(Clone)
   m_TagString: Ramp
@@ -118031,26 +117400,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &8548645665502710197
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7750272976909188631}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 14
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 3885493984289166825}
-  maxHealth: 4
-  build: {fileID: 7750272976909188631}
-  panelStage: 0
-  transMesh: {fileID: 4034049317252965114}
 --- !u!1 &7751907577641824655
 GameObject:
   m_ObjectHideFlags: 0
@@ -122544,7 +121893,6 @@ GameObject:
   - component: {fileID: 4266767423667732312}
   - component: {fileID: 5231418336961049832}
   - component: {fileID: 1291601838382713565}
-  - component: {fileID: 7335781280577627664}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -122599,26 +121947,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &7335781280577627664
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7991225488431085175}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 11
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 7471414141131279577}
-  maxHealth: 4
-  build: {fileID: 7991225488431085175}
-  panelStage: 0
-  transMesh: {fileID: 8017847982402434488}
 --- !u!1 &7999039056674865704
 GameObject:
   m_ObjectHideFlags: 0
@@ -123440,7 +122768,6 @@ GameObject:
   - component: {fileID: 519027994941296688}
   - component: {fileID: 3977915590747695078}
   - component: {fileID: 9044340989245366181}
-  - component: {fileID: 7489699142170764479}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -123495,26 +122822,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &7489699142170764479
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8070245390290453252}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 7
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 1731985201453872441}
-  maxHealth: 4
-  build: {fileID: 8070245390290453252}
-  panelStage: 0
-  transMesh: {fileID: 3584572131145648955}
 --- !u!1 &8081494024135043536
 GameObject:
   m_ObjectHideFlags: 0
@@ -130942,7 +130249,6 @@ GameObject:
   - component: {fileID: 231482840556182547}
   - component: {fileID: 8650673200083887246}
   - component: {fileID: 493358629942023235}
-  - component: {fileID: 5685069354792990899}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -130997,26 +130303,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &5685069354792990899
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8532515488347826278}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 27
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 1500978391922150578}
-  maxHealth: 4
-  build: {fileID: 8532515488347826278}
-  panelStage: 0
-  transMesh: {fileID: 1541667094249941166}
 --- !u!1 &8534473531047655919
 GameObject:
   m_ObjectHideFlags: 0
@@ -131682,7 +130968,6 @@ GameObject:
   - component: {fileID: 4933988833770537025}
   - component: {fileID: 4925057850856857571}
   - component: {fileID: 9080059037341019935}
-  - component: {fileID: 1913711988182349596}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -131737,26 +131022,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1913711988182349596
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8559091711844630533}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 21
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 5263322244236565173}
-  maxHealth: 4
-  build: {fileID: 8559091711844630533}
-  panelStage: 0
-  transMesh: {fileID: 3906029594198336069}
 --- !u!1 &8561072843851440904
 GameObject:
   m_ObjectHideFlags: 0
@@ -137631,7 +136896,6 @@ GameObject:
   - component: {fileID: 3603679414342449969}
   - component: {fileID: 2541296121696159136}
   - component: {fileID: 2187577142633637979}
-  - component: {fileID: 3012684441629220373}
   m_Layer: 0
   m_Name: Cube 2(Clone)
   m_TagString: Wall
@@ -137686,26 +136950,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 0.05}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &3012684441629220373
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8888167532385393911}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bdb808c1a7de5d41ab44f9564ccab72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _componentIndexCache: 36
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 0}
-  anim: {fileID: 2055223838373936950}
-  maxHealth: 4
-  build: {fileID: 8888167532385393911}
-  panelStage: 0
-  transMesh: {fileID: 7313611833050575696}
 --- !u!1 &8894307710430846188
 GameObject:
   m_ObjectHideFlags: 0
