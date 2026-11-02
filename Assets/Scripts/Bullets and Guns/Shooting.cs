@@ -72,6 +72,7 @@ public class Shooting : NetworkBehaviour
     [SerializeField] private GameObject     bH;
     [SerializeField] private ParticleSystem muzzlePrefab;
     [SerializeField] private GameObject     bulletCasingPrefab;
+    [SerializeField] private float          nonOwnerCasingScale = 1.25f;
     [SerializeField] private MeshFilter     playerMesh;
     [SerializeField] private Mesh           shotgunMesh;
     [SerializeField] private Mesh           M4Mesh;
@@ -190,6 +191,16 @@ public class Shooting : NetworkBehaviour
     {
         base.OnStartClient();
 
+        _muzzlePoolRoot = CreatePoolRoot($"Pool_Muzzle_{NetworkObject.ObjectId}");
+        _muzzlePool = new ObjectPool<ParticleSystem>(
+            muzzlePrefab,
+            MuzzlePoolSize, _muzzlePoolRoot);
+
+        _casingPoolRoot = CreatePoolRoot($"Pool_Casings_{NetworkObject.ObjectId}");
+        _casingPool = new ObjectPool<Transform>(
+            bulletCasingPrefab.GetComponent<Transform>(),
+            CasingPoolSize, _casingPoolRoot);
+
         if (!IsOwner) return;
         Local = this;
         currentGun = currGun.AR;
@@ -223,17 +234,6 @@ public class Shooting : NetworkBehaviour
         cam2     = GameObject.Find("CameraTwo").GetComponent<Camera>();
 
         camCasing.GetComponent<MeshRenderer>().enabled = false;
-
-        _muzzlePoolRoot = CreatePoolRoot("Pool_Muzzle");
-        _casingPoolRoot = CreatePoolRoot("Pool_Casings");
-
-        _muzzlePool = new ObjectPool<ParticleSystem>(
-            muzzlePrefab,
-            MuzzlePoolSize, _muzzlePoolRoot);
-
-        _casingPool = new ObjectPool<Transform>(
-            bulletCasingPrefab.GetComponent<Transform>(),
-            CasingPoolSize, _casingPoolRoot);
     }
 
     public override void OnStartServer()
@@ -300,7 +300,6 @@ public class Shooting : NetworkBehaviour
 
                 FireBullet(useCameraPos, cameraForward,
                     bulletSpawn.transform.position, range,
-                    bulletHole.position, bH.transform.position,
                     spreads);
                 PlayerMovement.Local.ApplyShotBoost(currentGun, cameraForward);
 
@@ -396,7 +395,6 @@ public class Shooting : NetworkBehaviour
     private void FireBullet(
         Vector3 origin, Vector3 direction, Vector3 bS,
         float force,
-        Vector3 bulletOrigin, Vector3 bHPos,
         Vector3[] spreads)
     {
         Vector3 shooterVelocity = PlayerMovement.Local.dashVector;
@@ -417,41 +415,55 @@ public class Shooting : NetworkBehaviour
 
         lockCursor = true;
 
-        Vector3 spawnMuzzlePosition = IsOwner ? bulletOrigin : bHPos;
+        if (IsOwner) {
+            Transform casing = _casingPool.Get(
+                casingSpawn.position, bulletCasingPrefab.transform.rotation, casingSpawn);
+            casing.gameObject.layer = 5;
 
-        float randomAngle = Random.Range(-45f, 45f);
+            BulletCasingAnim casingAnim = casing.GetComponent<BulletCasingAnim>();
+            if (casingAnim != null)
+                casingAnim.OnReturnToPool = () => _casingPool.Return(casing, _casingPoolRoot);
+        }
+        Debug.Log("Spawning non-cam casing");
+        ServerSpawnShotEffects();
+    }
+
+    [ServerRpc]
+    private void ServerSpawnShotEffects() => RpcSpawnShotEffects();
+
+    [ObserversRpc]
+    private void RpcSpawnShotEffects()
+    {
         Transform bulletHoleRef = IsOwner ? bulletHole : bH.transform;
 
         if (IsValidQuaternion(bulletHoleRef.rotation))
         {
+            float randomAngle = Random.Range(-45f, 45f);
             Quaternion muzzleRot = bulletHoleRef.rotation *
                                   Quaternion.Euler(randomAngle, -90f, 0f);
 
             ParticleSystem muzzleInst = _muzzlePool.Get(
-                spawnMuzzlePosition, muzzleRot, bulletHoleRef);
+                bulletHoleRef.position, muzzleRot, bulletHoleRef);
             muzzleInst.transform.localPosition = Vector3.zero;
+            if (!IsOwner)
+            {
+                foreach (Transform child in muzzleInst.GetComponentsInChildren<Transform>(true))
+                    child.gameObject.layer = 0;
+            }
             muzzleInst.Play();
 
             StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bulletHoleRef));
-
-            if (IsOwner) {
-                Transform casing = _casingPool.Get(
-                    casingSpawn.position, bulletCasingPrefab.transform.rotation, casingSpawn);
-                casing.gameObject.layer = 5;
-
-                BulletCasingAnim casingAnim = casing.GetComponent<BulletCasingAnim>();
-                if (casingAnim != null)
-                    casingAnim.OnReturnToPool = () => _casingPool.Return(casing, _casingPoolRoot);
-            }
-            Transform casingHolder = transform.GetChild(2).GetChild(0).GetChild(1).GetChild(0);
-            Transform nonCameraCasing = _casingPool.Get(
-                casingHolder.position, bulletCasingPrefab.transform.rotation, casingHolder);
-            nonCameraCasing.gameObject.layer = 11;
-            if (IsOwner) nonCameraCasing.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
-            BulletCasingAnim casingAnimNonCam = nonCameraCasing.GetComponent<BulletCasingAnim>();
-            if (casingAnimNonCam != null)
-                casingAnimNonCam.OnReturnToPool = () => _casingPool.Return(nonCameraCasing, _casingPoolRoot);
         }
+
+        Transform casingHolder = transform.GetChild(2).GetChild(0).GetChild(1).GetChild(0);
+        Transform nonCameraCasing = _casingPool.Get(
+            casingHolder.position, bulletCasingPrefab.transform.rotation, casingHolder);
+        nonCameraCasing.gameObject.layer = 11;
+        if (IsOwner) nonCameraCasing.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+        else nonCameraCasing.localScale = bulletCasingPrefab.transform.localScale * nonOwnerCasingScale;
+        BulletCasingAnim casingAnimNonCam = nonCameraCasing.GetComponent<BulletCasingAnim>();
+        if (casingAnimNonCam != null)
+            casingAnimNonCam.OnReturnToPool = () => _casingPool.Return(nonCameraCasing, _casingPoolRoot);
     }
 
     [ServerRpc(RequireOwnership = false)]
