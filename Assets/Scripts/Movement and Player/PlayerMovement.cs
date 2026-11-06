@@ -8,6 +8,7 @@ using FishNet.Managing;
 using UnityEngine.SceneManagement;
 using TMPro;
 using FishNet.Component.Observing;
+using NUnit.Framework;
 
 [RequireComponent(typeof(ServerController))]
 public class PlayerMovement : NetworkBehaviour {
@@ -26,7 +27,7 @@ public class PlayerMovement : NetworkBehaviour {
     public bool isAiming = false;
     public bool isSprinting = false;
     public Vector3 newPosition;
-    public Vector3 movement;
+    public Vector3 movement = Vector3.zero;
     private float _horizontal;
     private float _vertical;
     private bool _jump;
@@ -283,7 +284,7 @@ public class PlayerMovement : NetworkBehaviour {
         { global::SceneManager.MazeScene, new DimensionRules { canDash = false, dashReloadModifier = 0f, shotgunDamageModifier = 1.5f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = false, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } },
         { global::SceneManager.SpaceScene, new DimensionRules { canDash = true, dashReloadModifier = 4f, shotgunDamageModifier = 1f, sniperDamageModifier = 1.5f, arDamageModifier = 1f, gravity = 6f, fallDamage = false, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } },
         { global::SceneManager.SnowScene, new DimensionRules { canDash = true, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1.5f, gravity = 9.81f, fallDamage = true, canBuild = false, canJump = false, boostOnGunshot = true, reloadSpeedModifier = 1.5f } },
-        { global::SceneManager.BossScene, new DimensionRules { canDash = true, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } }
+        { global::SceneManager.BossScene, new DimensionRules { canDash = false, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } }
     };
     private DimensionRules serverRules = rulesByScene[global::SceneManager.DesertScene];
 
@@ -364,7 +365,7 @@ public class PlayerMovement : NetworkBehaviour {
             name = "Server",
             materialName = "Server",
             skybox = serverSky,
-            farClip = 1000f,
+            farClip = 200f,
             accel = baseGroundAcceleration,
             decel = baseGroundDeceleration,
             fric = baseFriction,
@@ -837,69 +838,81 @@ public class PlayerMovement : NetworkBehaviour {
 
         Vector3 forward = transform.forward;
         Vector3 right = transform.right;
-        forward.y = 0f;
-        right.y = 0f;
-        float baseSpeed = GetBaseSpeed();
-        float targetSpeed = baseSpeed * upgradeManager.Local.speedMultiplier;
+
         Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
-        if (moveDirection.magnitude > 1f) moveDirection.Normalize();
-
-        Vector3 flatMovement = new Vector3(movement.x, 0f, movement.z);
-        wishDir = moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : flatMovement.normalized;
-
         if (isGrounded) {
             moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
-            moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
         } else {
-            movement.y = 0f;
+            moveDirection.y = 0f;
         }
+        moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
 
-        if (moveDirection.magnitude > characterController.minMoveDistance)
-        {
-            Vector3 projectedMoveDirection = Vector3.Project(movement, moveDirection);
-            Vector3 perpendicularMovement = movement - projectedMoveDirection;
-            float perpendicularSpeed = perpendicularMovement.magnitude;
-            if (perpendicularSpeed > characterController.minMoveDistance)
-            {
-                float turnFrictionScale = 3f; //Used for tuning how snappy turns feel
-                if (!isGrounded) turnFrictionScale *= airControlMultiplier;
-                float frictionDrop = perpendicularSpeed * friction * turnFrictionScale * Time.deltaTime;
-                perpendicularMovement *= Mathf.Max(perpendicularSpeed - frictionDrop, 0f) / perpendicularSpeed;
-            }
-            movement = projectedMoveDirection + perpendicularMovement;
-            projectedMoveDirection = Vector3.Project(movement, moveDirection);
-            float currentSpeed = projectedMoveDirection.magnitude * Mathf.Sign(Vector3.Dot(projectedMoveDirection, moveDirection));
-            bool reversing = movement.sqrMagnitude > 1e-4f && Vector3.Dot(moveDirection.normalized, movement.normalized) < 0.5f;
-            float accelRate;
-            if (isGrounded) accelRate = reversing ? groundDeceleration : groundAcceleration;
-            else accelRate = reversing ? airDeceleration : airAcceleration;
-            if (isSprinting) accelRate *= sprintAccelerationMultiplier;
+        float targetSpeed = SetTargetSpeed();
+        Vector3 targetMovement = moveDirection * targetSpeed;
 
-            float addSpeed = Mathf.Min(baseSpeed, targetSpeed) - currentSpeed;
-            if (addSpeed > 0) {
-                float accelSpeed = Mathf.Min(accelRate * Time.deltaTime, addSpeed);
-                movement += moveDirection * accelSpeed;
-            }
+        movement = Vector3.MoveTowards(movement, targetMovement, Time.deltaTime*(isGrounded ? groundAcceleration : airAcceleration));
+        // forward.y = 0f;
+        // right.y = 0f;
+        // float baseSpeed = GetBaseSpeed();
+        // float targetSpeed = baseSpeed * upgradeManager.Local.speedMultiplier;
+        // if (moveDirection.magnitude > 1f) moveDirection.Normalize();
 
-            float currentMag = movement.magnitude;
-            if (currentMag >= baseSpeed * 0.99f && currentMag < targetSpeed)
-                movement = movement.normalized * Mathf.Lerp(currentMag, targetSpeed, Time.deltaTime * 5f);
-        } else {
-            float speed = movement.magnitude;
-            if (speed > 0.01f) {
-                float drop = isGrounded ? speed * friction * Time.deltaTime : airDeceleration * Time.deltaTime;
-                movement *= Mathf.Max(speed - drop, 0) / speed;
-            } else {
-                movement = Vector3.zero;
-            }
-        }
+        // Vector3 flatMovement = new Vector3(movement.x, 0f, movement.z);
+        // wishDir = moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : flatMovement.normalized;
 
-        float maxAllowedSpeed = targetSpeed * 1.1f;
-        float movementMag = movement.magnitude;
-        if (movementMag > maxAllowedSpeed) {
-            float dampedMag = Mathf.Lerp(movementMag, maxAllowedSpeed, 1f - Mathf.Exp(-overspeedDamping * Time.deltaTime));
-            movement *= dampedMag / movementMag;
-        }
+        // if (isGrounded) {
+        //     moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
+        //     moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
+        // } else {
+        //     movement.y = 0f;
+        // }
+
+        // if (moveDirection.magnitude > characterController.minMoveDistance)
+        // {
+        //     Vector3 projectedMoveDirection = Vector3.Project(movement, moveDirection);
+        //     Vector3 perpendicularMovement = movement - projectedMoveDirection;
+        //     float perpendicularSpeed = perpendicularMovement.magnitude;
+        //     if (perpendicularSpeed > characterController.minMoveDistance)
+        //     {
+        //         float turnFrictionScale = 3f; //Used for tuning how snappy turns feel
+        //         if (!isGrounded) turnFrictionScale *= airControlMultiplier;
+        //         float frictionDrop = perpendicularSpeed * friction * turnFrictionScale * Time.deltaTime;
+        //         perpendicularMovement *= Mathf.Max(perpendicularSpeed - frictionDrop, 0f) / perpendicularSpeed;
+        //     }
+        //     movement = projectedMoveDirection + perpendicularMovement;
+        //     projectedMoveDirection = Vector3.Project(movement, moveDirection);
+        //     float currentSpeed = projectedMoveDirection.magnitude * Mathf.Sign(Vector3.Dot(projectedMoveDirection, moveDirection));
+        //     bool reversing = movement.sqrMagnitude > 1e-4f && Vector3.Dot(moveDirection.normalized, movement.normalized) < 0.5f;
+        //     float accelRate;
+        //     if (isGrounded) accelRate = reversing ? groundDeceleration : groundAcceleration;
+        //     else accelRate = reversing ? airDeceleration : airAcceleration;
+        //     if (isSprinting) accelRate *= sprintAccelerationMultiplier;
+
+        //     float addSpeed = Mathf.Min(baseSpeed, targetSpeed) - currentSpeed;
+        //     if (addSpeed > 0) {
+        //         float accelSpeed = Mathf.Min(accelRate * Time.deltaTime, addSpeed);
+        //         movement += moveDirection * accelSpeed;
+        //     }
+
+        //     float currentMag = movement.magnitude;
+        //     if (currentMag >= baseSpeed * 0.99f && currentMag < targetSpeed)
+        //         movement = movement.normalized * Mathf.Lerp(currentMag, targetSpeed, Time.deltaTime * 5f);
+        // } else {
+        //     float speed = movement.magnitude;
+        //     if (speed > 0.01f) {
+        //         float drop = isGrounded ? speed * friction * Time.deltaTime : airDeceleration * Time.deltaTime;
+        //         movement *= Mathf.Max(speed - drop, 0) / speed;
+        //     } else {
+        //         movement = Vector3.zero;
+        //     }
+        // }
+
+        // float maxAllowedSpeed = targetSpeed * 1.1f;
+        // float movementMag = movement.magnitude;
+        // if (movementMag > maxAllowedSpeed) {
+        //     float dampedMag = Mathf.Lerp(movementMag, maxAllowedSpeed, 1f - Mathf.Exp(-overspeedDamping * Time.deltaTime));
+        //     movement *= dampedMag / movementMag;
+        // }
 
         percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
     }
