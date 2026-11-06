@@ -283,7 +283,7 @@ public class PlayerMovement : NetworkBehaviour {
         { global::SceneManager.MazeScene, new DimensionRules { canDash = false, dashReloadModifier = 0f, shotgunDamageModifier = 1.5f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = false, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } },
         { global::SceneManager.SpaceScene, new DimensionRules { canDash = true, dashReloadModifier = 4f, shotgunDamageModifier = 1f, sniperDamageModifier = 1.5f, arDamageModifier = 1f, gravity = 6f, fallDamage = false, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } },
         { global::SceneManager.SnowScene, new DimensionRules { canDash = true, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1.5f, gravity = 9.81f, fallDamage = true, canBuild = false, canJump = false, boostOnGunshot = true, reloadSpeedModifier = 1.5f } },
-        { global::SceneManager.BossScene, new DimensionRules { canDash = true, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } }
+        { global::SceneManager.BossScene, new DimensionRules { canDash = false, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } }
     };
     private DimensionRules serverRules = rulesByScene[global::SceneManager.DesertScene];
 
@@ -364,7 +364,7 @@ public class PlayerMovement : NetworkBehaviour {
             name = "Server",
             materialName = "Server",
             skybox = serverSky,
-            farClip = 1000f,
+            farClip = 200f,
             accel = baseGroundAcceleration,
             decel = baseGroundDeceleration,
             fric = baseFriction,

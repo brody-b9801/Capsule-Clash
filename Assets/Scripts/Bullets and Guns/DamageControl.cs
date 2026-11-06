@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
+using TMPro;
 
 public class DamageControl : NetworkBehaviour
 {
@@ -334,7 +335,10 @@ public class DamageControl : NetworkBehaviour
 
     IEnumerator BlinkWhileProtected()
     {
-        Renderer[] bodyRenderers = GetComponentsInChildren<Renderer>(true);
+        List<Renderer> bodyRenderers = new List<Renderer>();
+        foreach (Renderer bodyRenderer in GetComponentsInChildren<Renderer>(true))
+            if (!bodyRenderer.TryGetComponent<TMP_Text>(out _)) bodyRenderers.Add(bodyRenderer);
+
         bool hidden = false;
         while (IsInvulnerable && bodyAlive)
         {
