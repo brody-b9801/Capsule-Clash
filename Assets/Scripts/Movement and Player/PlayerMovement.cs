@@ -8,6 +8,8 @@ using FishNet.Managing;
 using UnityEngine.SceneManagement;
 using TMPro;
 using FishNet.Component.Observing;
+using NUnit.Framework;
+using UnityEngine.TextCore.Text;
 
 [RequireComponent(typeof(ServerController))]
 public class PlayerMovement : NetworkBehaviour {
@@ -26,7 +28,7 @@ public class PlayerMovement : NetworkBehaviour {
     public bool isAiming = false;
     public bool isSprinting = false;
     public Vector3 newPosition;
-    public Vector3 movement;
+    public Vector3 movement = Vector3.zero;
     private float _horizontal;
     private float _vertical;
     private bool _jump;
@@ -283,7 +285,7 @@ public class PlayerMovement : NetworkBehaviour {
         { global::SceneManager.MazeScene, new DimensionRules { canDash = false, dashReloadModifier = 0f, shotgunDamageModifier = 1.5f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = false, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } },
         { global::SceneManager.SpaceScene, new DimensionRules { canDash = true, dashReloadModifier = 4f, shotgunDamageModifier = 1f, sniperDamageModifier = 1.5f, arDamageModifier = 1f, gravity = 6f, fallDamage = false, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } },
         { global::SceneManager.SnowScene, new DimensionRules { canDash = true, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1.5f, gravity = 9.81f, fallDamage = true, canBuild = false, canJump = false, boostOnGunshot = true, reloadSpeedModifier = 1.5f } },
-        { global::SceneManager.BossScene, new DimensionRules { canDash = true, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } }
+        { global::SceneManager.BossScene, new DimensionRules { canDash = false, dashReloadModifier = 1f, shotgunDamageModifier = 1f, sniperDamageModifier = 1f, arDamageModifier = 1f, gravity = 9.81f, fallDamage = true, canBuild = true, canJump = true, boostOnGunshot = false, reloadSpeedModifier = 1f } }
     };
     private DimensionRules serverRules = rulesByScene[global::SceneManager.DesertScene];
 
@@ -364,7 +366,7 @@ public class PlayerMovement : NetworkBehaviour {
             name = "Server",
             materialName = "Server",
             skybox = serverSky,
-            farClip = 1000f,
+            farClip = 200f,
             accel = baseGroundAcceleration,
             decel = baseGroundDeceleration,
             fric = baseFriction,
@@ -746,37 +748,30 @@ public class PlayerMovement : NetworkBehaviour {
     }
     
     public bool isGround() {
-        Vector3 origin = transform.position + characterController.center;
-        float castDist = characterController.height * 0.5f - characterController.radius
-                        + characterController.skinWidth + 0.08f;
+        float castDist = 0.125f;
+        Vector3 origin = transform.position + Vector3.down * (characterController.height/4 - 0.1f);
+        float radius = characterController.radius + characterController.skinWidth;
 
-        if (Physics.SphereCast(origin, characterController.radius - 0.01f, Vector3.down,
+        if (Physics.SphereCast(origin, radius, Vector3.down,
                             out RaycastHit hit, castDist, GroundMask, QueryTriggerInteraction.Ignore)) {
-
             floorNormal = hit.normal;
-
-            if (Physics.Raycast(hit.point + Vector3.up * 0.05f, Vector3.down,
-                                out RaycastHit faceHit, 0.15f, GroundMask, QueryTriggerInteraction.Ignore)
-                && faceHit.collider == hit.collider) {
-                floorNormal = faceHit.normal;
-            }
-
-            ledgePushDir = Vector3.zero;
-            if (Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit) return false;
-
-            Vector3 supportOffset = hit.point - origin;
-            supportOffset.y = 0f;
-            if (supportOffset.magnitude > characterController.radius * ledgeSupportFraction
-                && !Physics.Raycast(origin, Vector3.down, characterController.height * 0.5f + ledgeDropTolerance,
-                                    GroundMask, QueryTriggerInteraction.Ignore)) {
-                ledgePushDir = -supportOffset.normalized;
-                return false;
-            }
+            Debug.Log(Vector3.Angle(Vector3.up, floorNormal));
+            if (Vector3.Angle(Vector3.up, floorNormal) > characterController.slopeLimit) return false;
             return true;
         }
         floorNormal = Vector3.up;
         ledgePushDir = Vector3.zero;
         return false;
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (characterController == null) return;
+        Vector3 origin = transform.position + Vector3.down * (characterController.height/4);
+        float radius = characterController.radius + characterController.skinWidth;
+        Gizmos.color = Color.red;
+        Vector3 pos = origin;
+        Gizmos.DrawWireSphere(origin, radius);
     }
 
     private bool CanJump() { return isGrounded; }
@@ -837,75 +832,23 @@ public class PlayerMovement : NetworkBehaviour {
 
         Vector3 forward = transform.forward;
         Vector3 right = transform.right;
-        forward.y = 0f;
-        right.y = 0f;
-        float baseSpeed = GetBaseSpeed();
-        float targetSpeed = baseSpeed * upgradeManager.Local.speedMultiplier;
+
         Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
-        if (moveDirection.magnitude > 1f) moveDirection.Normalize();
-
-        Vector3 flatMovement = new Vector3(movement.x, 0f, movement.z);
-        wishDir = moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : flatMovement.normalized;
-
         if (isGrounded) {
             moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
-            moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
         } else {
-            movement.y = 0f;
+            moveDirection.y = 0f;
         }
+        moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
 
-        if (moveDirection.magnitude > characterController.minMoveDistance)
-        {
-            Vector3 projectedMoveDirection = Vector3.Project(movement, moveDirection);
-            Vector3 perpendicularMovement = movement - projectedMoveDirection;
-            float perpendicularSpeed = perpendicularMovement.magnitude;
-            if (perpendicularSpeed > characterController.minMoveDistance)
-            {
-                float turnFrictionScale = 3f; //Used for tuning how snappy turns feel
-                if (!isGrounded) turnFrictionScale *= airControlMultiplier;
-                float frictionDrop = perpendicularSpeed * friction * turnFrictionScale * Time.deltaTime;
-                perpendicularMovement *= Mathf.Max(perpendicularSpeed - frictionDrop, 0f) / perpendicularSpeed;
-            }
-            movement = projectedMoveDirection + perpendicularMovement;
-            projectedMoveDirection = Vector3.Project(movement, moveDirection);
-            float currentSpeed = projectedMoveDirection.magnitude * Mathf.Sign(Vector3.Dot(projectedMoveDirection, moveDirection));
-            bool reversing = movement.sqrMagnitude > 1e-4f && Vector3.Dot(moveDirection.normalized, movement.normalized) < 0.5f;
-            float accelRate;
-            if (isGrounded) accelRate = reversing ? groundDeceleration : groundAcceleration;
-            else accelRate = reversing ? airDeceleration : airAcceleration;
-            if (isSprinting) accelRate *= sprintAccelerationMultiplier;
+        float targetSpeed = SetTargetSpeed();
+        Vector3 targetMovement = moveDirection * targetSpeed;
 
-            float addSpeed = Mathf.Min(baseSpeed, targetSpeed) - currentSpeed;
-            if (addSpeed > 0) {
-                float accelSpeed = Mathf.Min(accelRate * Time.deltaTime, addSpeed);
-                movement += moveDirection * accelSpeed;
-            }
-
-            float currentMag = movement.magnitude;
-            if (currentMag >= baseSpeed * 0.99f && currentMag < targetSpeed)
-                movement = movement.normalized * Mathf.Lerp(currentMag, targetSpeed, Time.deltaTime * 5f);
-        } else {
-            float speed = movement.magnitude;
-            if (speed > 0.01f) {
-                float drop = isGrounded ? speed * friction * Time.deltaTime : airDeceleration * Time.deltaTime;
-                movement *= Mathf.Max(speed - drop, 0) / speed;
-            } else {
-                movement = Vector3.zero;
-            }
-        }
-
-        float maxAllowedSpeed = targetSpeed * 1.1f;
-        float movementMag = movement.magnitude;
-        if (movementMag > maxAllowedSpeed) {
-            float dampedMag = Mathf.Lerp(movementMag, maxAllowedSpeed, 1f - Mathf.Exp(-overspeedDamping * Time.deltaTime));
-            movement *= dampedMag / movementMag;
-        }
-
+        movement = Vector3.MoveTowards(movement, targetMovement, Time.deltaTime*(isGrounded ? groundAcceleration : airAcceleration));
         percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
     }
     private Vector3 GetJumpAndGravityVector() {
-        if (_jump) serverController.TryFeed();
-        
+        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) serverController.TryFeed();
 
         if (jumpBufferTimer > 0f && isGrounded && canJump.Value && !serverController.LookingAtServer) {
             jumpBufferTimer = 0f;
