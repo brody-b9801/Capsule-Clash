@@ -848,8 +848,7 @@ public class PlayerMovement : NetworkBehaviour {
         percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
     }
     private Vector3 GetJumpAndGravityVector() {
-        if (_jump) serverController.TryFeed();
-        
+        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) serverController.TryFeed();
 
         if (jumpBufferTimer > 0f && isGrounded && canJump.Value && !serverController.LookingAtServer) {
             jumpBufferTimer = 0f;
