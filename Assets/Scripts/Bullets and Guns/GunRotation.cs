@@ -103,9 +103,6 @@ public class GunRotation : NetworkBehaviour
         if (!IsValidVector3(g1.position) || !IsValidQuaternion(g1.rotation)) return;
         bool aiming = PlayerMovement.Local.isAiming;
         gun.SetPositionAndRotation(g1.position + transform.rotation * new Vector3(aiming ? x + 0.1f : x, y, aiming ? z + 0.1f : z), g1.rotation);
-        //gr.rotation = Quaternion.Euler(new Vector3(0,0,0));
-        Debug.Log(gr.rotation.eulerAngles.x);
-        Debug.Log($"[{x}, {y}, {z}]");
     }
 
     [ServerRpc(RunLocally = true)]

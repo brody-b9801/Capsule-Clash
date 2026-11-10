@@ -29,6 +29,7 @@ public class PlayerMovement : NetworkBehaviour {
     public bool isSprinting = false;
     public Vector3 newPosition;
     public Vector3 movement = Vector3.zero;
+    private Vector3 slideMovement = Vector3.zero;
     private float _horizontal;
     private float _vertical;
     private bool _jump;
@@ -172,6 +173,8 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float groundAcceleration = 20f;
     [SerializeField] private float groundDeceleration = 25f;
     [SerializeField] private float airAcceleration = 3f;
+    [SerializeField] private float slideAcceleration = 10f;
+    [SerializeField] private float slideSpeed = 10f;
     [SerializeField] private float airDeceleration = 2f;
     [SerializeField] private float friction = 8f;
     [SerializeField] private float sprintAccelerationMultiplier = 1.5f;
@@ -309,7 +312,6 @@ public class PlayerMovement : NetworkBehaviour {
     private DimensionInfo pendingDimension;
     private string pendingArrival;
     Vector3 floorNormal = Vector3.up;
-    private Vector3 ledgePushDir;
     [SerializeField] private float ledgeSupportFraction = 0.5f;
     [SerializeField] private float ledgeDropTolerance = 0.6f;
     [SerializeField] private float ledgeSlipSpeed = 4f;
@@ -748,8 +750,8 @@ public class PlayerMovement : NetworkBehaviour {
     }
     
     public bool isGround() {
-        float castDist = 0.125f;
-        Vector3 origin = transform.position + Vector3.down * (characterController.height/4 - 0.1f);
+        float castDist = characterController.height/4 + 0.05f;
+        Vector3 origin = transform.position;
         float radius = characterController.radius + characterController.skinWidth;
 
         if (Physics.SphereCast(origin, radius, Vector3.down,
@@ -760,7 +762,6 @@ public class PlayerMovement : NetworkBehaviour {
             return true;
         }
         floorNormal = Vector3.up;
-        ledgePushDir = Vector3.zero;
         return false;
     }
 
@@ -801,7 +802,7 @@ public class PlayerMovement : NetworkBehaviour {
         isGrounded = isGround();
         HandleCameraRotation();
         UpdateMovementVector();
-        if (characterController.enabled) characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
+        if (characterController.enabled) characterController.Move((movement + slideMovement) * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
         UpdateVelocityEstimate();
         SetExtraneousStates(); //needs cleanup
         HandleLaunch();
@@ -827,6 +828,20 @@ public class PlayerMovement : NetworkBehaviour {
 
     private void UpdateMovementVector()
     {
+        if (Vector3.Angle(Vector3.up, floorNormal) > characterController.slopeLimit)
+        {
+            Vector3 targetSlide = Vector3.ProjectOnPlane(Vector3.down, floorNormal).normalized * slideSpeed;
+            slideMovement = Vector3.MoveTowards(slideMovement, targetSlide, Time.deltaTime * slideAcceleration);
+
+            Vector3 intoFloor = Vector3.Project(movement, floorNormal);
+            Vector3 alongFloor = movement - intoFloor;
+            if (Vector3.Dot(movement, floorNormal) < 0f) movement = alongFloor;
+        }
+        else
+        {
+            slideMovement = Vector3.zero;
+        }
+        
         Vector3 inputDirection = new Vector3(_horizontal, 0, _vertical);
         if (inputDirection.magnitude > 1f) inputDirection.Normalize();
 
@@ -851,7 +866,7 @@ public class PlayerMovement : NetworkBehaviour {
         if (_jump) serverController.TryFeed();
         
 
-        if (jumpBufferTimer > 0f && isGrounded && canJump.Value && !serverController.LookingAtServer) {
+        if (jumpBufferTimer > 0f && isGrounded && canJump.Value) {
             jumpBufferTimer = 0f;
             if (currDimension == "Maze")
                 newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
@@ -873,7 +888,7 @@ public class PlayerMovement : NetworkBehaviour {
 
         Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
 
-        return (verticalVelo + groundingForce + ledgePushDir * ledgeSlipSpeed) * Time.deltaTime;
+        return (verticalVelo + groundingForce) * Time.deltaTime;
     }
 
     private void HandleCameraRotation() {
