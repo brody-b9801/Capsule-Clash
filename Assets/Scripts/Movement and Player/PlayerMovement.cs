@@ -754,9 +754,19 @@ public class PlayerMovement : NetworkBehaviour {
         Vector3 origin = transform.position;
         float radius = characterController.radius + characterController.skinWidth;
 
-        if (Physics.SphereCast(origin, radius, Vector3.down,
-                            out RaycastHit hit, castDist, GroundMask, QueryTriggerInteraction.Ignore)) {
-            floorNormal = hit.normal;
+        RaycastHit[] hits = Physics.SphereCastAll(origin, radius, Vector3.down, castDist, GroundMask, QueryTriggerInteraction.Ignore);
+        if (hits.Length != 0) {
+            RaycastHit lowestHit = hits[0];
+            float minHeight = lowestHit.transform.position.y;
+            for (int i = 1; i < hits.Length; i++)
+            {
+                if (hits[i].transform.position.y < minHeight)
+                {
+                    lowestHit = hits[i];
+                    minHeight = lowestHit.transform.position.y;
+                }
+            }
+            floorNormal = lowestHit.normal;
             Debug.Log(Vector3.Angle(Vector3.up, floorNormal));
             if (Vector3.Angle(Vector3.up, floorNormal) > characterController.slopeLimit) return false;
             return true;
