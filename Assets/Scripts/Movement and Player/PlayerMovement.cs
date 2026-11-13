@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using FishNet;
 using FishNet.Object;
+using FishNet.Object.Prediction;
 using FishNet.Object.Synchronizing;
 using FishNet.Managing;
 using UnityEngine.SceneManagement;
@@ -79,6 +80,7 @@ public class PlayerMovement : NetworkBehaviour {
     private bool pendingLanding; 
     private float jumpBufferTimer;
     private bool sprintingPrev;
+    private bool sprintInputPrev;
     private CharacterController characterController;
     private bool resetPrev = false;
     private bool launch = false;
@@ -248,13 +250,86 @@ public class PlayerMovement : NetworkBehaviour {
         _vertical = _getVertical();
         _jump = _getJump();
         _dash = _getDash();
-        if (_jump) jumpBufferTimer = jumpBufferTime;
-        else jumpBufferTimer = Mathf.Max(jumpBufferTimer - Time.deltaTime, 0f);
     }
 
     public static Vector3 getVelocity() { return Local != null ? Local.velocityTransform : Vector3.zero; }
     public int getKills() { return killCount; }
     public string getUsername() { return username; }
+
+    public struct MoveInput : IReplicateData {
+        public float Horizontal;
+        public float Vertical;
+        public bool Space;
+        public bool Sprint;
+        public bool Aim;
+        public bool Heal;
+        public bool Respawn;
+        public float Yaw;
+        public float StepOffset;
+
+        private uint _tick;
+
+        public MoveInput(float horizontal, float vertical, bool space, bool sprint, bool aim, bool heal, bool respawn, float yaw, float stepOffset) {
+            Horizontal = horizontal;
+            Vertical = vertical;
+            Space = space;
+            Sprint = sprint;
+            Aim = aim;
+            Heal = heal;
+            Respawn = respawn;
+            Yaw = yaw;
+            StepOffset = stepOffset;
+            _tick = 0;
+        }
+
+        public void Dispose() { }
+        public uint GetTick() => _tick;
+        public void SetTick(uint value) => _tick = value;
+    }
+
+    public struct ServerOutput : IReconcileData {
+        public Vector3 position;
+        public Vector3 movement;
+        public float verticalVelocity;
+        public Vector3 slideMovement;
+        public Vector3 dashVector;
+        public Vector3 shotBoost;
+        public bool jumpedLast;
+        public bool fastAir;
+        public bool isSprinting;
+        public bool isHealing;
+        public float jumpBufferTimer;
+        public int dashNum;
+        public float stamina;
+        public float stepOffset;
+
+        private uint _tick;
+
+        public ServerOutput(Vector3 position, Vector3 movement, float verticalVelocity, Vector3 slideMovement, Vector3 dashVector, Vector3 shotBoost,
+            bool jumpedLast, bool fastAir, bool isSprinting, bool isHealing, float jumpBufferTimer, int dashNum, float stamina, float stepOffset) {
+            this.position = position;
+            this.movement = movement;
+            this.verticalVelocity = verticalVelocity;
+            this.slideMovement = slideMovement;
+            this.dashVector = dashVector;
+            this.shotBoost = shotBoost;
+            this.jumpedLast = jumpedLast;
+            this.fastAir = fastAir;
+            this.isSprinting = isSprinting;
+            this.isHealing = isHealing;
+            this.jumpBufferTimer = jumpBufferTimer;
+            this.dashNum = dashNum;
+            this.stamina = stamina;
+            this.stepOffset = stepOffset;
+            _tick = 0;
+        }
+
+        public void Dispose() { }
+        public uint GetTick() => _tick;
+        public void SetTick(uint value) => _tick = value;
+    }
+
+
     private struct DimensionInfo {
         public string name;
         public string materialName;
@@ -822,38 +897,51 @@ public class PlayerMovement : NetworkBehaviour {
         }
 
         if (usernameRenderer != null) usernameRenderer.enabled = false;
-
-        groundedPrev = isGrounded;
-        isGrounded = isGround();
-        if (!isGrounded) characterController.stepOffset = 0f;
-        onSlope = isGrounded && Vector3.Angle(Vector3.up, floorNormal) > 1f;
         HandleCameraRotation();
-        UpdateMovementVector();
-        if (characterController.enabled) characterController.Move((movement + slideMovement) * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
+
+        MoveInput input = new MoveInput(_horizontal, _vertical, _jump,
+            Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift), isAiming,
+            Input.GetKey(KeyCode.Q), Input.GetKeyDown(KeyCode.R), currentCameraRotationY, characterController.stepOffset);
+        MovementLoop(input);
+
         UpdateVelocityEstimate();
-        SetExtraneousStates(); //needs cleanup
-        HandleLaunch();
-        KeyEvents();
-        HandleDashing();
-        HandleShotBoost();
-        ManageSprintState();
         SetAimRotSpeed();
         BorderWarning();
         UpdateDynamicFOV();
     }
 
-    private float GetBaseSpeed()
+    private float GetBaseSpeed(MoveInput input)
     {
-        if (isAiming && isGrounded) return 2.5f;
+        if (input.Aim && isGrounded) return 2.5f;
         if (isSprinting && isGrounded) return 12.0f;
         if (isSprinting && fastAir) return 10.0f;
         if (!isGrounded) return 7.5f;
         return 8.5f;
     }
 
-    private float SetTargetSpeed() => GetBaseSpeed() * upgradeManager.Local.speedMultiplier;
+    private float SetTargetSpeed(MoveInput input) => GetBaseSpeed(input) * upgradeManager.Local.speedMultiplier;
 
-    private void UpdateMovementVector()
+    private ServerOutput MovementLoop(MoveInput input)
+    {
+        groundedPrev = isGrounded;
+        isGrounded = isGround();
+        if (!isGrounded) characterController.stepOffset = 0f;
+        onSlope = isGrounded && Vector3.Angle(Vector3.up, floorNormal) > 1f;
+        if (input.Space) jumpBufferTimer = jumpBufferTime;
+        else jumpBufferTimer = Mathf.Max(jumpBufferTimer - Time.deltaTime, 0f);
+        UpdateMovementVector(input);
+        SetExtraneousStates(input); //needs cleanup
+        HandleLaunch();
+        KeyEvents(input);
+        HandleDashing(input);
+        HandleShotBoost();
+        ManageSprintState();
+        if (characterController.enabled) characterController.Move((movement + slideMovement) * Time.deltaTime + GetJumpAndGravityVector(input) + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
+
+        return new ServerOutput(transform.position, movement, newVelocity.y, slideMovement, dashVector, shotBoost,
+            jumpedLast, fastAir, isSprinting, healParticles.healing, jumpBufferTimer, dashes, StaminaController.Local.CurrentStamina, characterController.stepOffset);
+    }
+    private void UpdateMovementVector(MoveInput input)
     {
         if (Vector3.Angle(Vector3.up, floorNormal) > characterController.slopeLimit)
         {
@@ -869,11 +957,12 @@ public class PlayerMovement : NetworkBehaviour {
             slideMovement = Vector3.zero;
         }
         
-        Vector3 inputDirection = new Vector3(_horizontal, 0, _vertical);
+        Vector3 inputDirection = new Vector3(input.Horizontal, 0, input.Vertical);
         if (inputDirection.magnitude > 1f) inputDirection.Normalize();
 
-        Vector3 forward = transform.forward;
-        Vector3 right = transform.right;
+        Quaternion yawRotation = Quaternion.Euler(0f, input.Yaw, 0f);
+        Vector3 forward = yawRotation * Vector3.forward;
+        Vector3 right = yawRotation * Vector3.right;
 
         Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
         wishDir = moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : new Vector3(movement.x, 0f, movement.z).normalized;
@@ -884,14 +973,14 @@ public class PlayerMovement : NetworkBehaviour {
         }
         moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
 
-        float targetSpeed = SetTargetSpeed();
+        float targetSpeed = SetTargetSpeed(input);
         Vector3 targetMovement = moveDirection * targetSpeed;
 
         movement = Vector3.MoveTowards(movement, targetMovement, Time.deltaTime*(isGrounded ? groundAcceleration : airAcceleration));
         percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
     }
-    private Vector3 GetJumpAndGravityVector() {
-        if (_jump) serverController.TryFeed();
+    private Vector3 GetJumpAndGravityVector(MoveInput input) {
+        if (input.Space) serverController.TryFeed();
         
 
         if (jumpBufferTimer > 0f && isGrounded && canJump.Value) {
@@ -913,7 +1002,7 @@ public class PlayerMovement : NetworkBehaviour {
         if (((isGrounded && !jumpedLast) || onSteepSlope) && newVelocity.y <= 0f) {
             newVelocity.y = -2;
         } else {
-            groundingForce = groundedPrev && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed() * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
+            groundingForce = groundedPrev && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed(input) * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
             newVelocity.y = Mathf.Max(newVelocity.y - gravity.Value * Time.deltaTime, -50f);
         }
 
@@ -937,7 +1026,7 @@ public class PlayerMovement : NetworkBehaviour {
         transform.localEulerAngles = new Vector3(0.0f, currentCameraRotationY, 0.0f);
     }
 
-    private void SetExtraneousStates() {
+    private void SetExtraneousStates(MoveInput input) {
         RaycastHit hit;
         if (isGrounded) {
             characterController.stepOffset = (currDimension != "Maze" && currDimension != "Ice") ? 0.55f : 0f;
@@ -983,11 +1072,11 @@ public class PlayerMovement : NetworkBehaviour {
             onScreenPlatform = false;
         }
         if (!canTakeDamage && invulnerableRoutine == null) invulnerableRoutine = StartCoroutine(Invulnerable());
-        CameraZoom.moving = (Mathf.Abs(_horizontal) > 0.01f || Mathf.Abs(_vertical) > 0.01f);
+        CameraZoom.moving = (Mathf.Abs(input.Horizontal) > 0.01f || Mathf.Abs(input.Vertical) > 0.01f);
     }
 
-    private void HandleDashing() {
-        if (_dash && canDash.Value && dashes > 0 && !isGrounded) {
+    private void HandleDashing(MoveInput input) {
+        if (input.Space && canDash.Value && dashes > 0 && !isGrounded) {
             Debug.Log("dashing");
             HealthController.noFDAnim = true;
             dashes--;
@@ -1017,26 +1106,26 @@ public class PlayerMovement : NetworkBehaviour {
             HealthController.noFDAnim = true;
         }
     }
-    private void KeyEvents()
+    private void KeyEvents(MoveInput input)
     {
 
-        if (Input.GetKeyDown(KeyCode.R) && dead) Respawn();
+        if (input.Respawn && dead) Respawn();
 
-        if (Input.GetKey(KeyCode.Q) && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
+        if (input.Heal && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
             && isGrounded && !healParticles.healing && DamageControl.Local != null && DamageControl.Local.health.Value < 180.0f)
             StartCoroutine(stationaryHealing());
 
-        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            && isGrounded && StaminaController.Local.canSprint && !isAiming) {
+        if (input.Sprint && isGrounded && StaminaController.Local.canSprint && !input.Aim) {
             isSprinting = true;
         } else {
             if (!fastAir) isSprinting = false;
         }
 
-        if ((Input.GetKeyUp(KeyCode.LeftShift) || Input.GetKeyUp(KeyCode.RightShift)) && !isAiming) {
+        if (!input.Sprint && sprintInputPrev && !input.Aim) {
             isSprinting = false;
             fastAir = false;
         }
+        sprintInputPrev = input.Sprint;
         
         if (Input.GetKeyUp(KeyCode.Escape)) {
             Cursor.lockState = CursorLockMode.None;
