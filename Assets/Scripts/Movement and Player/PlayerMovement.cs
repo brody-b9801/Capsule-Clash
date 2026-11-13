@@ -82,7 +82,6 @@ public class PlayerMovement : NetworkBehaviour {
     private CharacterController characterController;
     private bool resetPrev = false;
     private bool launch = false;
-    private float angleSlope;
     private Transform gunThing;
     [SerializeField] private float targetWalkXPos;
     [SerializeField] private float targetWalkYPos;
@@ -749,10 +748,12 @@ public class PlayerMovement : NetworkBehaviour {
         }
     }
     
+    private const float GroundProbeInset = 0.01f;
+
     public bool isGround() {
-        float castDist = characterController.height/4 + 0.05f;
+        float castDist = characterController.height/4 + 0.025f + GroundProbeInset;
         Vector3 origin = transform.position;
-        float radius = characterController.radius + characterController.skinWidth;
+        float radius = characterController.radius + characterController.skinWidth - GroundProbeInset;
 
         RaycastHit[] hits = Physics.SphereCastAll(origin, radius, Vector3.down, castDist, GroundMask, QueryTriggerInteraction.Ignore);
         if (hits.Length != 0) {
@@ -767,7 +768,6 @@ public class PlayerMovement : NetworkBehaviour {
                 }
             }
             floorNormal = lowestHit.normal;
-            Debug.Log(Vector3.Angle(Vector3.up, floorNormal));
             if (Vector3.Angle(Vector3.up, floorNormal) > characterController.slopeLimit) return false;
             return true;
         }
@@ -778,8 +778,8 @@ public class PlayerMovement : NetworkBehaviour {
     private void OnDrawGizmos()
     {
         if (characterController == null) return;
-        Vector3 origin = transform.position + Vector3.down * (characterController.height/4);
-        float radius = characterController.radius + characterController.skinWidth;
+        Vector3 origin = transform.position + Vector3.down * (characterController.height/4 + GroundProbeInset);
+        float radius = characterController.radius + characterController.skinWidth - GroundProbeInset;
         Gizmos.color = Color.red;
         Vector3 pos = origin;
         Gizmos.DrawWireSphere(origin, radius);
@@ -796,7 +796,6 @@ public class PlayerMovement : NetworkBehaviour {
         }
         CacheInputs();
 
-        IsOnSlope();
         CheckIfStuckAndMoveUp();
         bool dashDisabled = !canDash.Value;
         if (dt != null && (dashes != displayedDashes || dashDisabled != displayedDashDisabled)) {
@@ -810,6 +809,7 @@ public class PlayerMovement : NetworkBehaviour {
 
         groundedPrev = isGrounded;
         isGrounded = isGround();
+        onSlope = Vector3.Angle(Vector3.up, floorNormal) > characterController.slopeLimit;
         HandleCameraRotation();
         UpdateMovementVector();
         if (characterController.enabled) characterController.Move((movement + slideMovement) * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
@@ -972,7 +972,6 @@ public class PlayerMovement : NetworkBehaviour {
             }
             onScreenPlatform = false;
         }
-        Debug.Log("On Screen Platform" + onScreenPlatform);
         if (!canTakeDamage && invulnerableRoutine == null) invulnerableRoutine = StartCoroutine(Invulnerable());
         CameraZoom.moving = (Mathf.Abs(_horizontal) > 0.01f || Mathf.Abs(_vertical) > 0.01f);
     }
@@ -1215,22 +1214,6 @@ public class PlayerMovement : NetworkBehaviour {
         characterController.stepOffset = onIce ? 0f : 0.55f;
     }
 
-    private bool IsOnSlope() {
-        RaycastHit hit;
-        LayerMask layerMask = SlopeMask;
-        if (!Physics.SphereCast(transform.position, 0.545f, Vector3.down, out hit, 0.5f, layerMask)) {
-            onSlope = false;
-            return false;
-        }
-        angleSlope = Vector3.Angle(hit.normal, Vector3.up);
-        if (angleSlope > 0 && angleSlope <= 47) {
-            onSlope = true;
-            return true;
-        }
-        onSlope = false;
-        return false;
-    }
-
     private void BorderWarning() {
         if (!global::SceneManager.Instance.InCombatScene) return;
         float horizontalDistanceFromOrigin;
@@ -1354,7 +1337,7 @@ public class PlayerMovement : NetworkBehaviour {
 
     IEnumerator Invulnerable() {
         yield return new WaitForSeconds(0.1f);
-        while (!isGround()) yield return null;
+        while (!isGrounded) yield return null;
         canTakeDamage = true;
         invulnerableRoutine = null;
         if (DamageControl.Local != null) DamageControl.Local.ServerEndSpawnProtection();
@@ -1716,7 +1699,7 @@ public class PlayerMovement : NetworkBehaviour {
         Vector3 dashVectorRef = dashVector;
         float elapsedTime = 0f;
         float duration = 2f * (1 + (upgradeManager.Local.dashForceMultiplier - 1) * 0.5f);
-        while (elapsedTime < duration && !isGround() && dashVector.magnitude > 0) {
+        while (elapsedTime < duration && !isGrounded && dashVector.magnitude > 0) {
             dashVector = Vector3.Lerp(dashVectorRef, Vector3.zero, elapsedTime / duration);
             elapsedTime += Time.deltaTime;
             yield return null;
