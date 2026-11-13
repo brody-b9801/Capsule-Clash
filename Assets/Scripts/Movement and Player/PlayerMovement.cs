@@ -311,6 +311,7 @@ public class PlayerMovement : NetworkBehaviour {
     private DimensionInfo pendingDimension;
     private string pendingArrival;
     Vector3 floorNormal = Vector3.up;
+    Collider floorCollider;
     [SerializeField] private float ledgeSupportFraction = 0.5f;
     [SerializeField] private float ledgeDropTolerance = 0.6f;
     [SerializeField] private float ledgeSlipSpeed = 4f;
@@ -749,6 +750,8 @@ public class PlayerMovement : NetworkBehaviour {
     }
     
     private const float GroundProbeInset = 0.01f;
+    private const float EdgeProbeInset = 0.02f;
+    private const float EdgeProbeHeight = 0.05f;
 
     public bool isGround() {
         float castDist = characterController.height/4 + 0.025f + GroundProbeInset;
@@ -756,22 +759,35 @@ public class PlayerMovement : NetworkBehaviour {
         float radius = characterController.radius + characterController.skinWidth - GroundProbeInset;
 
         RaycastHit[] hits = Physics.SphereCastAll(origin, radius, Vector3.down, castDist, GroundMask, QueryTriggerInteraction.Ignore);
-        if (hits.Length != 0) {
-            RaycastHit lowestHit = hits[0];
-            float minHeight = lowestHit.transform.position.y;
-            for (int i = 1; i < hits.Length; i++)
+        RaycastHit lowestHit = default;
+        bool found = false;
+        for (int i = 0; i < hits.Length; i++)
+        {
+            if (hits[i].distance <= 0f) continue;
+            if (!found || hits[i].point.y < lowestHit.point.y)
             {
-                if (hits[i].transform.position.y < minHeight)
-                {
-                    lowestHit = hits[i];
-                    minHeight = lowestHit.transform.position.y;
-                }
+                lowestHit = hits[i];
+                found = true;
             }
+        }
+        if (found) {
             floorNormal = lowestHit.normal;
-            if (Vector3.Angle(Vector3.up, floorNormal) > characterController.slopeLimit) return false;
-            return true;
+            floorCollider = lowestHit.collider;
+            if (Vector3.Angle(Vector3.up, floorNormal) <= characterController.slopeLimit) return true;
+
+            Vector3 inward = -Vector3.ProjectOnPlane(floorNormal, Vector3.up);
+            if (inward.sqrMagnitude < 1e-6f) return false;
+            Vector3 probeOrigin = lowestHit.point + inward.normalized * EdgeProbeInset + Vector3.up * EdgeProbeHeight;
+            if (Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit edgeHit, EdgeProbeHeight * 2f, GroundMask, QueryTriggerInteraction.Ignore)
+                && Vector3.Angle(Vector3.up, edgeHit.normal) <= characterController.slopeLimit) {
+                floorNormal = edgeHit.normal;
+                floorCollider = edgeHit.collider;
+                return true;
+            }
+            return false;
         }
         floorNormal = Vector3.up;
+        floorCollider = null;
         return false;
     }
 
@@ -809,7 +825,8 @@ public class PlayerMovement : NetworkBehaviour {
 
         groundedPrev = isGrounded;
         isGrounded = isGround();
-        onSlope = Vector3.Angle(Vector3.up, floorNormal) > characterController.slopeLimit;
+        if (!isGrounded) characterController.stepOffset = 0f;
+        onSlope = isGrounded && Vector3.Angle(Vector3.up, floorNormal) > 1f;
         HandleCameraRotation();
         UpdateMovementVector();
         if (characterController.enabled) characterController.Move((movement + slideMovement) * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
@@ -859,6 +876,7 @@ public class PlayerMovement : NetworkBehaviour {
         Vector3 right = transform.right;
 
         Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
+        wishDir = moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : new Vector3(movement.x, 0f, movement.z).normalized;
         if (isGrounded) {
             moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
         } else {
@@ -878,27 +896,28 @@ public class PlayerMovement : NetworkBehaviour {
 
         if (jumpBufferTimer > 0f && isGrounded && canJump.Value) {
             jumpBufferTimer = 0f;
+            float slopeCarry = movement.y > 0f ? movement.y / 1.5f : movement.y / 6f;
             if (currDimension == "Maze")
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
+                newVelocity.y = Mathf.Clamp(slopeCarry + jumpForce, 0, Mathf.Infinity);
             else if (currDimension == "Space")
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + 1.5f * jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
+                newVelocity.y = Mathf.Clamp(slopeCarry + 1.5f * jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
             else
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
+                newVelocity.y = Mathf.Clamp(slopeCarry + jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
+            movement.y = 0f;
             jumpedLast = true;
             resetPrev = false;
             if (isSprinting) fastAir = true;
         }
         Vector3 groundingForce = Vector3.zero;
-        if (isGrounded && !jumpedLast && newVelocity.y <= 0f) {
+        bool onSteepSlope = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit;
+        if (((isGrounded && !jumpedLast) || onSteepSlope) && newVelocity.y <= 0f) {
             newVelocity.y = -2;
         } else {
             groundingForce = groundedPrev && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed() * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
             newVelocity.y = Mathf.Max(newVelocity.y - gravity.Value * Time.deltaTime, -50f);
         }
 
-        Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
-
-        return (verticalVelo + groundingForce) * Time.deltaTime;
+        return (newVelocity + groundingForce) * Time.deltaTime;
     }
 
     private void HandleCameraRotation() {
@@ -945,18 +964,9 @@ public class PlayerMovement : NetworkBehaviour {
                 }
                 if (_hitNames.Contains("Sand") && noStep) characterController.stepOffset = 0;
             } else if (currDimension == "Ice") {
-                if (Physics.SphereCast(transform.position, 0.545f, Vector3.down, out hit, 0.5f, SlopeMask)) {
-                    if (hit.transform.gameObject.tag == "Ramp" || hit.transform.gameObject.tag == "Floor" || hit.transform.gameObject.tag == "Wall")
-                    {
-                        setFrictionIce(false);
-                    } else
-                    {
-                        setFrictionIce(true);
-                    }
-                } else
-                {
-                    setFrictionIce(true);
-                }
+                bool onBuild = floorCollider != null
+                    && (floorCollider.CompareTag("Ramp") || floorCollider.CompareTag("Floor") || floorCollider.CompareTag("Wall"));
+                setFrictionIce(!onBuild);
             } else if (currDimension == "Server" && onScreenPlatform)
             {
                 if (Physics.Raycast(transform.position, Vector3.down, out hit, 3f))
