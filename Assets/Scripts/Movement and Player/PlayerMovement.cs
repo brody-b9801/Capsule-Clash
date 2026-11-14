@@ -11,9 +11,10 @@ using TMPro;
 using FishNet.Component.Observing;
 using FishNet.Object.Prediction;
 using FishNet.Transporting;
+using FishNet.Utility.Template;
 
 [RequireComponent(typeof(ServerController))]
-public class PlayerMovement : NetworkBehaviour {
+public class PlayerMovement : TickNetworkBehaviour {
     [SerializeField] private float jumpForce = 8.0f;
     [SerializeField] private float jumpBufferTime = 0.1f; 
     public static float rotationSpeed = 10.0f;
@@ -35,6 +36,7 @@ public class PlayerMovement : NetworkBehaviour {
     private float _vertical;
     private bool _jump;
     private bool _dash;
+    private bool _respawn;
     public static bool started = false;
     [SerializeField] private GameObject capsuleCollider;
     [SerializeField] private Transform playerTransform;
@@ -74,11 +76,14 @@ public class PlayerMovement : NetworkBehaviour {
         1f, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
     public bool jumpedLast = false;
     public bool isTeleporting = false;
-    public Vector3 newVelocity;
+    public float newVelocityY;
     private bool groundedPrev; 
     private bool pendingLanding; 
     private float jumpBufferTimer;
     private ServerOutput simState;
+    private uint _simTick;
+    private bool _simReplaying;
+    private readonly List<(uint tick, System.Action apply)> _pendingServerChanges = new List<(uint tick, System.Action apply)>();
     private CharacterController characterController;
     private bool resetPrev = false;
     private Transform gunThing;
@@ -245,16 +250,28 @@ public class PlayerMovement : NetworkBehaviour {
     private void CacheInputs() {
         _horizontal = _getHorizontal();
         _vertical = _getVertical();
-        _jump = _getJump();
+        _jump |= _getJump();
         _dash = _getDash();
+        _respawn |= Input.GetKeyDown(KeyCode.R);
     }
+
+    private MoveInput BuildMoveInput() {
+        MoveInput input = new MoveInput(_horizontal, _vertical, _jump,
+            Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift), isAiming,
+            Input.GetKey(KeyCode.Q), _respawn, currentCameraRotationY, characterController.stepOffset, currentCameraRotationX);
+        _jump = false;
+        _respawn = false;
+        return input;
+    }
+
+    public Vector3 GetVelocity() => new Vector3(simState.movement.x, simState.verticalVelocity, simState.movement.z);
 
     public static Vector3 getVelocity() { return Local != null ? Local.velocityTransform : Vector3.zero; }
     public int getKills() { return killCount; }
     public string getUsername() { return username; }
 
     protected override void TimeManager_OnTick() {
-        PerformReplicate(default);
+        PerformReplicate(IsOwner ? BuildMoveInput() : default);
         CreateReconcile();
     }
 
@@ -262,7 +279,11 @@ public class PlayerMovement : NetworkBehaviour {
     private void PerformReplicate(MoveInput input, ReplicateState state = ReplicateState.Invalid, Channel channel = Channel.Unreliable)
     {
         if (state.ContainsReplayed() && simState.teleporting) return;
-        MovementLoop(input, state);
+        _simTick = input.GetTick();
+        _simReplaying = state.ContainsReplayed();
+        simState = MovementLoop(input, state);
+        _simReplaying = false;
+        if (IsServerInitialized) ApplyPendingServerChanges(_simTick);
     }
 
     public override void CreateReconcile() {
@@ -270,7 +291,15 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     [Reconcile]
-    private void PerformReconcile(ServerOutput data, Channel channel = Channel.Unreliable) {
+    private void PerformReconcile(ServerOutput data, Channel channel = Channel.Unreliable)
+    {
+        if (simState.teleporting) return;
+
+        simState = data;
+
+        characterController.enabled = false;
+        transform.position = data.position;
+        characterController.enabled = data.controllerEnabled;
     }
 
     private struct DimensionInfo {
@@ -544,7 +573,7 @@ public class PlayerMovement : NetworkBehaviour {
                 if (child.name == "RenderedBody") child.gameObject.SetActive(false);
             }
         }
-        if (!IsOwner) GetComponent<PlayerMovement>().enabled = false;
+        if (!IsOwner && !IsServerInitialized) GetComponent<PlayerMovement>().enabled = false;
 
     }
     private IEnumerator LoadDesertThenEnterBoss() {
@@ -759,8 +788,10 @@ public class PlayerMovement : NetworkBehaviour {
         characterController.enabled = false;
         transform.position = target;
         FaceDirection(migrationYaw);
-        characterController.enabled = true;
-        lastGroundedHeight = transform.position.y;
+        characterController.enabled = simState.controllerEnabled;
+        simState.position = transform.position;
+        simState.lastGroundedHeight = transform.position.y;
+        SetServerPosition(simState.position, simState.lastGroundedHeight);
         lastPosition = playerTransform.position;
     }
 
@@ -877,11 +908,6 @@ public class PlayerMovement : NetworkBehaviour {
         if (usernameRenderer != null) usernameRenderer.enabled = false;
         HandleCameraRotation();
 
-        MoveInput input = new MoveInput(_horizontal, _vertical, _jump,
-            Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift), isAiming,
-            Input.GetKey(KeyCode.Q), Input.GetKeyDown(KeyCode.R), currentCameraRotationY, characterController.stepOffset);
-        MovementLoop(input, ReplicateState.Ticked | ReplicateState.Created);
-
         UpdateVelocityEstimate();
         SetAimRotSpeed();
         BorderWarning();
@@ -923,6 +949,8 @@ public class PlayerMovement : NetworkBehaviour {
         public float jumpBufferTimer;
         public int dashNum;
         public float timeToNextDash;
+        public Vector3 dashStartVector;
+        public float dashElapsed;
         public float stamina;
         public float stepOffset;
         public string currDimension;
@@ -966,12 +994,14 @@ public class PlayerMovement : NetworkBehaviour {
         public bool Heal;
         public bool Respawn;
         public float Yaw;
+        public float Pitch;
         public float StepOffset;
 
         private uint _tick;
 
-        public MoveInput(float horizontal, float vertical, bool space, bool sprint, bool aim, bool heal, bool respawn, float yaw, float stepOffset) {
+        public MoveInput(float horizontal, float vertical, bool space, bool sprint, bool aim, bool heal, bool respawn, float yaw, float stepOffset, float pitch) {
             this = default;
+            Pitch = pitch;
             Horizontal = horizontal;
             Vertical = vertical;
             Space = space;
@@ -1021,8 +1051,9 @@ public class PlayerMovement : NetworkBehaviour {
         HandleShotBoost(ref result);
         ManageSprintState(ref result);
         characterController.enabled = result.controllerEnabled;
-        if (result.controllerEnabled && IsOwner) characterController.Move((result.movement + result.slideMovement) * Time.deltaTime + Vector3.down * result.verticalVelocity + upgradeManager.Local.dashForceMultiplier * result.dashVector * Time.deltaTime - result.shotBoost * Time.deltaTime);
-        return result;
+        simState = result;
+        if (result.controllerEnabled) characterController.Move((result.movement + result.slideMovement) * Time.deltaTime + Vector3.up * result.verticalVelocity * Time.deltaTime +upgradeManager.Local.dashForceMultiplier * result.dashVector * Time.deltaTime - result.shotBoost * Time.deltaTime);
+        return simState;
     }
 
     private void UpdateMovementVector(MoveInput input, ref ServerOutput result)
@@ -1186,18 +1217,31 @@ public class PlayerMovement : NetworkBehaviour {
             Debug.Log("dashing");
             HealthController.noFDAnim = true;
             result.dashNum--;
-            result.dashVector = Vector3.Project(result.dashVector, playerCamera.transform.forward * dashForce)
-                         + (playerCamera.transform.forward * dashForce);
+            Vector3 lookForward = Quaternion.Euler(input.Pitch, input.Yaw, 0f) * Vector3.forward;
+            result.dashVector = Vector3.Project(result.dashVector, lookForward * dashForce)
+                         + (lookForward * dashForce);
             result.verticalVelocity = 0;
             result.jumpedLast = true;
             result.jumpBufferTimer = 0f;
             dashFOV = Mathf.Max(dashFOV, 20f);
             result.lastGroundedHeight = -30;
-            if (dashRoutine != null) StopCoroutine(dashRoutine);
-            dashRoutine = StartCoroutine(LerpDash());
+            result.dashStartVector = result.dashVector;
+            result.dashElapsed = 0f;
         } else {
             dashFOV = Mathf.Lerp(dashFOV, 0f, Time.deltaTime * 5f);
+            DecayDash(ref result);
         }
+    }
+
+    private void DecayDash(ref ServerOutput result) {
+        if (result.dashVector == Vector3.zero) return;
+        float duration = 2f * (1 + (upgradeManager.Local.dashForceMultiplier - 1) * 0.5f);
+        result.dashElapsed += Time.deltaTime;
+        if (result.dashElapsed >= duration || result.isGrounded) {
+            result.dashVector = Vector3.zero;
+            return;
+        }
+        result.dashVector = Vector3.Lerp(result.dashStartVector, Vector3.zero, result.dashElapsed / duration);
     }
 
     private void HandleLaunch(ref ServerOutput result)
@@ -1252,30 +1296,6 @@ public class PlayerMovement : NetworkBehaviour {
         }
         result.shotBoost *= Mathf.Exp(-shotBoostDecay * Time.deltaTime);
     }
-    
-    [Reconcile]
-    private void PerformReconcile(ServerOutput data)
-    {
-        if (simState.teleporting) return;
-        if (transform.position != data.position)
-        {
-            characterController.enabled = false;
-            transform.position = data.position;
-        }
-        movement = data.movement;
-        //verticalVelocity = data.verticalVelocity;
-        slideMovement = data.slideMovement;
-        dashVector = data.dashVector;
-        shotBoost = data.shotBoost;
-        jumpedLast = data.jumpedLast;
-        fastAir = data.fastAir;
-        isSprinting = data.isSprinting;
-        //isHealing = data.isHealing;
-        // public float jumpBufferTimer;
-        // public int dashNum;
-        // public float stamina;
-        // public float stepOffset;
-    }
 
     public void ApplyShotBoost(Shooting.currGun gun, Vector3 aimDirection) {
         if (!boostOnGunshot.Value) return;
@@ -1288,7 +1308,8 @@ public class PlayerMovement : NetworkBehaviour {
             case Shooting.currGun.Sniper: strength = sniperBoost; break;
             default: strength = arBoost; break;
         }
-        shotBoost = Vector3.ClampMagnitude(shotBoost + flatAim.normalized * strength, maxShotBoost);
+        simState.shotBoost = Vector3.ClampMagnitude(simState.shotBoost + flatAim.normalized * strength, maxShotBoost);
+        SetServerShotBoost(simState.shotBoost);
     }
 
     public float BaseFOV => baseFOV;
@@ -1346,19 +1367,25 @@ public class PlayerMovement : NetworkBehaviour {
         if (!IsOwner) return;
         
         string hitTag = hit.gameObject.tag;
-        if (isGrounded) {
+        if (simState.isGrounded) {
             if (pendingLanding) {
                 pendingLanding = false;
                 HandleFallDamage(hitTag);
             }
-            jumpedLast = false;
-            fastAir = false;
+            if (simState.jumpedLast || simState.fastAir) {
+                simState.jumpedLast = false;
+                simState.fastAir = false;
+                SetServerLanded();
+            }
             resetPrev = false;
         }
 
         onScreenPlatform = IsOnScreenPlatform(hit.gameObject.name, hit.normal);
         VelocityResetCheck(hit.normal);
-        if (hit.gameObject.CompareTag("Launchpad")) simState.launch = true;
+        if (hit.gameObject.CompareTag("Launchpad") && !simState.launch) {
+            simState.launch = true;
+            SetServerLaunch(true);
+        }
         TeleportationCheck(hit.gameObject);
     }
 
@@ -1413,15 +1440,19 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private void VelocityResetCheck(Vector3 hitNormal) {
-        if (Vector3.Angle(dashVector, hitNormal) > 90f) { //check to reset dash if hit wall
-            dashVector = Vector3.zero;
+        if (simState.dashVector != Vector3.zero && Vector3.Angle(simState.dashVector, hitNormal) > 90f) { //check to reset dash if hit wall
+            simState.dashVector = Vector3.zero;
+            SetServerDashVector(Vector3.zero);
         }
-        if (Vector3.Dot(shotBoost, hitNormal) > 0f && Vector3.Angle(hitNormal, Vector3.up) > characterController.slopeLimit) {
-            shotBoost = Vector3.ProjectOnPlane(shotBoost, hitNormal);
-            shotBoost.y = 0f;
+        if (Vector3.Dot(simState.shotBoost, hitNormal) > 0f && Vector3.Angle(hitNormal, Vector3.up) > characterController.slopeLimit) {
+            Vector3 projected = Vector3.ProjectOnPlane(simState.shotBoost, hitNormal);
+            projected.y = 0f;
+            simState.shotBoost = projected;
+            SetServerShotBoost(projected);
         }
-        if  (newVelocity.y > 0f && Vector3.Angle(hitNormal, Vector3.down) < characterController.slopeLimit) { //check to reset vertical velocity if hit ceiling
-            newVelocity.y = 0f;
+        if  (simState.verticalVelocity > 0f && Vector3.Angle(hitNormal, Vector3.down) < characterController.slopeLimit) { //check to reset vertical velocity if hit ceiling
+            simState.verticalVelocity = 0f;
+            SetServerVertVelo(0);
         }
 
     }
@@ -1429,7 +1460,7 @@ public class PlayerMovement : NetworkBehaviour {
     private void HandleFallDamage(string hitTag)
     {
         if (hitTag == "Launchpad" || hitTag == "Portal") return;
-        float heightChange = lastGroundedHeight - transform.position.y - 8;
+        float heightChange = simState.lastGroundedHeight - transform.position.y - 8;
         if (heightChange > 0) {
             float shakeMagnitude = Mathf.Min(heightChange / 20f, 1f);
             StartCoroutine(ApplyLandingShake(shakeMagnitude));
@@ -1739,20 +1770,72 @@ public class PlayerMovement : NetworkBehaviour {
             }
 
             if (unstuckFail) {
-                newVelocity.y = 0;
+                simState.verticalVelocity = 0;
+                SetServerVertVelo(0);
                 for (int i = 0; i < stuckCount; i++)
                     if (IsBuildCollider(_stuckHits[i])) _stuckHits[i].transform.gameObject.layer = 11;
                 characterController.enabled = false;
                 transform.position = start;
                 characterController.enabled = true;
             }
-            lastPosition = playerTransform.position; 
+            if (transform.position != start) {
+                simState.position = transform.position;
+                SetServerPosition(simState.position, simState.lastGroundedHeight);
+            }
+            lastPosition = playerTransform.position;
         } else {
             foreach (var entry in originalLayers) entry.Key.gameObject.layer = entry.Value;
             for (int i = 0; i < stuckCount; i++)
                 if (IsBuildCollider(_stuckHits[i])) _stuckHits[i].transform.gameObject.layer = 11;
         }
     }
+
+    private void QueueServerChange(uint tick, System.Action apply) {
+        _pendingServerChanges.Add((tick, apply));
+    }
+
+    private void ApplyPendingServerChanges(uint simulatedTick) {
+        for (int i = 0; i < _pendingServerChanges.Count; i++) {
+            if (_pendingServerChanges[i].tick > simulatedTick) continue;
+            _pendingServerChanges[i].apply();
+            _pendingServerChanges.RemoveAt(i);
+            i--;
+        }
+    }
+
+    private void SetServerVertVelo(float val) { if (!_simReplaying) RpcSetVertVelo(_simTick, val); }
+    private void SetServerDashVector(Vector3 val) { if (!_simReplaying) RpcSetDashVector(_simTick, val); }
+    private void SetServerShotBoost(Vector3 val) { if (!_simReplaying) RpcSetShotBoost(_simTick, val); }
+    private void SetServerLanded() { if (!_simReplaying) RpcSetLanded(_simTick); }
+    private void SetServerLaunch(bool val) { if (!_simReplaying) RpcSetLaunch(_simTick, val); }
+    private void SetServerPosition(Vector3 position, float lastGroundedHeight) { if (!_simReplaying) RpcSetPosition(_simTick, position, lastGroundedHeight); }
+
+    [ServerRpc]
+    private void RpcSetVertVelo(uint tick, float val) => QueueServerChange(tick, () => simState.verticalVelocity = val);
+
+    [ServerRpc]
+    private void RpcSetDashVector(uint tick, Vector3 val) => QueueServerChange(tick, () => simState.dashVector = val);
+
+    [ServerRpc]
+    private void RpcSetShotBoost(uint tick, Vector3 val) => QueueServerChange(tick, () => simState.shotBoost = val);
+
+    [ServerRpc]
+    private void RpcSetLanded(uint tick) => QueueServerChange(tick, () => {
+        simState.jumpedLast = false;
+        simState.fastAir = false;
+    });
+
+    [ServerRpc]
+    private void RpcSetLaunch(uint tick, bool val) => QueueServerChange(tick, () => simState.launch = val);
+
+    [ServerRpc]
+    private void RpcSetPosition(uint tick, Vector3 position, float lastGroundedHeight) => QueueServerChange(tick, () => {
+        characterController.enabled = false;
+        transform.position = position;
+        characterController.enabled = simState.controllerEnabled;
+        simState.position = position;
+        simState.lastGroundedHeight = lastGroundedHeight;
+    });
 
     IEnumerator ApplyLandingShake(float magnitude) {
         float duration = 0.2f;
@@ -1942,18 +2025,6 @@ public class PlayerMovement : NetworkBehaviour {
         jumpOffsetTwo = 0;
     }
 
-    IEnumerator LerpDash() {
-        Vector3 dashVectorRef = dashVector;
-        float elapsedTime = 0f;
-        float duration = 2f * (1 + (upgradeManager.Local.dashForceMultiplier - 1) * 0.5f);
-        while (elapsedTime < duration && !isGrounded && dashVector.magnitude > 0) {
-            dashVector = Vector3.Lerp(dashVectorRef, Vector3.zero, elapsedTime / duration);
-            elapsedTime += Time.deltaTime;
-            yield return null;
-        }
-        dashVector = Vector3.zero;
-        dashRoutine = null;
-    }
 
     private void SideMovementCameraTilt()
     {

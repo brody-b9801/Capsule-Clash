@@ -398,11 +398,12 @@ public class Shooting : NetworkBehaviour
         Vector3[] spreads)
     {
         Vector3 shooterVelocity = PlayerMovement.Local.dashVector;
-        if (IsValidVector3(PlayerMovement.Local.newVelocity))
+        Vector3 playerVelocity = PlayerMovement.Local.GetVelocity();
+        if (IsValidVector3(playerVelocity))
         {
             shooterVelocity += PlayerMovement.Local.isGrounded
-                ? new Vector3(PlayerMovement.Local.newVelocity.x, 0f, PlayerMovement.Local.newVelocity.z)
-                : PlayerMovement.Local.newVelocity;
+                ? new Vector3(playerVelocity.x, 0f, playerVelocity.z)
+                : playerVelocity;
         }
 
         ServerBulletLogic(

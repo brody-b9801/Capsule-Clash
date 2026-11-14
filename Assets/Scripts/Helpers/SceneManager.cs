@@ -50,7 +50,7 @@ public class SceneManager : MonoBehaviour {
     {
         if (scene == activeAdditiveScene) return true;
         if (!Application.CanStreamedLevelBeLoaded(scene)) {
-            Debug.LogError($"[SceneManager] '{scene}' cannot be loaded; add it to the build settings scene list.");
+            Debug.LogError($"'{scene}' cannot be loaded");
             return false;
         }
 
@@ -96,7 +96,7 @@ public class SceneManager : MonoBehaviour {
     public IEnumerator TransferTimeout(string sceneName, Action onTimeout) {
         yield return new WaitForSecondsRealtime(TransferTimeoutSeconds);
         if (pendingTransfer != sceneName) yield break;
-        Debug.LogWarning($"[SceneManager] Transfer to '{sceneName}' never arrived; portals re-enabled.");
+        Debug.LogWarning($"Transfer to '{sceneName}' never arrived");
         pendingTransfer = null;
         onTimeout?.Invoke();
     }
