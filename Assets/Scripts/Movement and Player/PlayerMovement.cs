@@ -9,8 +9,8 @@ using FishNet.Managing;
 using UnityEngine.SceneManagement;
 using TMPro;
 using FishNet.Component.Observing;
-using NUnit.Framework;
-using UnityEngine.TextCore.Text;
+using FishNet.Object.Prediction;
+using FishNet.Transporting;
 
 [RequireComponent(typeof(ServerController))]
 public class PlayerMovement : NetworkBehaviour {
@@ -79,11 +79,9 @@ public class PlayerMovement : NetworkBehaviour {
     private bool groundedPrev; 
     private bool pendingLanding; 
     private float jumpBufferTimer;
-    private bool sprintingPrev;
-    private bool sprintInputPrev;
+    private ServerOutput simState;
     private CharacterController characterController;
     private bool resetPrev = false;
-    private bool launch = false;
     private Transform gunThing;
     [SerializeField] private float targetWalkXPos;
     [SerializeField] private float targetWalkYPos;
@@ -256,79 +254,25 @@ public class PlayerMovement : NetworkBehaviour {
     public int getKills() { return killCount; }
     public string getUsername() { return username; }
 
-    public struct MoveInput : IReplicateData {
-        public float Horizontal;
-        public float Vertical;
-        public bool Space;
-        public bool Sprint;
-        public bool Aim;
-        public bool Heal;
-        public bool Respawn;
-        public float Yaw;
-        public float StepOffset;
-
-        private uint _tick;
-
-        public MoveInput(float horizontal, float vertical, bool space, bool sprint, bool aim, bool heal, bool respawn, float yaw, float stepOffset) {
-            Horizontal = horizontal;
-            Vertical = vertical;
-            Space = space;
-            Sprint = sprint;
-            Aim = aim;
-            Heal = heal;
-            Respawn = respawn;
-            Yaw = yaw;
-            StepOffset = stepOffset;
-            _tick = 0;
-        }
-
-        public void Dispose() { }
-        public uint GetTick() => _tick;
-        public void SetTick(uint value) => _tick = value;
+    protected override void TimeManager_OnTick() {
+        PerformReplicate(default);
+        CreateReconcile();
     }
 
-    public struct ServerOutput : IReconcileData {
-        public Vector3 position;
-        public Vector3 movement;
-        public float verticalVelocity;
-        public Vector3 slideMovement;
-        public Vector3 dashVector;
-        public Vector3 shotBoost;
-        public bool jumpedLast;
-        public bool fastAir;
-        public bool isSprinting;
-        public bool isHealing;
-        public float jumpBufferTimer;
-        public int dashNum;
-        public float stamina;
-        public float stepOffset;
-
-        private uint _tick;
-
-        public ServerOutput(Vector3 position, Vector3 movement, float verticalVelocity, Vector3 slideMovement, Vector3 dashVector, Vector3 shotBoost,
-            bool jumpedLast, bool fastAir, bool isSprinting, bool isHealing, float jumpBufferTimer, int dashNum, float stamina, float stepOffset) {
-            this.position = position;
-            this.movement = movement;
-            this.verticalVelocity = verticalVelocity;
-            this.slideMovement = slideMovement;
-            this.dashVector = dashVector;
-            this.shotBoost = shotBoost;
-            this.jumpedLast = jumpedLast;
-            this.fastAir = fastAir;
-            this.isSprinting = isSprinting;
-            this.isHealing = isHealing;
-            this.jumpBufferTimer = jumpBufferTimer;
-            this.dashNum = dashNum;
-            this.stamina = stamina;
-            this.stepOffset = stepOffset;
-            _tick = 0;
-        }
-
-        public void Dispose() { }
-        public uint GetTick() => _tick;
-        public void SetTick(uint value) => _tick = value;
+    [Replicate]
+    private void PerformReplicate(MoveInput input, ReplicateState state = ReplicateState.Invalid, Channel channel = Channel.Unreliable)
+    {
+        MovementLoop();
     }
 
+    public override void CreateReconcile() {
+        ServerOutput rd = default;
+        PerformReconcile(rd);
+    }
+
+    [Reconcile]
+    private void PerformReconcile(ServerOutput data, Channel channel = Channel.Unreliable) {
+    }
 
     private struct DimensionInfo {
         public string name;
@@ -452,6 +396,13 @@ public class PlayerMovement : NetworkBehaviour {
             scene = global::SceneManager.BossScene
         };
         allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo, serverInfo };
+    }
+
+    private DimensionInfo GetDimensionInfo(string dimensionName) {
+        foreach (DimensionInfo dimension in allDimensions) {
+            if (dimension.name == dimensionName) return dimension;
+        }
+        return desertInfo;
     }
 
     private void ApplyDimensionPhysics(DimensionInfo target) {
@@ -828,7 +779,7 @@ public class PlayerMovement : NetworkBehaviour {
     private const float EdgeProbeInset = 0.02f;
     private const float EdgeProbeHeight = 0.05f;
 
-    public bool isGround() {
+    public (bool isGrounded, Vector3 floorNormal) isGround() {
         float castDist = characterController.height/4 + 0.025f + GroundProbeInset;
         Vector3 origin = transform.position;
         float radius = characterController.radius + characterController.skinWidth - GroundProbeInset;
@@ -848,22 +799,22 @@ public class PlayerMovement : NetworkBehaviour {
         if (found) {
             floorNormal = lowestHit.normal;
             floorCollider = lowestHit.collider;
-            if (Vector3.Angle(Vector3.up, floorNormal) <= characterController.slopeLimit) return true;
+            if (Vector3.Angle(Vector3.up, floorNormal) <= characterController.slopeLimit) return (true, floorNormal);
 
             Vector3 inward = -Vector3.ProjectOnPlane(floorNormal, Vector3.up);
-            if (inward.sqrMagnitude < 1e-6f) return false;
+            if (inward.sqrMagnitude < 1e-6f) return (false, floorNormal);
             Vector3 probeOrigin = lowestHit.point + inward.normalized * EdgeProbeInset + Vector3.up * EdgeProbeHeight;
             if (Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit edgeHit, EdgeProbeHeight * 2f, GroundMask, QueryTriggerInteraction.Ignore)
                 && Vector3.Angle(Vector3.up, edgeHit.normal) <= characterController.slopeLimit) {
                 floorNormal = edgeHit.normal;
                 floorCollider = edgeHit.collider;
-                return true;
+                return (true, floorNormal);
             }
-            return false;
+            return (false, floorNormal);
         }
         floorNormal = Vector3.up;
         floorCollider = null;
-        return false;
+        return (false, floorNormal);
     }
 
     private void OnDrawGizmos()
@@ -920,41 +871,135 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     private float SetTargetSpeed(MoveInput input) => GetBaseSpeed(input) * upgradeManager.Local.speedMultiplier;
+   public struct ServerOutput : IReconcileData {
+        public Vector3 position;
+        public Vector3 movement;
+        public float verticalVelocity;
+        public Vector3 slideMovement;
+        public Vector3 dashVector;
+        public Vector3 shotBoost;
+        public bool jumpedLast;
+        public bool fastAir;
+        public bool isSprinting;
+        public bool isHealing;
+        public bool groundedPrev;
+        public bool isGrounded;
+        public bool onIce;
+        public Vector3 floorNormal;
+        public bool sprintingPrev;
+        public bool sprintInputPrev;
+        public bool launch;
+        public float lastGroundedHeight;
+        public float jumpBufferTimer;
+        public int dashNum;
+        public float stamina;
+        public float stepOffset;
+        public string currDimension;
+
+        private uint _tick;
+
+        public ServerOutput(Vector3 position, Vector3 movement, float verticalVelocity, Vector3 slideMovement, Vector3 dashVector, Vector3 shotBoost,
+            bool jumpedLast, bool fastAir, bool isSprinting, bool isHealing, float jumpBufferTimer, int dashNum, float stamina, float stepOffset, string currDimension) {
+            this = default;
+            this.currDimension = currDimension;
+            this.position = position;
+            this.movement = movement;
+            this.verticalVelocity = verticalVelocity;
+            this.slideMovement = slideMovement;
+            this.dashVector = dashVector;
+            this.shotBoost = shotBoost;
+            this.jumpedLast = jumpedLast;
+            this.fastAir = fastAir;
+            this.isSprinting = isSprinting;
+            this.isHealing = isHealing;
+            this.jumpBufferTimer = jumpBufferTimer;
+            this.dashNum = dashNum;
+            this.stamina = stamina;
+            this.stepOffset = stepOffset;
+            _tick = 0;
+        }
+
+        public void Dispose() { }
+        public uint GetTick() => _tick;
+        public void SetTick(uint value) => _tick = value;
+    }
+
+    public struct MoveInput : IReplicateData {
+        public float Horizontal;
+        public float Vertical;
+        public bool Space;
+        public bool Sprint;
+        public bool Aim;
+        public bool Heal;
+        public bool Respawn;
+        public float Yaw;
+        public float StepOffset;
+
+        private uint _tick;
+
+        public MoveInput(float horizontal, float vertical, bool space, bool sprint, bool aim, bool heal, bool respawn, float yaw, float stepOffset) {
+            this = default;
+            Horizontal = horizontal;
+            Vertical = vertical;
+            Space = space;
+            Sprint = sprint;
+            Aim = aim;
+            Heal = heal;
+            Respawn = respawn;
+            Yaw = yaw;
+            StepOffset = stepOffset;
+            _tick = 0;
+        }
+
+        public void Dispose() { }
+        public uint GetTick() => _tick;
+        public void SetTick(uint value) => _tick = value;
+    }
 
     private ServerOutput MovementLoop(MoveInput input)
     {
-        groundedPrev = isGrounded;
-        isGrounded = isGround();
-        if (!isGrounded) characterController.stepOffset = 0f;
-        onSlope = isGrounded && Vector3.Angle(Vector3.up, floorNormal) > 1f;
-        if (input.Space) jumpBufferTimer = jumpBufferTime;
-        else jumpBufferTimer = Mathf.Max(jumpBufferTimer - Time.deltaTime, 0f);
-        UpdateMovementVector(input);
-        SetExtraneousStates(input); //needs cleanup
-        HandleLaunch();
-        KeyEvents(input);
-        HandleDashing(input);
-        HandleShotBoost();
-        ManageSprintState();
-        if (characterController.enabled) characterController.Move((movement + slideMovement) * Time.deltaTime + GetJumpAndGravityVector(input) + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
+        ServerOutput result = simState;
+        result.position = transform.position;
+        result.groundedPrev = result.isGrounded;
+        result.sprintingPrev = result.isSprinting;
+        result.onIce = false;
 
-        return new ServerOutput(transform.position, movement, newVelocity.y, slideMovement, dashVector, shotBoost,
-            jumpedLast, fastAir, isSprinting, healParticles.healing, jumpBufferTimer, dashes, StaminaController.Local.CurrentStamina, characterController.stepOffset);
+        //Grounded logic
+        var groundedPair = isGround();
+        result.isGrounded = groundedPair.Item1;
+        result.floorNormal = groundedPair.Item2;
+        if (!result.isGrounded) input.StepOffset = 0f;
+        onSlope = result.isGrounded && Vector3.Angle(Vector3.up, result.floorNormal) > 1f;
+
+        if (input.Space) result.jumpBufferTimer = jumpBufferTime;
+        else result.jumpBufferTimer = Mathf.Max(result.jumpBufferTimer - Time.deltaTime, 0f);
+
+        SetExtraneousStates(input, ref result); //needs cleanup
+        UpdateMovementVector(input, ref result);
+        KeyEvents(input, ref result);
+        GetJumpAndGravityVector(input, ref result);
+        HandleLaunch(ref result);
+        HandleDashing(input, ref result);
+        HandleShotBoost(ref result);
+        ManageSprintState(ref result);
+        // if (characterController.enabled) characterController.Move((movement + slideMovement) * Time.deltaTime + verticalVelocity + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
+        return result;
     }
-    private void UpdateMovementVector(MoveInput input)
-    {
-        if (Vector3.Angle(Vector3.up, floorNormal) > characterController.slopeLimit)
-        {
-            Vector3 targetSlide = Vector3.ProjectOnPlane(Vector3.down, floorNormal).normalized * slideSpeed;
-            slideMovement = Vector3.MoveTowards(slideMovement, targetSlide, Time.deltaTime * slideAcceleration);
 
-            Vector3 intoFloor = Vector3.Project(movement, floorNormal);
-            Vector3 alongFloor = movement - intoFloor;
-            if (Vector3.Dot(movement, floorNormal) < 0f) movement = alongFloor;
+    private void UpdateMovementVector(MoveInput input, ref ServerOutput result)
+    {
+        if (Vector3.Angle(Vector3.up, result.floorNormal) > characterController.slopeLimit)
+        {
+            Vector3 targetSlide = Vector3.ProjectOnPlane(Vector3.down, result.floorNormal).normalized * slideSpeed;
+            result.slideMovement = Vector3.MoveTowards(result.slideMovement, targetSlide, Time.deltaTime * slideAcceleration);
+
+            Vector3 intoFloor = Vector3.Project(result.movement, result.floorNormal);
+            Vector3 alongFloor = result.movement - intoFloor;
+            if (Vector3.Dot(result.movement, result.floorNormal) < 0f) result.movement = alongFloor;
         }
         else
         {
-            slideMovement = Vector3.zero;
+            result.slideMovement = Vector3.zero;
         }
         
         Vector3 inputDirection = new Vector3(input.Horizontal, 0, input.Vertical);
@@ -965,9 +1010,9 @@ public class PlayerMovement : NetworkBehaviour {
         Vector3 right = yawRotation * Vector3.right;
 
         Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
-        wishDir = moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : new Vector3(movement.x, 0f, movement.z).normalized;
-        if (isGrounded) {
-            moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
+        wishDir = moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : new Vector3(result.movement.x, 0f, result.movement.z).normalized;
+        if (result.isGrounded) {
+            moveDirection = Vector3.ProjectOnPlane(moveDirection, result.floorNormal);
         } else {
             moveDirection.y = 0f;
         }
@@ -975,38 +1020,57 @@ public class PlayerMovement : NetworkBehaviour {
 
         float targetSpeed = SetTargetSpeed(input);
         Vector3 targetMovement = moveDirection * targetSpeed;
-
-        movement = Vector3.MoveTowards(movement, targetMovement, Time.deltaTime*(isGrounded ? groundAcceleration : airAcceleration));
-        percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
+        DimensionInfo dimension = currDimension == "Ice"
+            ? (result.onIce ? iceInfo : desertInfo)
+            : GetDimensionInfo(currDimension);
+        Vector3 targetHorizontal = new Vector3(targetMovement.x, 0f, targetMovement.z);
+        Vector3 movementHorizontal = new Vector3(result.movement.x, 0f, result.movement.z);
+        float accelFactor;
+        if (targetHorizontal.sqrMagnitude < 0.0001f)
+        {
+            if (result.isGrounded) accelFactor = dimension.fric;
+            else accelFactor = airDeceleration;
+        } else if (Vector3.Dot(targetHorizontal, movementHorizontal) < 0f)
+        {
+            if (result.isGrounded) accelFactor = dimension.decel;
+            else accelFactor = airDeceleration;
+        } else
+        {
+            if (result.isGrounded) accelFactor = dimension.accel;
+            else accelFactor = airAcceleration;
+        }
+        result.movement = Vector3.MoveTowards(result.movement, targetMovement, Time.deltaTime * accelFactor);
+        if (IsOwner) percentAccelerated = Mathf.Clamp01(new Vector3(result.movement.x, 0, result.movement.z).magnitude / (targetSpeed * 0.8f));
     }
-    private Vector3 GetJumpAndGravityVector(MoveInput input) {
-        if (input.Space) serverController.TryFeed();
-        
 
-        if (jumpBufferTimer > 0f && isGrounded && canJump.Value) {
-            jumpBufferTimer = 0f;
-            float slopeCarry = movement.y > 0f ? movement.y / 1.5f : movement.y / 6f;
+    private void GetJumpAndGravityVector(MoveInput input, ref ServerOutput result) {
+        //if (input.Space) serverController.TryFeed();
+        float newVelocityY = 0;
+        if (result.jumpBufferTimer > 0f && result.isGrounded && canJump.Value) {
+            result.jumpBufferTimer = 0f;
+
+            float slopeCarry = result.movement.y > 0f ? result.movement.y / 1.5f : result.movement.y / 6f;
             if (currDimension == "Maze")
-                newVelocity.y = Mathf.Clamp(slopeCarry + jumpForce, 0, Mathf.Infinity);
+                newVelocityY = Mathf.Clamp(slopeCarry + jumpForce, 0, Mathf.Infinity);
             else if (currDimension == "Space")
-                newVelocity.y = Mathf.Clamp(slopeCarry + 1.5f * jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
+                newVelocityY = Mathf.Clamp(slopeCarry + 1.5f * jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
             else
-                newVelocity.y = Mathf.Clamp(slopeCarry + jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
-            movement.y = 0f;
-            jumpedLast = true;
+                newVelocityY = Mathf.Clamp(slopeCarry + jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
+            result.movement.y = 0f;
+            result.jumpedLast = true;
             resetPrev = false;
-            if (isSprinting) fastAir = true;
+            if (result.isSprinting) result.fastAir = true;
         }
-        Vector3 groundingForce = Vector3.zero;
-        bool onSteepSlope = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit;
-        if (((isGrounded && !jumpedLast) || onSteepSlope) && newVelocity.y <= 0f) {
-            newVelocity.y = -2;
+        bool onSteepSlope = Vector3.Angle(result.floorNormal, Vector3.up) > characterController.slopeLimit;
+        float groundingForce = 0;
+        if (((result.isGrounded && !result.jumpedLast) || onSteepSlope) && result.verticalVelocity <= 0f) {
+            newVelocityY = -2;
         } else {
-            groundingForce = groundedPrev && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed(input) * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
-            newVelocity.y = Mathf.Max(newVelocity.y - gravity.Value * Time.deltaTime, -50f);
+            if (result.groundedPrev && result.verticalVelocity <= 0 && !characterController.isGrounded && !result.jumpedLast) groundingForce = SetTargetSpeed(input) * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad);
+            newVelocityY = Mathf.Max(result.verticalVelocity - gravity.Value * Time.deltaTime, -50f);
         }
 
-        return (newVelocity + groundingForce) * Time.deltaTime;
+        result.verticalVelocity = newVelocityY + groundingForce * Time.deltaTime;
     }
 
     private void HandleCameraRotation() {
@@ -1026,13 +1090,13 @@ public class PlayerMovement : NetworkBehaviour {
         transform.localEulerAngles = new Vector3(0.0f, currentCameraRotationY, 0.0f);
     }
 
-    private void SetExtraneousStates(MoveInput input) {
+    private void SetExtraneousStates(MoveInput input, ref ServerOutput result) {
         RaycastHit hit;
-        if (isGrounded) {
-            characterController.stepOffset = (currDimension != "Maze" && currDimension != "Ice") ? 0.55f : 0f;
+        if (result.isGrounded) {
+            result.stepOffset = (currDimension != "Maze" && currDimension != "Ice") ? 0.55f : 0f;
             if (currDimension == "Desert") {
-                Vector3 p1 = transform.position + Vector3.up * 0.5f;
-                Vector3 p2 = transform.position + Vector3.down * 0.5f;
+                Vector3 p1 = result.position + Vector3.up * 0.5f;
+                Vector3 p2 = result.position + Vector3.down * 0.5f;
                 int capsuleHitCount = Physics.CapsuleCastNonAlloc(p1, p2, 0.55f, wishDir, _capsuleHits, 0.5f, DefaultMask);
 
                 _hitNames.Clear();
@@ -1051,81 +1115,84 @@ public class PlayerMovement : NetworkBehaviour {
                         noStep = true;
                     }
                 }
-                if (_hitNames.Contains("Sand") && noStep) characterController.stepOffset = 0;
+                if (_hitNames.Contains("Sand") && noStep) result.stepOffset = 0;
             } else if (currDimension == "Ice") {
                 bool onBuild = floorCollider != null
                     && (floorCollider.CompareTag("Ramp") || floorCollider.CompareTag("Floor") || floorCollider.CompareTag("Wall"));
-                setFrictionIce(!onBuild);
+                result.onIce = !onBuild;
+                result.stepOffset = result.onIce ? 0f : 0.55f;
             } else if (currDimension == "Server" && onScreenPlatform)
             {
-                if (Physics.Raycast(transform.position, Vector3.down, out hit, 3f))
-                {
-                    onScreenPlatform = IsOnScreenPlatform(hit.transform.gameObject.name, hit.normal);
+                if (IsOwner) {
+                    if (Physics.Raycast(transform.position, Vector3.down, out hit, 3f))
+                    {
+                        onScreenPlatform = IsOnScreenPlatform(hit.transform.gameObject.name, hit.normal);
+                    }
                 }
             }
         } else {
-            characterController.stepOffset = 0f;
+            result.stepOffset = 0f;
             pendingLanding = true;
-            if (groundedPrev) {
-                lastGroundedHeight = transform.position.y;
+            if (result.groundedPrev) {
+                result.lastGroundedHeight = result.position.y;
             }
-            onScreenPlatform = false;
+            if (IsOwner) onScreenPlatform = false;
         }
         if (!canTakeDamage && invulnerableRoutine == null) invulnerableRoutine = StartCoroutine(Invulnerable());
-        CameraZoom.moving = (Mathf.Abs(input.Horizontal) > 0.01f || Mathf.Abs(input.Vertical) > 0.01f);
+        if (IsOwner) CameraZoom.moving = (Mathf.Abs(input.Horizontal) > 0.01f || Mathf.Abs(input.Vertical) > 0.01f);
     }
 
-    private void HandleDashing(MoveInput input) {
-        if (input.Space && canDash.Value && dashes > 0 && !isGrounded) {
+    private void HandleDashing(MoveInput input, ref ServerOutput result) {
+        if (input.Space && canDash.Value && result.dashNum > 0 && !result.isGrounded) {
             Debug.Log("dashing");
             HealthController.noFDAnim = true;
-            dashes--;
-            dashVector = Vector3.Project(dashVector, playerCamera.transform.forward * dashForce)
+            result.dashNum--;
+            result.dashVector = Vector3.Project(result.dashVector, playerCamera.transform.forward * dashForce)
                          + (playerCamera.transform.forward * dashForce);
-            newVelocity.y = 0;
-            jumpedLast = true;
-            jumpBufferTimer = 0f; 
+            result.verticalVelocity = 0;
+            result.jumpedLast = true;
+            result.jumpBufferTimer = 0f;
             dashFOV = Mathf.Max(dashFOV, 20f);
-            lastGroundedHeight = -30;
+            result.lastGroundedHeight = -30;
             if (dashRoutine != null) StopCoroutine(dashRoutine);
             dashRoutine = StartCoroutine(LerpDash());
         } else {
             dashFOV = Mathf.Lerp(dashFOV, 0f, Time.deltaTime * 5f);
         }
 
-        if (!resettingDashes && dashes < 3) StartCoroutine(addDash());
+        if (!resettingDashes && result.dashNum < 3) StartCoroutine(addDash());
     }
 
-    private void HandleLaunch()
+    private void HandleLaunch(ref ServerOutput result)
     {
-        if (launch) {
-            launch = false;
-            newVelocity.y = launchForce;
-            jumpedLast = true;
+        if (result.launch) {
+            result.launch = false;
+            result.verticalVelocity = launchForce;
+            result.jumpedLast = true;
             resetPrev = false;
             HealthController.noFDAnim = true;
         }
     }
-    private void KeyEvents(MoveInput input)
+    private void KeyEvents(MoveInput input, ref ServerOutput result)
     {
 
         if (input.Respawn && dead) Respawn();
 
         if (input.Heal && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
-            && isGrounded && !healParticles.healing && DamageControl.Local != null && DamageControl.Local.health.Value < 180.0f)
+            && result.isGrounded && !result.isHealing && DamageControl.Local != null && DamageControl.Local.health.Value < 180.0f)
             StartCoroutine(stationaryHealing());
 
-        if (input.Sprint && isGrounded && StaminaController.Local.canSprint && !input.Aim) {
-            isSprinting = true;
+        if (input.Sprint && result.isGrounded && StaminaController.Local.canSprint && !input.Aim) {
+            result.isSprinting = true;
         } else {
-            if (!fastAir) isSprinting = false;
+            if (!result.fastAir) result.isSprinting = false;
         }
 
-        if (!input.Sprint && sprintInputPrev && !input.Aim) {
-            isSprinting = false;
-            fastAir = false;
+        if (!input.Sprint && result.sprintInputPrev && !input.Aim) {
+            result.isSprinting = false;
+            result.fastAir = false;
         }
-        sprintInputPrev = input.Sprint;
+        result.sprintInputPrev = input.Sprint;
         
         if (Input.GetKeyUp(KeyCode.Escape)) {
             Cursor.lockState = CursorLockMode.None;
@@ -1133,21 +1200,44 @@ public class PlayerMovement : NetworkBehaviour {
         }
     }
 
-    private void ManageSprintState() {
-        if (!StaminaController.Local.canSprint) fastAir = false;
+    private void ManageSprintState(ref ServerOutput result) {
+        if (!StaminaController.Local.canSprint) result.fastAir = false;
 
-        if (sprintingPrev && groundedPrev && !isGrounded) {
-            fastAir = true;
-            isSprinting = true;
+        if (result.sprintingPrev && result.groundedPrev && !result.isGrounded) {
+            result.fastAir = true;
+            result.isSprinting = true;
         }
     }
 
-    private void HandleShotBoost() {
+    private void HandleShotBoost(ref ServerOutput result) {
         if (!boostOnGunshot.Value) {
-            shotBoost = Vector3.zero;
+            result.shotBoost = Vector3.zero;
             return;
         }
-        shotBoost *= Mathf.Exp(-shotBoostDecay * Time.deltaTime);
+        result.shotBoost *= Mathf.Exp(-shotBoostDecay * Time.deltaTime);
+    }
+    
+    [Reconcile]
+    private void PerformReconcile(ServerOutput data)
+    {
+        if (transform.position != data.position)
+        {
+            characterController.enabled = false;
+            transform.position = data.position;
+        }
+        movement = data.movement;
+        //verticalVelocity = data.verticalVelocity;
+        slideMovement = data.slideMovement;
+        dashVector = data.dashVector;
+        shotBoost = data.shotBoost;
+        jumpedLast = data.jumpedLast;
+        fastAir = data.fastAir;
+        isSprinting = data.isSprinting;
+        //isHealing = data.isHealing;
+        // public float jumpBufferTimer;
+        // public int dashNum;
+        // public float stamina;
+        // public float stepOffset;
     }
 
     public void ApplyShotBoost(Shooting.currGun gun, Vector3 aimDirection) {
@@ -1229,7 +1319,7 @@ public class PlayerMovement : NetworkBehaviour {
 
         onScreenPlatform = IsOnScreenPlatform(hit.gameObject.name, hit.normal);
         VelocityResetCheck(hit.normal);
-        if (hit.gameObject.CompareTag("Launchpad")) launch = true;
+        if (hit.gameObject.CompareTag("Launchpad")) simState.launch = true;
         TeleportationCheck(hit.gameObject);
     }
 
@@ -1385,7 +1475,7 @@ public class PlayerMovement : NetworkBehaviour {
         }
         dashFOV = 0f;
         shotBoost = Vector3.zero;
-        launch = false;
+        simState.launch = false;
         jumpedLast = false;
         fastAir = false;
         isSprinting = false;
@@ -1917,8 +2007,6 @@ public class PlayerMovement : NetworkBehaviour {
                 walkingShake.newX * 2.25f * walkAnimTuneGun + walkVectorRot.z * walkAnimTuneGun + sideTilt * sidewaysAnimTune * 1.5f);
                 akm.localEulerAngles += rotOffset;
         }
-
-        sprintingPrev = isSprinting;
 
         if (rotationX != 0)
             gunXRot += Mathf.Clamp(rotationX * -3.75f, -25f, 25f) * GunSwayReferenceDelta;

@@ -16,6 +16,7 @@ public class StaminaController : MonoBehaviour
     public bool canSprint = true;
     public static bool zoomOut = false;
     private float currentStamina;
+    public float CurrentStamina => currentStamina;
     private Color yellow;
     private Color red;
     private bool lowStaminaWarningPlayed = false;
