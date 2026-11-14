@@ -68,7 +68,7 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float launchForce;
     [SerializeField] private float dashForce = 10.0f;
     private int dashes = 0;
-    private bool resettingDashes = false;
+    private const float DashRegenTime = 10f;
     private readonly SyncVar<bool> canDash = new SyncVar<bool>(
         true, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
     private readonly SyncVar<float> dashReloadModifier = new SyncVar<float>(
@@ -148,7 +148,7 @@ public class PlayerMovement : NetworkBehaviour {
     private Transform spawnPosContainer;
     public int hitCount = 0;
     public GameObject respawnScreen;
-    public bool dead = false;
+    public bool dead => simState.dead;
     private bool unstuckFail = false;
     private float lastGroundedHeight;
     private float sideTilt;
@@ -262,7 +262,7 @@ public class PlayerMovement : NetworkBehaviour {
     [Replicate]
     private void PerformReplicate(MoveInput input, ReplicateState state = ReplicateState.Invalid, Channel channel = Channel.Unreliable)
     {
-        MovementLoop();
+        MovementLoop(input, state);
     }
 
     public override void CreateReconcile() {
@@ -423,6 +423,31 @@ public class PlayerMovement : NetworkBehaviour {
         baseGroundAcceleration = groundAcceleration;
         baseGroundDeceleration = groundDeceleration;
         baseFriction = friction;
+    }
+
+    public override void OnStartNetwork() {
+        base.OnStartNetwork();
+        ResetSimState();
+    }
+
+    private void ResetSimState() {
+        simState = FreshSimState();
+    }
+
+    private ServerOutput FreshSimState() {
+        ServerOutput fresh = default;
+        fresh.dashNum = 3;
+        fresh.timeToNextDash = DashRegenTime;
+        fresh.lastGroundedHeight = -13;
+        fresh.currDimension = currDimension;
+        fresh.position = transform.position;
+        return fresh;
+    }
+
+    private (bool respawned, ServerOutput newSimState) CheckRespawn(MoveInput input, ServerOutput result, ReplicateState state) {
+        if (!input.Respawn || !result.dead) return (false, result);
+        Respawn(input.GetTick(), IsOwner && !state.ContainsReplayed());
+        return (true, FreshSimState());
     }
 
 
@@ -853,7 +878,7 @@ public class PlayerMovement : NetworkBehaviour {
         MoveInput input = new MoveInput(_horizontal, _vertical, _jump,
             Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift), isAiming,
             Input.GetKey(KeyCode.Q), Input.GetKeyDown(KeyCode.R), currentCameraRotationY, characterController.stepOffset);
-        MovementLoop(input);
+        MovementLoop(input, ReplicateState.Ticked | ReplicateState.Created);
 
         UpdateVelocityEstimate();
         SetAimRotSpeed();
@@ -889,9 +914,11 @@ public class PlayerMovement : NetworkBehaviour {
         public bool sprintingPrev;
         public bool sprintInputPrev;
         public bool launch;
+        public bool dead;
         public float lastGroundedHeight;
         public float jumpBufferTimer;
         public int dashNum;
+        public float timeToNextDash;
         public float stamina;
         public float stepOffset;
         public string currDimension;
@@ -956,9 +983,13 @@ public class PlayerMovement : NetworkBehaviour {
         public void SetTick(uint value) => _tick = value;
     }
 
-    private ServerOutput MovementLoop(MoveInput input)
+    private ServerOutput MovementLoop(MoveInput input, ReplicateState state)
     {
         ServerOutput result = simState;
+
+        var respawnCheck = CheckRespawn(input, result, state);
+        if (respawnCheck.respawned) return respawnCheck.newSimState;
+
         result.position = transform.position;
         result.groundedPrev = result.isGrounded;
         result.sprintingPrev = result.isSprinting;
@@ -980,6 +1011,7 @@ public class PlayerMovement : NetworkBehaviour {
         GetJumpAndGravityVector(input, ref result);
         HandleLaunch(ref result);
         HandleDashing(input, ref result);
+        HandleDashRegen(ref result);
         HandleShotBoost(ref result);
         ManageSprintState(ref result);
         // if (characterController.enabled) characterController.Move((movement + slideMovement) * Time.deltaTime + verticalVelocity + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
@@ -1159,8 +1191,6 @@ public class PlayerMovement : NetworkBehaviour {
         } else {
             dashFOV = Mathf.Lerp(dashFOV, 0f, Time.deltaTime * 5f);
         }
-
-        if (!resettingDashes && result.dashNum < 3) StartCoroutine(addDash());
     }
 
     private void HandleLaunch(ref ServerOutput result)
@@ -1176,7 +1206,6 @@ public class PlayerMovement : NetworkBehaviour {
     private void KeyEvents(MoveInput input, ref ServerOutput result)
     {
 
-        if (input.Respawn && dead) Respawn();
 
         if (input.Heal && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
             && result.isGrounded && !result.isHealing && DamageControl.Local != null && DamageControl.Local.health.Value < 180.0f)
@@ -1289,17 +1318,19 @@ public class PlayerMovement : NetworkBehaviour {
             isAiming = false;
         }
     }
-    IEnumerator addDash() {
-        if (dashes < 3) {
-            resettingDashes = true;
-            float percent = 0;
-            while (percent < 1f) {
-                percent += Time.deltaTime * upgradeManager.Local.dashRegenMultiplier * dashReloadModifier.Value / 10f;
-                if (dashIcon != null) dashIcon.sizeDelta = new Vector2(75, Mathf.Min(percent, 1f) * 72);
-                yield return null;
-            }
-            dashes++;
-            resettingDashes = false;
+    private void HandleDashRegen(ref ServerOutput result) {
+        if (result.dashNum >= 3) {
+            result.timeToNextDash = DashRegenTime;
+            return;
+        }
+        result.timeToNextDash -= Time.deltaTime * upgradeManager.Local.dashRegenMultiplier * dashReloadModifier.Value;
+        if (result.timeToNextDash <= 0f) {
+            result.dashNum++;
+            result.timeToNextDash = DashRegenTime;
+        }
+        if (IsOwner && dashIcon != null) {
+            float fill = result.dashNum >= 3 ? 1f : 1f - result.timeToNextDash / DashRegenTime;
+            dashIcon.sizeDelta = new Vector2(75, fill * 72);
         }
     }
 
@@ -1440,10 +1471,16 @@ public class PlayerMovement : NetworkBehaviour {
             _borderMaterials[i].color = borderColor;
     }
 
+    [ServerRpc]
+    private void ServerSetDead() {
+        simState.dead = true;
+    }
+
     public void Die() {
         if (!IsOwner || dead) return;
         characterController.enabled = false;
-        dead = true;
+        simState.dead = true;
+        ServerSetDead();
         if (DamageControl.Local != null) DamageControl.Local.ServerKillSelf();
         Instantiate(respawnScreen);
         Cursor.lockState = CursorLockMode.None;
@@ -1452,7 +1489,28 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     public void EnterDataCenter() => Die();
-    public void Respawn() {
+    public void Respawn(uint tick, bool applyEffects) {
+        float spawnYaw;
+        characterController.enabled = false;
+        if (!global::SceneManager.Instance.InCombatScene && bossArrival != null) {
+            transform.position = bossArrival.position;
+            spawnYaw = bossArrival.eulerAngles.y;
+        } else {
+            if (spawnVectors.Count > 0) {
+                int num = (int)(tick % (uint)spawnVectors.Count);
+                transform.position = spawnVectors[num];
+            } else {
+                Debug.LogWarning("[PlayerMovement] no spawn points found; respawning at the initial spawn position.");
+                transform.position = spawn;
+            }
+
+            Vector3 targetDirection = new Vector3(17f - 13.94f, -9f, -27f + 3.89f) - transform.position;
+            spawnYaw = Quaternion.LookRotation(targetDirection).eulerAngles.y;
+        }
+        characterController.enabled = true;
+
+        if (!applyEffects) return;
+
         if (DamageControl.Local != null) DamageControl.Local.ServerRespawn();
         canTakeDamage = false;
         if (invulnerableRoutine != null) {
@@ -1461,45 +1519,16 @@ public class PlayerMovement : NetworkBehaviour {
         }
         if (localShooting != null) localShooting.reloadNum = 30;
         GunThingAnim.movingState = false;
-        dashes = 0;
         transform.localEulerAngles = Vector3.zero;
-        newVelocity = Vector3.zero;
-        characterController.enabled = false;
-        dead = false;
-        lastGroundedHeight = -13;
-        movement = Vector3.zero;
-        dashVector = Vector3.zero;
         if (dashRoutine != null) {
             StopCoroutine(dashRoutine);
             dashRoutine = null;
         }
         dashFOV = 0f;
-        shotBoost = Vector3.zero;
-        simState.launch = false;
-        jumpedLast = false;
-        fastAir = false;
-        isSprinting = false;
         pendingLanding = false;
-        jumpBufferTimer = 0f;
         currentCameraRotationX = 0f;
+        FaceDirection(spawnYaw);
 
-        if (!global::SceneManager.Instance.InCombatScene && bossArrival != null) {
-            transform.position = bossArrival.position;
-            FaceDirection(bossArrival.eulerAngles.y);
-        } else {
-            if (spawnVectors.Count > 0) {
-                int num = Random.Range(0, spawnVectors.Count);
-                transform.position = spawnVectors[num];
-            } else {
-                Debug.LogWarning("[PlayerMovement] no spawn points found; respawning at the initial spawn position.");
-                transform.position = spawn;
-            }
-
-            Vector3 targetDirection = new Vector3(17f - 13.94f, -9f, -27f + 3.89f) - transform.position;
-            FaceDirection(Quaternion.LookRotation(targetDirection).eulerAngles.y);
-        }
-
-        characterController.enabled = true;
         if (localShooting != null) localShooting.canShoot = true;
 
         lastPosition = playerTransform.position;
