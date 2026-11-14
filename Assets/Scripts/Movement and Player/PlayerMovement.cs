@@ -64,7 +64,6 @@ public class PlayerMovement : NetworkBehaviour {
     private Transform bossArrival;
     private bool firstBossEntry;
     private GameObject combatSceneLight;
-    private bool canTeleport = true;
     [SerializeField] private float launchForce;
     [SerializeField] private float dashForce = 10.0f;
     private int dashes = 0;
@@ -262,12 +261,12 @@ public class PlayerMovement : NetworkBehaviour {
     [Replicate]
     private void PerformReplicate(MoveInput input, ReplicateState state = ReplicateState.Invalid, Channel channel = Channel.Unreliable)
     {
+        if (state.ContainsReplayed() && simState.teleporting) return;
         MovementLoop(input, state);
     }
 
     public override void CreateReconcile() {
-        ServerOutput rd = default;
-        PerformReconcile(rd);
+        PerformReconcile(simState);
     }
 
     [Reconcile]
@@ -441,6 +440,8 @@ public class PlayerMovement : NetworkBehaviour {
         fresh.lastGroundedHeight = -13;
         fresh.currDimension = currDimension;
         fresh.position = transform.position;
+        fresh.controllerEnabled = true;
+        fresh.canTeleport = true;
         return fresh;
     }
 
@@ -551,11 +552,11 @@ public class PlayerMovement : NetworkBehaviour {
         if (sceneManager.LoadScene(global::SceneManager.DesertScene)) {
             float waited = 0f;
             while (!sceneManager.TryGetActiveScene(global::SceneManager.DesertScene, out _) && waited < 15f) {
-                characterController.enabled = false;
+                simState.controllerEnabled = false;
                 waited += Time.unscaledDeltaTime;
                 yield return null;
             }
-            characterController.enabled = true;
+            simState.controllerEnabled = true;
         }
         firstBossEntry = true;
         ChangeScene(serverInfo.scene, serverInfo);
@@ -614,16 +615,26 @@ public class PlayerMovement : NetworkBehaviour {
     private void OnSceneLoadedAsOwner(Scene scene, LoadSceneMode mode) {
         if (!IsOwner) return;
 
-        characterController.enabled = false;
-        characterController.enabled = true;
+        simState.controllerEnabled = true;
 
-        newVelocity = Vector3.zero;
-        dashVector = Vector3.zero;
-        lastPosition = playerTransform.position;
-        lastGroundedHeight = transform.position.y;
+        simState.dashVector = Vector3.zero;
+        simState.position = playerTransform.position;
+        simState.lastGroundedHeight = transform.position.y;
+        SceneLoadServer(simState.position);
 
         if (!global::SceneManager.Instance.CompleteTransfer(scene)) return;
         ArriveInScene(scene);
+    }
+
+    [ServerRpc]
+    private void SceneLoadServer(Vector3 position)
+    {
+        characterController.enabled = false;
+        transform.position = position;
+        characterController.enabled = simState.controllerEnabled;
+        simState.dashVector = Vector3.zero;
+        simState.position = position;
+        simState.lastGroundedHeight = position.y;
     }
 
     private void ArriveInScene(Scene scene) {
@@ -640,8 +651,6 @@ public class PlayerMovement : NetworkBehaviour {
         }
         bool inCombatScene = global::SceneManager.Instance.InCombatScene;
         if (borderInstance != null) borderInstance.gameObject.SetActive(inCombatScene);
-        if (!inCombatScene && portal4B == null)
-            Debug.LogError($"[PlayerMovement] '{scene.name}' has no portal4B; there is no way back to DesertScene.");
 
         Transform destination;
         if (pendingArrival != null) {
@@ -652,17 +661,10 @@ public class PlayerMovement : NetworkBehaviour {
                 ? (portal4A != null ? portal4A.transform : null)
                 : (firstBossEntry && bossArrival != null ? bossArrival : portal4B != null ? portal4B.transform : null);
         }
-        if (destination == null) {
-            Debug.LogError($"[PlayerMovement] '{scene.name}' has no arrival point ('{pendingArrival ?? "portal4A, BossArrival or portal4B"}').");
-            pendingArrival = null;
-            canTeleport = true;
-            return;
-        }
 
         bool firstSpawn = firstBossEntry && destination == bossArrival;
         pendingArrival = null;
         firstBossEntry = false;
-
         HandleTeleportation(destination, pendingDimension, destination == bossArrival ? 0f : 3f);
         AddOwnerToScene(scene.name);
         SetMatchCondition(!inCombatScene);
@@ -704,8 +706,8 @@ public class PlayerMovement : NetworkBehaviour {
             mazeInfo.root = find("Maze");
             spaceInfo.root = find("Void");
             iceInfo.root = find("Ice");
-        } catch (System.Exception e) {
-            Debug.LogWarning($"[PlayerMovement] could not cache dimension roots: {e.Message}");
+        } catch {
+            Debug.LogWarning("Couldn't find one of dimensions");
         }
         allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo, serverInfo };
     }
@@ -915,6 +917,8 @@ public class PlayerMovement : NetworkBehaviour {
         public bool sprintInputPrev;
         public bool launch;
         public bool dead;
+        public bool controllerEnabled;
+        public bool canTeleport;
         public float lastGroundedHeight;
         public float jumpBufferTimer;
         public int dashNum;
@@ -922,11 +926,12 @@ public class PlayerMovement : NetworkBehaviour {
         public float stamina;
         public float stepOffset;
         public string currDimension;
+        public bool teleporting;
 
         private uint _tick;
 
         public ServerOutput(Vector3 position, Vector3 movement, float verticalVelocity, Vector3 slideMovement, Vector3 dashVector, Vector3 shotBoost,
-            bool jumpedLast, bool fastAir, bool isSprinting, bool isHealing, float jumpBufferTimer, int dashNum, float stamina, float stepOffset, string currDimension) {
+            bool jumpedLast, bool fastAir, bool isSprinting, bool isHealing, float jumpBufferTimer, int dashNum, float stamina, float stepOffset, string currDimension, bool teleporting) {
             this = default;
             this.currDimension = currDimension;
             this.position = position;
@@ -943,6 +948,7 @@ public class PlayerMovement : NetworkBehaviour {
             this.dashNum = dashNum;
             this.stamina = stamina;
             this.stepOffset = stepOffset;
+            this.teleporting = teleporting;
             _tick = 0;
         }
 
@@ -1014,7 +1020,8 @@ public class PlayerMovement : NetworkBehaviour {
         HandleDashRegen(ref result);
         HandleShotBoost(ref result);
         ManageSprintState(ref result);
-        // if (characterController.enabled) characterController.Move((movement + slideMovement) * Time.deltaTime + verticalVelocity + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
+        characterController.enabled = result.controllerEnabled;
+        if (result.controllerEnabled && IsOwner) characterController.Move((result.movement + result.slideMovement) * Time.deltaTime + Vector3.down * result.verticalVelocity + upgradeManager.Local.dashForceMultiplier * result.dashVector * Time.deltaTime - result.shotBoost * Time.deltaTime);
         return result;
     }
 
@@ -1077,7 +1084,7 @@ public class PlayerMovement : NetworkBehaviour {
 
     private void GetJumpAndGravityVector(MoveInput input, ref ServerOutput result) {
         //if (input.Space) serverController.TryFeed();
-        float newVelocityY = 0;
+        float newVelocityY;
         if (result.jumpBufferTimer > 0f && result.isGrounded && canJump.Value) {
             result.jumpBufferTimer = 0f;
 
@@ -1249,6 +1256,7 @@ public class PlayerMovement : NetworkBehaviour {
     [Reconcile]
     private void PerformReconcile(ServerOutput data)
     {
+        if (simState.teleporting) return;
         if (transform.position != data.position)
         {
             characterController.enabled = false;
@@ -1360,8 +1368,11 @@ public class PlayerMovement : NetworkBehaviour {
         if (Vector3.Dot(hitNormal, Vector3.up) < 0.95f) return false;
         return true;
     }
-    private void TeleportationCheck(GameObject hitObject) {        
-        if (canTeleport && (ServerController.Local.serverIntroDone || SaveSystem.testingLocal)) {
+
+    [ServerRpc]
+    private void SetTeleporting(bool teleporting) => simState.teleporting = teleporting;  
+    private void TeleportationCheck(GameObject hitObject) {      
+        if (simState.canTeleport && (ServerController.Local.serverIntroDone || SaveSystem.testingLocal)) {
             if (hitObject == portal1A) ChangeScene(desertInfo.scene, desertInfo, "portal1A");
             else if (hitObject == portal1B) ChangeScene(mazeInfo.scene, mazeInfo, "portal1B");
             else if (hitObject == portal2A) ChangeScene(desertInfo.scene, desertInfo, "portal2A");
@@ -1376,7 +1387,7 @@ public class PlayerMovement : NetworkBehaviour {
     private void ChangeScene(string name, DimensionInfo target, string arrival = null) {
         if (!IsOwner) return;
         global::SceneManager sceneManager = global::SceneManager.Instance;
-        canTeleport = false;
+        simState.canTeleport = false;
         pendingDimension = target;
         pendingArrival = arrival;
         sceneManager.BeginTransfer(name);
@@ -1388,16 +1399,16 @@ public class PlayerMovement : NetworkBehaviour {
         if (!sceneManager.LoadScene(name)) {
             sceneManager.Reset();
             pendingArrival = null;
-            canTeleport = true;
+            simState.canTeleport = true;
             return;
         }
 
         RetroDither.isTeleporting = true;
-        characterController.enabled = false;
+        simState.controllerEnabled = false;
         StartCoroutine(sceneManager.TransferTimeout(name, () => {
             pendingArrival = null;
-            canTeleport = true;
-            characterController.enabled = true;
+            simState.canTeleport = true;
+            simState.controllerEnabled = true;
         }));
     }
 
@@ -1474,11 +1485,12 @@ public class PlayerMovement : NetworkBehaviour {
     [ServerRpc]
     private void ServerSetDead() {
         simState.dead = true;
+        simState.controllerEnabled = false;
     }
 
     public void Die() {
         if (!IsOwner || dead) return;
-        characterController.enabled = false;
+        simState.controllerEnabled = false;
         simState.dead = true;
         ServerSetDead();
         if (DamageControl.Local != null) DamageControl.Local.ServerKillSelf();
@@ -1566,15 +1578,18 @@ public class PlayerMovement : NetworkBehaviour {
         SetActiveDimension(target);
         if (global::SceneManager.Instance.InCombatScene && combatSceneLight != null)
             combatSceneLight.transform.localScale = (target.name == "Desert") ? Vector3.one * 150f : Vector3.zero;
-        canTeleport = false;
+        simState.canTeleport = false;
         StartCoroutine(teleTrue());
         RetroDither.isTeleporting = true;
-        transform.position = destination.position + new Vector3(0f, heightOffset, 0f);
+        simState.position = destination.position + new Vector3(0f, heightOffset, 0f);
+        transform.position = simState.position;
         characterController.enabled = true;
-        lastGroundedHeight = transform.position.y;
-        lastPosition = playerTransform.position;
+        simState.controllerEnabled = true;
+        simState.lastGroundedHeight = simState.position.y;
 
         currDimension = target.name;
+        simState.currDimension = target.name;
+        TeleportServer(simState.position, target.name);
         playerCamera.farClipPlane = target.farClip;
         if (target.skybox != null) {
             RenderSettings.skybox = target.skybox;
@@ -1601,6 +1616,25 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     [ServerRpc]
+    private void TeleportServer(Vector3 position, string dimensionName)
+    {
+        characterController.enabled = false;
+        transform.position = position;
+        characterController.enabled = true;
+        currDimension = dimensionName;
+        simState.currDimension = dimensionName;
+        simState.position = position;
+        simState.controllerEnabled = true;
+        simState.lastGroundedHeight = position.y;
+        simState.canTeleport = false;
+        StartCoroutine(ServerTeleportCooldown());
+    }
+
+    private IEnumerator ServerTeleportCooldown() {
+        yield return new WaitForSeconds(2f + DamageControl.TeleportProtectionTime);
+        simState.canTeleport = true;
+    }
+    [ServerRpc]
     private void SetMatchCondition(bool enteringBossScene)
     {
         bool hasUniqueMatch = currentMatch != SharedMatch && currentMatch != NoMatch;
@@ -1616,23 +1650,16 @@ public class PlayerMovement : NetworkBehaviour {
     private void AddOwnerToScene(string sceneName)
     {
         Scene scene = UnityEngine.SceneManagement.SceneManager.GetSceneByName(sceneName);
-        if (!scene.isLoaded) {
-            Debug.LogWarning($"[PlayerMovement] '{sceneName}' is not loaded on the server; connection {Owner.ClientId} was not added to it.");
-            return;
-        }
         networkManager.SceneManager.AddConnectionToScene(Owner, scene);
         ApplyDimensionRules(sceneName);
         DamageControl damageControl = GetComponent<DamageControl>();
         if (damageControl != null) damageControl.GrantTeleportProtection();
     }
 
-    [Server]
+    [ServerRpc]
     private void ApplyDimensionRules(string sceneName)
     {
-        if (!rulesByScene.TryGetValue(sceneName, out DimensionRules rules)) {
-            Debug.LogWarning($"[PlayerMovement] no dimension rules for '{sceneName}'; keeping the current ones.");
-            return;
-        }
+        rulesByScene.TryGetValue(sceneName, out DimensionRules rules);
         serverRules = rules;
         canDash.Value = rules.canDash;
         dashReloadModifier.Value = rules.canDash ? rules.dashReloadModifier : 0f;
@@ -1657,10 +1684,12 @@ public class PlayerMovement : NetworkBehaviour {
     IEnumerator teleTrue() {
         HealthController.tpAnim = true;
         isTeleporting = true;
+        simState.teleporting = true;
         yield return new WaitForSeconds(2f);
+        simState.teleporting = false;
         isTeleporting = false;
         yield return new WaitForSeconds(DamageControl.TeleportProtectionTime);
-        canTeleport = true;
+        simState.canTeleport = true;
     }
     
     private static bool IsBuildCollider(Collider col) {
@@ -1668,7 +1697,7 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     void CheckIfStuckAndMoveUp() {
-        if (dead || !characterController.enabled) return;
+        if (dead || !simState.controllerEnabled) return;
 
         Vector3 capsuleBottom = transform.position + characterController.center - Vector3.up * (characterController.height / 2 - characterController.radius);
         Vector3 capsuleTop = transform.position + characterController.center + Vector3.up * (characterController.height / 2 - characterController.radius);
