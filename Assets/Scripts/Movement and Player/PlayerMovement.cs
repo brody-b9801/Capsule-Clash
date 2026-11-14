@@ -81,6 +81,7 @@ public class PlayerMovement : TickNetworkBehaviour {
     private bool pendingLanding; 
     private float jumpBufferTimer;
     private ServerOutput simState;
+    private float SimDelta => (float)TimeManager.TickDelta;
     private uint _simTick;
     private bool _simReplaying;
     private readonly List<(uint tick, System.Action apply)> _pendingServerChanges = new List<(uint tick, System.Action apply)>();
@@ -237,7 +238,7 @@ public class PlayerMovement : TickNetworkBehaviour {
     public static PlayerMovement Local {get; private set;}
     private Shooting localShooting;
     private ObjectSpawner localSpawner;
-    NetworkManager networkManager = InstanceFinder.NetworkManager;
+    NetworkManager networkManager;
     private const int SharedMatch = 69420;
     private const int NoMatch = -1;
     private int currentMatch = NoMatch;
@@ -259,6 +260,11 @@ public class PlayerMovement : TickNetworkBehaviour {
         MoveInput input = new MoveInput(_horizontal, _vertical, _jump,
             Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift), isAiming,
             Input.GetKey(KeyCode.Q), _respawn, currentCameraRotationY, characterController.stepOffset, currentCameraRotationX);
+        input.SpeedMultiplier = upgradeManager.Local.speedMultiplier;
+        input.JumpMultiplier = upgradeManager.Local.jumpMultiplier;
+        input.DashForceMultiplier = upgradeManager.Local.dashForceMultiplier;
+        input.DashRegenMultiplier = upgradeManager.Local.dashRegenMultiplier;
+        input.CanSprint = StaminaController.Local.canSprint;
         _jump = false;
         _respawn = false;
         return input;
@@ -271,6 +277,7 @@ public class PlayerMovement : TickNetworkBehaviour {
     public string getUsername() { return username; }
 
     protected override void TimeManager_OnTick() {
+        Debug.Log("OnTick");
         PerformReplicate(IsOwner ? BuildMoveInput() : default);
         CreateReconcile();
     }
@@ -455,7 +462,16 @@ public class PlayerMovement : TickNetworkBehaviour {
 
     public override void OnStartNetwork() {
         base.OnStartNetwork();
+        characterController = GetComponent<CharacterController>();
+        InitializeDimensions();
         ResetSimState();
+        TimeManager.OnTick += TimeManager_OnTick;
+    }
+    
+    public override void OnStopNetwork()
+    {
+        base.OnStopNetwork();
+        TimeManager.OnTick -= TimeManager_OnTick;
     }
 
     private void ResetSimState() {
@@ -488,7 +504,7 @@ public class PlayerMovement : TickNetworkBehaviour {
 
     public override void OnStartClient() {
         base.OnStartClient();
-
+        networkManager = InstanceFinder.NetworkManager;
         Application.targetFrameRate = -1;
 
         if (IsOwner) {
@@ -507,8 +523,7 @@ public class PlayerMovement : TickNetworkBehaviour {
             PersistentObjects.Ensure(playerCamera);
 
             upgradeManager[] upgradeManagers = FindObjectsByType<upgradeManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            if (upgradeManagers.Length > 0) PersistentSceneObject.Keep(upgradeManagers[0].gameObject, "UpgradeUI");
-            else Debug.LogWarning("[PlayerMovement] no upgradeManager found; the HUD will not survive the scene load.");
+            PersistentSceneObject.Keep(upgradeManagers[0].gameObject, "UpgradeUI");
 
             global::SceneManager.Instance.Reset();
             global::SceneManager.SceneLoaded += OnSceneLoadedAsOwner;
@@ -628,7 +643,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning($"[PlayerMovement] could not cache spawn positions for '{currDimension}': {e.Message}");
+            Debug.LogWarning($"could not cache spawn positions for '{currDimension}': {e.Message}");
         }
     }
     public static bool getAvatarBool(NetworkObject avatar1) {
@@ -914,16 +929,16 @@ public class PlayerMovement : TickNetworkBehaviour {
         UpdateDynamicFOV();
     }
 
-    private float GetBaseSpeed(MoveInput input)
+    private float GetBaseSpeed(MoveInput input, ServerOutput state)
     {
-        if (input.Aim && isGrounded) return 2.5f;
-        if (isSprinting && isGrounded) return 12.0f;
-        if (isSprinting && fastAir) return 10.0f;
-        if (!isGrounded) return 7.5f;
+        if (input.Aim && state.isGrounded) return 2.5f;
+        if (state.isSprinting && state.isGrounded) return 12.0f;
+        if (state.isSprinting && state.fastAir) return 10.0f;
+        if (!state.isGrounded) return 7.5f;
         return 8.5f;
     }
 
-    private float SetTargetSpeed(MoveInput input) => GetBaseSpeed(input) * upgradeManager.Local.speedMultiplier;
+    private float SetTargetSpeed(MoveInput input, ServerOutput state) => GetBaseSpeed(input, state) * input.SpeedMultiplier;
    public struct ServerOutput : IReconcileData {
         public Vector3 position;
         public Vector3 movement;
@@ -996,6 +1011,11 @@ public class PlayerMovement : TickNetworkBehaviour {
         public float Yaw;
         public float Pitch;
         public float StepOffset;
+        public float SpeedMultiplier;
+        public float JumpMultiplier;
+        public float DashForceMultiplier;
+        public float DashRegenMultiplier;
+        public bool CanSprint;
 
         private uint _tick;
 
@@ -1039,7 +1059,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         onSlope = result.isGrounded && Vector3.Angle(Vector3.up, result.floorNormal) > 1f;
 
         if (input.Space) result.jumpBufferTimer = jumpBufferTime;
-        else result.jumpBufferTimer = Mathf.Max(result.jumpBufferTimer - Time.deltaTime, 0f);
+        else result.jumpBufferTimer = Mathf.Max(result.jumpBufferTimer - SimDelta, 0f);
 
         SetExtraneousStates(input, ref result); //needs cleanup
         UpdateMovementVector(input, ref result);
@@ -1047,12 +1067,12 @@ public class PlayerMovement : TickNetworkBehaviour {
         GetJumpAndGravityVector(input, ref result);
         HandleLaunch(ref result);
         HandleDashing(input, ref result);
-        HandleDashRegen(ref result);
+        HandleDashRegen(input, ref result);
         HandleShotBoost(ref result);
-        ManageSprintState(ref result);
+        ManageSprintState(input, ref result);
         characterController.enabled = result.controllerEnabled;
         simState = result;
-        if (result.controllerEnabled) characterController.Move((result.movement + result.slideMovement) * Time.deltaTime + Vector3.up * result.verticalVelocity * Time.deltaTime +upgradeManager.Local.dashForceMultiplier * result.dashVector * Time.deltaTime - result.shotBoost * Time.deltaTime);
+        if (result.controllerEnabled) characterController.Move((result.movement + result.slideMovement + Vector3.up * result.verticalVelocity + input.DashForceMultiplier * result.dashVector - result.shotBoost) * SimDelta);
         return simState;
     }
 
@@ -1061,7 +1081,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         if (Vector3.Angle(Vector3.up, result.floorNormal) > characterController.slopeLimit)
         {
             Vector3 targetSlide = Vector3.ProjectOnPlane(Vector3.down, result.floorNormal).normalized * slideSpeed;
-            result.slideMovement = Vector3.MoveTowards(result.slideMovement, targetSlide, Time.deltaTime * slideAcceleration);
+            result.slideMovement = Vector3.MoveTowards(result.slideMovement, targetSlide, SimDelta * slideAcceleration);
 
             Vector3 intoFloor = Vector3.Project(result.movement, result.floorNormal);
             Vector3 alongFloor = result.movement - intoFloor;
@@ -1088,7 +1108,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         }
         moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
 
-        float targetSpeed = SetTargetSpeed(input);
+        float targetSpeed = SetTargetSpeed(input, result);
         Vector3 targetMovement = moveDirection * targetSpeed;
         DimensionInfo dimension = currDimension == "Ice"
             ? (result.onIce ? iceInfo : desertInfo)
@@ -1109,7 +1129,7 @@ public class PlayerMovement : TickNetworkBehaviour {
             if (result.isGrounded) accelFactor = dimension.accel;
             else accelFactor = airAcceleration;
         }
-        result.movement = Vector3.MoveTowards(result.movement, targetMovement, Time.deltaTime * accelFactor);
+        result.movement = Vector3.MoveTowards(result.movement, targetMovement, SimDelta * accelFactor);
         if (IsOwner) percentAccelerated = Mathf.Clamp01(new Vector3(result.movement.x, 0, result.movement.z).magnitude / (targetSpeed * 0.8f));
     }
 
@@ -1123,9 +1143,9 @@ public class PlayerMovement : TickNetworkBehaviour {
             if (currDimension == "Maze")
                 newVelocityY = Mathf.Clamp(slopeCarry + jumpForce, 0, Mathf.Infinity);
             else if (currDimension == "Space")
-                newVelocityY = Mathf.Clamp(slopeCarry + 1.5f * jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
+                newVelocityY = Mathf.Clamp(slopeCarry + 1.5f * jumpForce * input.JumpMultiplier, 0, Mathf.Infinity);
             else
-                newVelocityY = Mathf.Clamp(slopeCarry + jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
+                newVelocityY = Mathf.Clamp(slopeCarry + jumpForce * input.JumpMultiplier, 0, Mathf.Infinity);
             result.movement.y = 0f;
             result.jumpedLast = true;
             resetPrev = false;
@@ -1136,11 +1156,11 @@ public class PlayerMovement : TickNetworkBehaviour {
         if (((result.isGrounded && !result.jumpedLast) || onSteepSlope) && result.verticalVelocity <= 0f) {
             newVelocityY = -2;
         } else {
-            if (result.groundedPrev && result.verticalVelocity <= 0 && !characterController.isGrounded && !result.jumpedLast) groundingForce = SetTargetSpeed(input) * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad);
-            newVelocityY = Mathf.Max(result.verticalVelocity - gravity.Value * Time.deltaTime, -50f);
+            if (result.groundedPrev && result.verticalVelocity <= 0 && !characterController.isGrounded && !result.jumpedLast) groundingForce = SetTargetSpeed(input, result) * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad);
+            newVelocityY = Mathf.Max(result.verticalVelocity - gravity.Value * SimDelta, -50f);
         }
 
-        result.verticalVelocity = newVelocityY + groundingForce * Time.deltaTime;
+        result.verticalVelocity = newVelocityY + groundingForce * SimDelta;
     }
 
     private void HandleCameraRotation() {
@@ -1214,7 +1234,6 @@ public class PlayerMovement : TickNetworkBehaviour {
 
     private void HandleDashing(MoveInput input, ref ServerOutput result) {
         if (input.Space && canDash.Value && result.dashNum > 0 && !result.isGrounded) {
-            Debug.Log("dashing");
             HealthController.noFDAnim = true;
             result.dashNum--;
             Vector3 lookForward = Quaternion.Euler(input.Pitch, input.Yaw, 0f) * Vector3.forward;
@@ -1229,14 +1248,14 @@ public class PlayerMovement : TickNetworkBehaviour {
             result.dashElapsed = 0f;
         } else {
             dashFOV = Mathf.Lerp(dashFOV, 0f, Time.deltaTime * 5f);
-            DecayDash(ref result);
+            DecayDash(input, ref result);
         }
     }
 
-    private void DecayDash(ref ServerOutput result) {
+    private void DecayDash(MoveInput input, ref ServerOutput result) {
         if (result.dashVector == Vector3.zero) return;
-        float duration = 2f * (1 + (upgradeManager.Local.dashForceMultiplier - 1) * 0.5f);
-        result.dashElapsed += Time.deltaTime;
+        float duration = 2f * (1 + (input.DashForceMultiplier - 1) * 0.5f);
+        result.dashElapsed += SimDelta;
         if (result.dashElapsed >= duration || result.isGrounded) {
             result.dashVector = Vector3.zero;
             return;
@@ -1258,11 +1277,11 @@ public class PlayerMovement : TickNetworkBehaviour {
     {
 
 
-        if (input.Heal && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
+        if (IsOwner && input.Heal && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
             && result.isGrounded && !result.isHealing && DamageControl.Local != null && DamageControl.Local.health.Value < 180.0f)
             StartCoroutine(stationaryHealing());
 
-        if (input.Sprint && result.isGrounded && StaminaController.Local.canSprint && !input.Aim) {
+        if (input.Sprint && result.isGrounded && input.CanSprint && !input.Aim) {
             result.isSprinting = true;
         } else {
             if (!result.fastAir) result.isSprinting = false;
@@ -1280,8 +1299,8 @@ public class PlayerMovement : TickNetworkBehaviour {
         }
     }
 
-    private void ManageSprintState(ref ServerOutput result) {
-        if (!StaminaController.Local.canSprint) result.fastAir = false;
+    private void ManageSprintState(MoveInput input, ref ServerOutput result) {
+        if (!input.CanSprint) result.fastAir = false;
 
         if (result.sprintingPrev && result.groundedPrev && !result.isGrounded) {
             result.fastAir = true;
@@ -1294,7 +1313,7 @@ public class PlayerMovement : TickNetworkBehaviour {
             result.shotBoost = Vector3.zero;
             return;
         }
-        result.shotBoost *= Mathf.Exp(-shotBoostDecay * Time.deltaTime);
+        result.shotBoost *= Mathf.Exp(-shotBoostDecay * SimDelta);
     }
 
     public void ApplyShotBoost(Shooting.currGun gun, Vector3 aimDirection) {
@@ -1347,12 +1366,12 @@ public class PlayerMovement : TickNetworkBehaviour {
             isAiming = false;
         }
     }
-    private void HandleDashRegen(ref ServerOutput result) {
+    private void HandleDashRegen(MoveInput input, ref ServerOutput result) {
         if (result.dashNum >= 3) {
             result.timeToNextDash = DashRegenTime;
             return;
         }
-        result.timeToNextDash -= Time.deltaTime * upgradeManager.Local.dashRegenMultiplier * dashReloadModifier.Value;
+        result.timeToNextDash -= SimDelta * input.DashRegenMultiplier * dashReloadModifier.Value;
         if (result.timeToNextDash <= 0f) {
             result.dashNum++;
             result.timeToNextDash = DashRegenTime;
@@ -1543,7 +1562,7 @@ public class PlayerMovement : TickNetworkBehaviour {
                 int num = (int)(tick % (uint)spawnVectors.Count);
                 transform.position = spawnVectors[num];
             } else {
-                Debug.LogWarning("[PlayerMovement] no spawn points found; respawning at the initial spawn position.");
+                Debug.LogWarning("no spawn points found");
                 transform.position = spawn;
             }
 
