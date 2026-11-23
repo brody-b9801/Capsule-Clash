@@ -29,6 +29,7 @@ public class PlayerMovement : TickNetworkBehaviour {
     private float currentCameraRotationY = 0.0f;
     public bool isAiming = false;
     public bool isSprinting = false;
+    private StaminaController sc;
     public Vector3 newPosition;
     public Vector3 movement = Vector3.zero;
     private Vector3 slideMovement = Vector3.zero;
@@ -264,6 +265,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         input.JumpMultiplier = upgradeManager.Local.jumpMultiplier;
         input.DashForceMultiplier = upgradeManager.Local.dashForceMultiplier;
         input.DashRegenMultiplier = upgradeManager.Local.dashRegenMultiplier;
+        input.StaminaRegenMultiplier = upgradeManager.Local.staminaRegenMultiplier;
         input.CanSprint = StaminaController.Local.canSprint;
         _jump = false;
         _respawn = false;
@@ -463,6 +465,7 @@ public class PlayerMovement : TickNetworkBehaviour {
     public override void OnStartNetwork() {
         base.OnStartNetwork();
         characterController = GetComponent<CharacterController>();
+        sc = GetComponent<StaminaController>();
         InitializeDimensions();
         ResetSimState();
         TimeManager.OnTick += TimeManager_OnTick;
@@ -487,6 +490,8 @@ public class PlayerMovement : TickNetworkBehaviour {
         fresh.position = transform.position;
         fresh.controllerEnabled = true;
         fresh.canTeleport = true;
+        fresh.canSprint = true;
+        fresh.stamina = sc.MaxStamina;
         return fresh;
     }
 
@@ -524,6 +529,7 @@ public class PlayerMovement : TickNetworkBehaviour {
 
             upgradeManager[] upgradeManagers = FindObjectsByType<upgradeManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             PersistentSceneObject.Keep(upgradeManagers[0].gameObject, "UpgradeUI");
+            sc = GetComponent<StaminaController>();
 
             global::SceneManager.Instance.Reset();
             global::SceneManager.SceneLoaded += OnSceneLoadedAsOwner;
@@ -967,6 +973,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         public Vector3 dashStartVector;
         public float dashElapsed;
         public float stamina;
+        public bool canSprint;
         public float stepOffset;
         public string currDimension;
         public bool teleporting;
@@ -1015,6 +1022,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         public float JumpMultiplier;
         public float DashForceMultiplier;
         public float DashRegenMultiplier;
+        public float StaminaRegenMultiplier;
         public bool CanSprint;
 
         private uint _tick;
@@ -1051,7 +1059,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         result.sprintingPrev = result.isSprinting;
         result.onIce = false;
 
-        //Grounded logic
+
         var groundedPair = isGround();
         result.isGrounded = groundedPair.Item1;
         result.floorNormal = groundedPair.Item2;
@@ -1061,7 +1069,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         if (input.Space) result.jumpBufferTimer = jumpBufferTime;
         else result.jumpBufferTimer = Mathf.Max(result.jumpBufferTimer - SimDelta, 0f);
 
-        SetExtraneousStates(input, ref result); //needs cleanup
+        SetExtraneousStates(input, ref result); 
         UpdateMovementVector(input, ref result);
         KeyEvents(input, ref result);
         GetJumpAndGravityVector(input, ref result);
@@ -1070,9 +1078,24 @@ public class PlayerMovement : TickNetworkBehaviour {
         HandleDashRegen(input, ref result);
         HandleShotBoost(ref result);
         ManageSprintState(input, ref result);
+        sc.UpdateStamina(input, ref result, SimDelta, IsOwner);
         characterController.enabled = result.controllerEnabled;
         simState = result;
-        if (result.controllerEnabled) characterController.Move((result.movement + result.slideMovement + Vector3.up * result.verticalVelocity + input.DashForceMultiplier * result.dashVector - result.shotBoost) * SimDelta);
+        if (result.controllerEnabled) {
+            characterController.Move((result.movement + result.slideMovement + Vector3.up * result.verticalVelocity + input.DashForceMultiplier * result.dashVector - result.shotBoost) * SimDelta);
+            isGrounded = simState.isGrounded;
+            groundedPrev = simState.groundedPrev;
+            fastAir = simState.fastAir;
+            isSprinting = simState.isSprinting;
+            movement = simState.movement;
+            slideMovement = simState.slideMovement;
+            jumpedLast = simState.jumpedLast;
+            jumpBufferTimer = simState.jumpBufferTimer;
+            dashVector = simState.dashVector;
+            lastGroundedHeight = simState.lastGroundedHeight;
+            currDimension = simState.currDimension;
+            shotBoost = simState.shotBoost;
+        }
         return simState;
     }
 
@@ -1281,7 +1304,7 @@ public class PlayerMovement : TickNetworkBehaviour {
             && result.isGrounded && !result.isHealing && DamageControl.Local != null && DamageControl.Local.health.Value < 180.0f)
             StartCoroutine(stationaryHealing());
 
-        if (input.Sprint && result.isGrounded && input.CanSprint && !input.Aim) {
+        if (input.Sprint && result.isGrounded && result.canSprint && !input.Aim) {
             result.isSprinting = true;
         } else {
             if (!result.fastAir) result.isSprinting = false;
