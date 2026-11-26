@@ -828,6 +828,8 @@ public class PlayerMovement : TickNetworkBehaviour {
     {
         if (Local == this) {
             if (NetworkHudCanvases.InLobby) SaveSystem.CaptureSessionData();
+            Debug.Log(dead);
+            
             if (!dead && global::SceneManager.Instance.InCombatScene && currDimension == "Desert") {
                 migrationPosition = transform.position;
                 migrationYaw = currentCameraRotationY;
@@ -1169,6 +1171,7 @@ public class PlayerMovement : TickNetworkBehaviour {
                 newVelocityY = Mathf.Clamp(slopeCarry + 1.5f * jumpForce * input.JumpMultiplier, 0, Mathf.Infinity);
             else
                 newVelocityY = Mathf.Clamp(slopeCarry + jumpForce * input.JumpMultiplier, 0, Mathf.Infinity);
+            result.verticalVelocity = newVelocityY;
             result.movement.y = 0f;
             result.jumpedLast = true;
             resetPrev = false;

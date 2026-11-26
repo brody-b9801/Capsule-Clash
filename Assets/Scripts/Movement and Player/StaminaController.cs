@@ -4,8 +4,9 @@ using UnityEngine.UI;
 
 public class StaminaController : MonoBehaviour
 {
-    [SerializeField] private RectTransform staminaBar;
-    [SerializeField] private RectTransform staminaBlack;
+    
+    private RectTransform staminaBar;
+    private RectTransform staminaBlack;
 
     private Image barImage;
     [SerializeField] private float maxStamina = 100f;
@@ -24,12 +25,19 @@ public class StaminaController : MonoBehaviour
 
     private void Awake()
     {
+        CacheUIElements();
         Local = this;
         currentStamina = maxStamina;
         yellow = new Color32(255, 220, 105, 255);
         red = new Color32(255, 112, 112, 255);
         barImage = staminaBar.GetComponent<Image>();
         UpdateStaminaBar(maxStamina);
+    }
+
+    private void CacheUIElements()
+    {
+        staminaBar = SceneReferenceContainer.Local.staminaBar.GetComponent<RectTransform>();
+        staminaBlack = SceneReferenceContainer.Local.staminaBlack.GetComponent<RectTransform>();
     }
 
     private void OnDestroy()

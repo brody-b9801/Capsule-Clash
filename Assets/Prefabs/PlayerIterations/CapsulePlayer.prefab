@@ -143,6 +143,7 @@ GameObject:
   - component: {fileID: 1447310636841987035}
   - component: {fileID: 4570701551215273596}
   - component: {fileID: 7559977541259542866}
+  - component: {fileID: 7782770748290468080}
   m_Layer: 3
   m_Name: CapsulePlayer
   m_TagString: Player
@@ -660,6 +661,24 @@ MonoBehaviour:
   _networkObjectCache: {fileID: 1447310636841987035}
   damage: 18
   maxSpawnProtectionTime: 15
+--- !u!114 &7782770748290468080
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4563841083353979690}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0372d3955e7e5947918b474e5979780, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StaminaController
+  staminaBar: {fileID: 0}
+  staminaBlack: {fileID: 0}
+  maxStamina: 100
+  staminaRegenRate: 20
+  staminaDepletionRate: 25
+  canSprint: 1
 --- !u!1 &7234072614236262368
 GameObject:
   m_ObjectHideFlags: 0
