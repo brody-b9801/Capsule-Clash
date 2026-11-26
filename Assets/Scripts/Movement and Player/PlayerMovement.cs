@@ -83,6 +83,11 @@ public class PlayerMovement : TickNetworkBehaviour {
     private float jumpBufferTimer;
     private ServerOutput simState;
     private float SimDelta => (float)TimeManager.TickDelta;
+    private Vector3 _camPrevTickPos;
+    private Vector3 _camCurrTickPos;
+    private const float CameraSnapDistance = 5f;
+    private Transform _renderedBody;
+    private Vector3 _renderedBodyLocalPos;
     private uint _simTick;
     private bool _simReplaying;
     private readonly List<(uint tick, System.Action apply)> _pendingServerChanges = new List<(uint tick, System.Action apply)>();
@@ -469,12 +474,28 @@ public class PlayerMovement : TickNetworkBehaviour {
         InitializeDimensions();
         ResetSimState();
         TimeManager.OnTick += TimeManager_OnTick;
+        TimeManager.OnPostTick += TimeManager_OnPostTick;
+        _camPrevTickPos = _camCurrTickPos = transform.position;
+        _renderedBody = transform.Find("RenderedBody");
+        if (_renderedBody != null) _renderedBodyLocalPos = _renderedBody.localPosition;
     }
     
     public override void OnStopNetwork()
     {
         base.OnStopNetwork();
         TimeManager.OnTick -= TimeManager_OnTick;
+        TimeManager.OnPostTick -= TimeManager_OnPostTick;
+    }
+
+    private void TimeManager_OnPostTick() {
+        Vector3 pos = transform.position;
+        _camPrevTickPos = (pos - _camCurrTickPos).sqrMagnitude > CameraSnapDistance * CameraSnapDistance ? pos : _camCurrTickPos;
+        _camCurrTickPos = pos;
+    }
+
+    private Vector3 SmoothedTickPosition() {
+        float t = (float)TimeManager.GetTickPercentAsDouble();
+        return Vector3.Lerp(_camPrevTickPos, _camCurrTickPos, t);
     }
 
     private void ResetSimState() {
@@ -579,6 +600,8 @@ public class PlayerMovement : TickNetworkBehaviour {
             ApplyDimensionPhysics(desertInfo);
             usernameRenderer = usernameDisplay.GetComponent<MeshRenderer>();
             GetComponent<MeshRenderer>().enabled = false;
+            Transform playerBody = transform.Find("PlayerBody");
+            if (playerBody != null) playerBody.GetComponent<MeshRenderer>().enabled = false;
             started = true;
             bool resuming = MigrationPositionPending() && global::SceneManager.Instance.activeAdditiveScene == global::SceneManager.DesertScene;
             if (resuming) {
@@ -829,7 +852,8 @@ public class PlayerMovement : TickNetworkBehaviour {
         if (Local == this) {
             if (NetworkHudCanvases.InLobby) SaveSystem.CaptureSessionData();
             Debug.Log(dead);
-            
+            Debug.Log(global::SceneManager.Instance.InCombatScene);
+            Debug.Log(currDimension == "Desert");
             if (!dead && global::SceneManager.Instance.InCombatScene && currDimension == "Desert") {
                 migrationPosition = transform.position;
                 migrationYaw = currentCameraRotationY;
@@ -2088,6 +2112,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         sideTilt = Mathf.Lerp(sideTilt, targetSideTilt, Time.deltaTime * lerpSpeed);
     }
     private void LateUpdate() {
+        if (IsOwner && _renderedBody != null) _renderedBody.position = SmoothedTickPosition() + transform.rotation * _renderedBodyLocalPos;
         if (!IsOwner || ServerController.serverAnimationPlaying || Shooting.Local == null) return;
         bool sniperAiming = CameraZoom.isAiming && Shooting.Local.currentGun == Shooting.currGun.Sniper;
         breatheAimScale = Mathf.Lerp(breatheAimScale, sniperAiming ? aimBreatheScale : 1f, Time.deltaTime * 8f);
@@ -2098,7 +2123,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         }
         if (!dead && !ServerController.serverAnimationPlaying) {
             //playerCamera.gameObject.transform.position = transform.position + new Vector3(.5f * Mathf.Sin(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad), .75f, .5f * Mathf.Cos(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad)) + landingCameraOffset;
-            playerCamera.gameObject.transform.position = transform.position + new Vector3(0, .75f, 0) + landingCameraOffset + 0.4f * transform.forward;
+            playerCamera.gameObject.transform.position = SmoothedTickPosition() + new Vector3(0, .75f, 0) + landingCameraOffset + 0.4f * transform.forward;
             if (!Shooting.Local.reloading) {
                 Vector3 shootOffset = new Vector3((-Shaker.yRot - Shaker.zRot) / 500, Shaker.easedRotationChange / 125, -Shaker.easedRotationChange / 250) * shootAnimTune;
                 akm.localPosition += akm.parent.InverseTransformVector(shootOffset);
