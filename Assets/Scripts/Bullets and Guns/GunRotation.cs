@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using FishNet.Object;
 using FishNet.Transporting;
 
@@ -31,9 +31,9 @@ public class GunRotation : NetworkBehaviour
 
         casingRenderer = casing.GetComponent<MeshRenderer>();
         magRenderer = gunMag.GetComponent<MeshRenderer>();
-        g1 = SceneLookup.FindInactive("CamAKM").transform;
-        gm1 = SceneLookup.FindInactive("MC.Magazine").transform;
-        c1 = SceneLookup.FindInactive("CamCasing").transform;
+        g1 = SceneReferenceContainer.Local.camAKM.transform;
+        gm1 = SceneReferenceContainer.Local.camMagazine.transform;
+        c1 = SceneReferenceContainer.Local.camCasing.transform;
         mainCam = Camera.main.transform;
         if (!IsOwner) return;
 

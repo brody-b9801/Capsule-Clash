@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,8 +15,8 @@ public class ReloadIndicator : MonoBehaviour
     }
     void Start()
     {
-        ReloadBar = GameObject.Find("ReloadBlack").GetComponent<Image>();
-        ReloadBarBg = GameObject.Find("RBg");
+        ReloadBar = SceneReferenceContainer.Local.reloadBar;
+        ReloadBarBg = SceneReferenceContainer.Local.reloadBarBg;
         ReloadBar.gameObject.SetActive(false);
         ReloadBarBg.SetActive(false);
         HealBar.gameObject.SetActive(false);

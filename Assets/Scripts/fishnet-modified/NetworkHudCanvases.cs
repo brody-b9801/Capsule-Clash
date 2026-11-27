@@ -323,7 +323,7 @@ public class NetworkHudCanvases : MonoBehaviour
     private void StartLocalSession()
     {
         ushort port = _networkManager.TransportManager.Transport.GetPort();
-        if (_serverState == LocalConnectionState.Stopped && !RoomMenu.IsPortInUse(port))
+        if (_serverState == LocalConnectionState.Stopped)//  && !RoomMenu.IsPortInUse(port)
             _networkManager.ServerManager.StartConnection();
         _networkManager.ClientManager.StartConnection();
         GetNextStateText(_clientState);

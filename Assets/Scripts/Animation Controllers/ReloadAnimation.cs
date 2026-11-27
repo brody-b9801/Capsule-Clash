@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -22,7 +22,7 @@ public class ReloadAnimation : MonoBehaviour
         animator = ownAnimator;
         animator.SetTrigger("NoReload");
 
-        camCasing = SceneLookup.FindInactive("CamCasing");
+        camCasing = SceneReferenceContainer.Local.camCasing;
         if (camCasing != null)
             casingRenderer = camCasing.GetComponent<MeshRenderer>();
     }

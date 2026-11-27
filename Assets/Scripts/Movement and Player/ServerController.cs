@@ -315,10 +315,10 @@ public class ServerController : MonoBehaviour {
         Local = this;
         playerCamera = camera;
         cam = camera.transform;
-        hudText = GameObject.Find("MaskText").GetComponent<TextMeshProUGUI>();
+        hudText = SceneReferenceContainer.Local.maskText;
         hudText.verticalAlignment = VerticalAlignmentOptions.Middle;
         serverText = hudText;
-        portal4 = GameObject.Find("portal4");
+        portal4 = SceneReferenceContainer.Local.serverPortal;
         ui = GameObject.FindObjectsByType<BuildUI>(FindObjectsSortMode.None)[0];
         gun = GameObject.FindObjectsByType<GunThingAnim>(FindObjectsSortMode.None)[0];
         feedPrompt = Fill(Script.FeedPrompt);

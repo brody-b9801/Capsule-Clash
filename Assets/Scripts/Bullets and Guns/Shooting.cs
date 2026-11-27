@@ -211,28 +211,28 @@ public class Shooting : NetworkBehaviour
         mainCamera          = Camera.main;
         mainCameraTransform = mainCamera.transform;
 
-        muzzleFlashCamera = GameObject.Find("CamQuad").GetComponent<MeshRenderer>().material;
+        muzzleFlashCamera = SceneReferenceContainer.Local.camQuad.material;
         muzzleFlashCamera.color = new Color(
             muzzleFlashCamera.color.r,
             muzzleFlashCamera.color.g,
             muzzleFlashCamera.color.b, alphaVal);
 
-        bulletHole  = SceneLookup.FindInactive("MCBH").transform;
-        bulletSpawn = GameObject.Find("bulletSpawn");
-        casingSpawn = GameObject.Find("casingSpawn").transform;
-        gunMesh     = SceneLookup.FindInactive("CamAKM").GetComponent<MeshFilter>();
-        CamAKM      = SceneLookup.FindInactive("CamAKM");
-        mag         = SceneLookup.FindInactive("MC.Magazine");
+        bulletHole  = SceneReferenceContainer.Local.camBulletHole;
+        bulletSpawn = SceneReferenceContainer.Local.bulletSpawn;
+        casingSpawn = SceneReferenceContainer.Local.casingSpawn;
+        gunMesh     = SceneReferenceContainer.Local.camAKM.GetComponent<MeshFilter>();
+        CamAKM      = SceneReferenceContainer.Local.camAKM;
+        mag         = SceneReferenceContainer.Local.camMagazine;
         magFilter      = mag.GetComponent<MeshFilter>();
         defaultMagMesh = magFilter.sharedMesh;
         defaultMagPosition = mag.transform.localPosition;
-        camCasing   = SceneLookup.FindInactive("CamCasing");
-        gunThing_g1 = SceneLookup.FindInactive("CamAKM").transform;
+        camCasing   = SceneReferenceContainer.Local.camCasing;
+        gunThing_g1 = SceneReferenceContainer.Local.camAKM.transform;
 
         previousPosition = transform.position;
         lockCursor       = false;
 
-        cam2     = GameObject.Find("CameraTwo").GetComponent<Camera>();
+        cam2     = SceneReferenceContainer.Local.cameraTwo;
 
         camCasing.GetComponent<MeshRenderer>().enabled = false;
     }

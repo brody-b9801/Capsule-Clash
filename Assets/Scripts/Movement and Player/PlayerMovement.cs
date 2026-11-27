@@ -545,7 +545,7 @@ public class PlayerMovement : TickNetworkBehaviour {
             localSpawner = GetComponent<ObjectSpawner>();
             if (localShooting != null) localShooting.canShoot = true;
             Shooting.lockCursor = true;
-            dt = GameObject.Find("DashText").GetComponent<TextMeshProUGUI>();
+            dt = SceneReferenceContainer.Local.dashText;
             dashTextColor = dt.color;
             playerCamera = Camera.main;
             PersistentObjects.Ensure(playerCamera);
@@ -559,8 +559,8 @@ public class PlayerMovement : TickNetworkBehaviour {
             if (_cachedBaseFOV < 0f) _cachedBaseFOV = playerCamera.fieldOfView;
             baseFOV = _cachedBaseFOV;
             currentFOV = baseFOV;
-            gunThing = SceneLookup.FindInactive("gunThing").transform;
-            akm = SceneLookup.FindInactive("CamAKM").transform;
+            gunThing = SceneReferenceContainer.Local.gunThing;
+            akm = SceneReferenceContainer.Local.camAKM.transform;
             akmBaseLocalPos = akm.localPosition;
             akmBaseLocalRot = akm.localEulerAngles;
             ResolveSceneReferences(GameObject.Find);
@@ -576,7 +576,7 @@ public class PlayerMovement : TickNetworkBehaviour {
             _borderMaterials = new Material[_borderRenderers.Length];
             for (int i = 0; i < _borderRenderers.Length; i++) _borderMaterials[i] = _borderRenderers[i].material;
             spawn = transform.position;
-            dashIcon = GameObject.Find("dashBG").GetComponent<RectTransform>();
+            dashIcon = SceneReferenceContainer.Local.dashIcon;
             CacheSpawnPositions();
             canTakeDamage = false;
             HealthController.updateHealth();
@@ -589,8 +589,6 @@ public class PlayerMovement : TickNetworkBehaviour {
             currentCameraRotationY = 0;
             playerCamera.transform.localEulerAngles = Vector3.zero;
             rotationSpeed = SettingsController.rs;
-
-            username = RoomMenu.TypedUsername;
 
             RetroDither.isTeleporting = true;
             serverController.Initialize(playerCamera);
@@ -718,7 +716,7 @@ public class PlayerMovement : TickNetworkBehaviour {
             return go != null ? go : SceneLookup.FindInactive(name);
         };
         ResolveSceneReferences(find);
-        ResolveHudReferences(find);
+        ResolveHudReferences();
         if (serverController != null) {
             serverController.CacheMasks(find);
             serverController.CacheTextOutput(find);
@@ -760,13 +758,13 @@ public class PlayerMovement : TickNetworkBehaviour {
 
     private void ResolveSceneReferences(System.Func<string, GameObject> find) {
         portal1A = find("portal1B");
-        portal1B = find("portal1A");
+        portal1B = SceneReferenceContainer.Local.portal1A;
         portal2A = find("portal2B");
-        portal2B = find("portal2A");
+        portal2B = SceneReferenceContainer.Local.portal2A;
         portal3A = find("portal3B");
-        portal3B = find("portal3A");
-        portal4A = find("portal4A");
-        portal4B = find("portal4B");
+        portal3B = SceneReferenceContainer.Local.portal3A;
+        portal4A = SceneReferenceContainer.Local.portal4A;
+        portal4B = SceneReferenceContainer.Local.portal4B;
         GameObject arrival = find("BossArrival");
         bossArrival = arrival != null ? arrival.transform : null;
         combatSceneLight = find("Scene Light");
@@ -786,17 +784,13 @@ public class PlayerMovement : TickNetworkBehaviour {
         allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo, serverInfo };
     }
 
-    private void ResolveHudReferences(System.Func<string, GameObject> find) {
+    private void ResolveHudReferences() {
         if (dt == null) {
-            GameObject dashText = find("DashText");
-            dt = dashText != null ? dashText.GetComponent<TextMeshProUGUI>() : null;
+            dt = SceneReferenceContainer.Local.dashText;
             if (dt != null) dashTextColor = dt.color;
             displayedDashes = -1;
         }
-        if (dashIcon == null) {
-            GameObject dashBG = find("dashBG");
-            dashIcon = dashBG != null ? dashBG.GetComponent<RectTransform>() : null;
-        }
+        if (dashIcon == null) dashIcon = SceneReferenceContainer.Local.dashIcon;
     }
 
     private void FaceDirection(float yaw) {
