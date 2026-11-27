@@ -245,13 +245,14 @@ MonoBehaviour:
   selfMaterial: {fileID: 2100000, guid: 9966650909bd6de4387f2c689f1d6822, type: 2}
   elapsedHealTime: 0
   usernameDisplay: {fileID: 1054499837766755018}
-  groundAcceleration: 1000
-  groundDeceleration: 1000
-  airAcceleration: 30
+  groundAcceleration: 200
+  groundDeceleration: 200
+  airAcceleration: 40
   slideAcceleration: 10
   slideSpeed: 10
-  airDeceleration: 20
-  friction: 8
+  airDeceleration: 30
+  friction: 25
+  iceFriction: 8
   sprintAccelerationMultiplier: 1.5
   airControlMultiplier: 0.5
   overspeedDamping: 10

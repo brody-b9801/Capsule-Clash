@@ -187,6 +187,7 @@ public class PlayerMovement : TickNetworkBehaviour {
     [SerializeField] private float slideSpeed = 10f;
     [SerializeField] private float airDeceleration = 2f;
     [SerializeField] private float friction = 8f;
+    [SerializeField] private float iceFriction = 0.4f;
     [SerializeField] private float sprintAccelerationMultiplier = 1.5f;
     [SerializeField] private float airControlMultiplier = 0.5f;
     [SerializeField] private float overspeedDamping = 10f;
@@ -265,7 +266,7 @@ public class PlayerMovement : TickNetworkBehaviour {
     private MoveInput BuildMoveInput() {
         MoveInput input = new MoveInput(_horizontal, _vertical, _jump,
             Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift), isAiming,
-            Input.GetKey(KeyCode.Q), _respawn, currentCameraRotationY, characterController.stepOffset, currentCameraRotationX);
+            Input.GetKey(KeyCode.Q), _respawn, currentCameraRotationY, currentCameraRotationX);
         input.SpeedMultiplier = upgradeManager.Local.speedMultiplier;
         input.JumpMultiplier = upgradeManager.Local.jumpMultiplier;
         input.DashForceMultiplier = upgradeManager.Local.dashForceMultiplier;
@@ -420,7 +421,7 @@ public class PlayerMovement : TickNetworkBehaviour {
             farClip = 400f,
             accel = 5f,
             decel = 4f,
-            fric = 0.4f,
+            fric = iceFriction,
             snow = true,
             root = GameObject.Find("Ice"),
             scene = global::SceneManager.SnowScene
@@ -642,7 +643,7 @@ public class PlayerMovement : TickNetworkBehaviour {
 
         try
         {
-            switch (currDimension)
+            switch (simState.currDimension)
             {
                 case "Desert":
                     spawnPosContainer = GameObject.Find("DesertSpawnContainer").transform;
@@ -660,7 +661,7 @@ public class PlayerMovement : TickNetworkBehaviour {
                     break;
             }
 
-            if (currDimension == "Desert" || currDimension == "Ice")
+            if (simState.currDimension == "Desert" || simState.currDimension == "Ice")
             {
                 foreach (Transform s in spawnPosContainer)
                     spawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
@@ -672,7 +673,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning($"could not cache spawn positions for '{currDimension}': {e.Message}");
+            Debug.LogWarning($"could not cache spawn positions for '{simState.currDimension}': {e.Message}");
         }
     }
     public static bool getAvatarBool(NetworkObject avatar1) {
@@ -853,8 +854,8 @@ public class PlayerMovement : TickNetworkBehaviour {
             if (NetworkHudCanvases.InLobby) SaveSystem.CaptureSessionData();
             Debug.Log(dead);
             Debug.Log(global::SceneManager.Instance.InCombatScene);
-            Debug.Log(currDimension == "Desert");
-            if (!dead && global::SceneManager.Instance.InCombatScene && currDimension == "Desert") {
+            Debug.Log(simState.currDimension == "Desert");
+            if (!dead && global::SceneManager.Instance.InCombatScene && simState.currDimension == "Desert") {
                 migrationPosition = transform.position;
                 migrationYaw = currentCameraRotationY;
                 migrationPositionTime = Time.realtimeSinceStartup;
@@ -1043,7 +1044,6 @@ public class PlayerMovement : TickNetworkBehaviour {
         public bool Respawn;
         public float Yaw;
         public float Pitch;
-        public float StepOffset;
         public float SpeedMultiplier;
         public float JumpMultiplier;
         public float DashForceMultiplier;
@@ -1053,7 +1053,7 @@ public class PlayerMovement : TickNetworkBehaviour {
 
         private uint _tick;
 
-        public MoveInput(float horizontal, float vertical, bool space, bool sprint, bool aim, bool heal, bool respawn, float yaw, float stepOffset, float pitch) {
+        public MoveInput(float horizontal, float vertical, bool space, bool sprint, bool aim, bool heal, bool respawn, float yaw, float pitch) {
             this = default;
             Pitch = pitch;
             Horizontal = horizontal;
@@ -1064,7 +1064,6 @@ public class PlayerMovement : TickNetworkBehaviour {
             Heal = heal;
             Respawn = respawn;
             Yaw = yaw;
-            StepOffset = stepOffset;
             _tick = 0;
         }
 
@@ -1089,12 +1088,12 @@ public class PlayerMovement : TickNetworkBehaviour {
         var groundedPair = isGround();
         result.isGrounded = groundedPair.Item1;
         result.floorNormal = groundedPair.Item2;
-        if (!result.isGrounded) input.StepOffset = 0f;
         onSlope = result.isGrounded && Vector3.Angle(Vector3.up, result.floorNormal) > 1f;
 
         if (input.Space) result.jumpBufferTimer = jumpBufferTime;
         else result.jumpBufferTimer = Mathf.Max(result.jumpBufferTimer - SimDelta, 0f);
 
+        wishDir = ComputeWishDir(input, result);
         SetExtraneousStates(input, ref result); 
         UpdateMovementVector(input, ref result);
         KeyEvents(input, ref result);
@@ -1106,6 +1105,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         ManageSprintState(input, ref result);
         sc.UpdateStamina(input, ref result, SimDelta, IsOwner);
         characterController.enabled = result.controllerEnabled;
+        characterController.stepOffset = result.stepOffset;
         simState = result;
         if (result.controllerEnabled) {
             characterController.Move((result.movement + result.slideMovement + Vector3.up * result.verticalVelocity + input.DashForceMultiplier * result.dashVector - result.shotBoost) * SimDelta);
@@ -1123,6 +1123,14 @@ public class PlayerMovement : TickNetworkBehaviour {
             shotBoost = simState.shotBoost;
         }
         return simState;
+    }
+
+    private static Vector3 ComputeWishDir(MoveInput input, ServerOutput result)
+    {
+        Vector3 inputDirection = new Vector3(input.Horizontal, 0, input.Vertical);
+        Quaternion yawRotation = Quaternion.Euler(0f, input.Yaw, 0f);
+        Vector3 moveDirection = yawRotation * inputDirection;
+        return moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : new Vector3(result.movement.x, 0f, result.movement.z).normalized;
     }
 
     private void UpdateMovementVector(MoveInput input, ref ServerOutput result)
@@ -1149,7 +1157,6 @@ public class PlayerMovement : TickNetworkBehaviour {
         Vector3 right = yawRotation * Vector3.right;
 
         Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
-        wishDir = moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : new Vector3(result.movement.x, 0f, result.movement.z).normalized;
         if (result.isGrounded) {
             moveDirection = Vector3.ProjectOnPlane(moveDirection, result.floorNormal);
         } else {
@@ -1159,9 +1166,7 @@ public class PlayerMovement : TickNetworkBehaviour {
 
         float targetSpeed = SetTargetSpeed(input, result);
         Vector3 targetMovement = moveDirection * targetSpeed;
-        DimensionInfo dimension = currDimension == "Ice"
-            ? (result.onIce ? iceInfo : desertInfo)
-            : GetDimensionInfo(currDimension);
+        DimensionInfo dimension = simState.currDimension == "Ice" ? (result.onIce ? iceInfo : desertInfo) : desertInfo;
         Vector3 targetHorizontal = new Vector3(targetMovement.x, 0f, targetMovement.z);
         Vector3 movementHorizontal = new Vector3(result.movement.x, 0f, result.movement.z);
         float accelFactor;
@@ -1189,9 +1194,9 @@ public class PlayerMovement : TickNetworkBehaviour {
             result.jumpBufferTimer = 0f;
 
             float slopeCarry = result.movement.y > 0f ? result.movement.y / 1.5f : result.movement.y / 6f;
-            if (currDimension == "Maze")
+            if (simState.currDimension == "Maze")
                 newVelocityY = Mathf.Clamp(slopeCarry + jumpForce, 0, Mathf.Infinity);
-            else if (currDimension == "Space")
+            else if (simState.currDimension == "Space")
                 newVelocityY = Mathf.Clamp(slopeCarry + 1.5f * jumpForce * input.JumpMultiplier, 0, Mathf.Infinity);
             else
                 newVelocityY = Mathf.Clamp(slopeCarry + jumpForce * input.JumpMultiplier, 0, Mathf.Infinity);
@@ -1233,8 +1238,8 @@ public class PlayerMovement : TickNetworkBehaviour {
     private void SetExtraneousStates(MoveInput input, ref ServerOutput result) {
         RaycastHit hit;
         if (result.isGrounded) {
-            result.stepOffset = (currDimension != "Maze" && currDimension != "Ice") ? 0.55f : 0f;
-            if (currDimension == "Desert") {
+            result.stepOffset = (simState.currDimension != "Maze" && simState.currDimension != "Ice") ? 0.55f : 0f;
+            if (simState.currDimension == "Desert") {
                 Vector3 p1 = result.position + Vector3.up * 0.5f;
                 Vector3 p2 = result.position + Vector3.down * 0.5f;
                 int capsuleHitCount = Physics.CapsuleCastNonAlloc(p1, p2, 0.55f, wishDir, _capsuleHits, 0.5f, DefaultMask);
@@ -1256,12 +1261,12 @@ public class PlayerMovement : TickNetworkBehaviour {
                     }
                 }
                 if (_hitNames.Contains("Sand") && noStep) result.stepOffset = 0;
-            } else if (currDimension == "Ice") {
+            } else if (simState.currDimension == "Ice") {
                 bool onBuild = floorCollider != null
                     && (floorCollider.CompareTag("Ramp") || floorCollider.CompareTag("Floor") || floorCollider.CompareTag("Wall"));
                 result.onIce = !onBuild;
                 result.stepOffset = result.onIce ? 0f : 0.55f;
-            } else if (currDimension == "Server" && onScreenPlatform)
+            } else if (simState.currDimension == "Server" && onScreenPlatform)
             {
                 if (IsOwner) {
                     if (Physics.Raycast(transform.position, Vector3.down, out hit, 3f))
@@ -1552,23 +1557,23 @@ public class PlayerMovement : TickNetworkBehaviour {
         float absZ = Mathf.Abs(transform.position.z) - 90; //90 = z size of bounds
 
         float yDistanceFromOrigin = transform.position.y;
-        if (currDimension == "Space") {
+        if (simState.currDimension == "Space") {
             absX = Mathf.Abs(transform.position.x) - 55;
             absZ = Mathf.Abs(transform.position.z - 2000) - 55;//2000 = z pos of void container
-        } else if (currDimension == "Ice") {
+        } else if (simState.currDimension == "Ice") {
             absX = Mathf.Abs(transform.position.x + 2500) - 55;
             absZ = Mathf.Abs(transform.position.z) - 55;
         }
         
         horizontalDistanceFromOrigin = Mathf.Max(absX, absZ);
 
-        if (currDimension == "Desert") {
+        if (simState.currDimension == "Desert") {
             newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
             newAlpha1 = yDistanceFromOrigin > 55f ? ((yDistanceFromOrigin - 55f) / 20f) * 255f : 0f;
-        } else if (currDimension == "Space") {
+        } else if (simState.currDimension == "Space") {
             newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
             newAlpha1 = Mathf.Abs(yDistanceFromOrigin) > 50f ? ((Mathf.Abs(yDistanceFromOrigin) - 50f) / 20f) * 255f : 0f;
-        } else if (currDimension == "Ice") {
+        } else if (simState.currDimension == "Ice") {
             newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
             newAlpha1 = yDistanceFromOrigin > 55f ? ((yDistanceFromOrigin - 55f) / 20f) * 255f : 0f;
         } else {
@@ -1687,7 +1692,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         simState.controllerEnabled = true;
         simState.lastGroundedHeight = simState.position.y;
 
-        currDimension = target.name;
+        simState.currDimension = target.name;
         simState.currDimension = target.name;
         TeleportServer(simState.position, target.name);
         playerCamera.farClipPlane = target.farClip;
