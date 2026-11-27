@@ -23,7 +23,7 @@ public class ServerController : MonoBehaviour {
     private static readonly string[] generationVerbs = { "Generating", "Thinking", "Sampling", "Inferring", "Merging", "Forking", "Quantizing", "Sharding", "Fine-tuning", "Tokenizing", "Synchronizing", "Pulling weights" };
 
     private static class Script {
-        public const string FeedPrompt = "Press Space to feed us {COST} essence";
+        public const string FeedPrompt = "Press Enter to feed us {COST} essence";
 
         public static readonly Line[] ServerArrivalFirst = {
             Sys("> SIGNAL DETECTED\n> STEP ONTO THE PLATFORM\n", false),
@@ -431,7 +431,7 @@ public class ServerController : MonoBehaviour {
     {
         while (true)
         {
-            if (Input.GetKeyDown(KeyCode.Return) && canContinue) break;
+            if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) && canContinue) break;
             yield return null;
         }
     }
