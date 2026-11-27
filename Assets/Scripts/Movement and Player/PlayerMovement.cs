@@ -105,6 +105,7 @@ public class PlayerMovement : TickNetworkBehaviour {
     private bool lerpingWalkEnd = false;
     private bool lerpingWalkDoneEnd = true;
     private bool SprintGunPose => isSprinting && !CameraZoom.isAiming;
+    private static bool SprintKeyHeld => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
     public static float jumpOffset;
     private float jumpOffsetTwo;
     private bool lerpingJump = false;
@@ -448,10 +449,10 @@ public class PlayerMovement : TickNetworkBehaviour {
         return desertInfo;
     }
 
-    private void ApplyDimensionPhysics(DimensionInfo target) {
-        groundAcceleration = target.accel;
-        groundDeceleration = target.decel;
-        friction = target.fric;
+    private void ApplyDimensionPhysics(DimensionInfo target, ref ServerOutput result) {
+        result.groundAcceleration = target.accel;
+        result.groundDeceleration = target.decel;
+        result.friction = target.fric;
     }
 
     private void SetActiveDimension(DimensionInfo target) {
@@ -598,7 +599,6 @@ public class PlayerMovement : TickNetworkBehaviour {
             desertSky = RenderSettings.skybox;
             InitializeDimensions();
             SetActiveDimension(desertInfo);
-            ApplyDimensionPhysics(desertInfo);
             usernameRenderer = usernameDisplay.GetComponent<MeshRenderer>();
             GetComponent<MeshRenderer>().enabled = false;
             Transform playerBody = transform.Find("PlayerBody");
@@ -1002,6 +1002,9 @@ public class PlayerMovement : TickNetworkBehaviour {
         public float stamina;
         public bool canSprint;
         public float stepOffset;
+        public float groundAcceleration;
+        public float groundDeceleration;
+        public float friction;
         public string currDimension;
         public bool teleporting;
 
@@ -1094,7 +1097,9 @@ public class PlayerMovement : TickNetworkBehaviour {
         else result.jumpBufferTimer = Mathf.Max(result.jumpBufferTimer - SimDelta, 0f);
 
         wishDir = ComputeWishDir(input, result);
-        SetExtraneousStates(input, ref result); 
+        SetExtraneousStates(input, ref result);
+        if (result.currDimension == "Ice") setFrictionIce(ref result);
+        else ApplyDimensionPhysics(desertInfo, ref result); 
         UpdateMovementVector(input, ref result);
         KeyEvents(input, ref result);
         GetJumpAndGravityVector(input, ref result);
@@ -1166,21 +1171,20 @@ public class PlayerMovement : TickNetworkBehaviour {
 
         float targetSpeed = SetTargetSpeed(input, result);
         Vector3 targetMovement = moveDirection * targetSpeed;
-        DimensionInfo dimension = simState.currDimension == "Ice" ? (result.onIce ? iceInfo : desertInfo) : desertInfo;
         Vector3 targetHorizontal = new Vector3(targetMovement.x, 0f, targetMovement.z);
         Vector3 movementHorizontal = new Vector3(result.movement.x, 0f, result.movement.z);
         float accelFactor;
         if (targetHorizontal.sqrMagnitude < 0.0001f)
         {
-            if (result.isGrounded) accelFactor = dimension.fric;
+            if (result.isGrounded) accelFactor = result.friction;
             else accelFactor = airDeceleration;
         } else if (Vector3.Dot(targetHorizontal, movementHorizontal) < 0f)
         {
-            if (result.isGrounded) accelFactor = dimension.decel;
+            if (result.isGrounded) accelFactor = result.groundDeceleration;
             else accelFactor = airDeceleration;
         } else
         {
-            if (result.isGrounded) accelFactor = dimension.accel;
+            if (result.isGrounded) accelFactor = result.groundAcceleration;
             else accelFactor = airAcceleration;
         }
         result.movement = Vector3.MoveTowards(result.movement, targetMovement, SimDelta * accelFactor);
@@ -1543,11 +1547,11 @@ public class PlayerMovement : TickNetworkBehaviour {
             if (fallDamage > 0 && DamageControl.Local != null) DamageControl.Local.ServerApplyFallDamage(fallDamage);
         }
     }
-        private void setFrictionIce(bool onIce) {
-        groundAcceleration = onIce ? iceInfo.accel : desertInfo.accel;
-        groundDeceleration = onIce ? iceInfo.decel : desertInfo.decel;
-        friction = onIce ? iceInfo.fric : desertInfo.fric;
-        characterController.stepOffset = onIce ? 0f : 0.55f;
+    private void setFrictionIce(ref ServerOutput result) {
+        result.groundAcceleration = result.onIce ? iceInfo.accel : desertInfo.accel;
+        result.groundDeceleration = result.onIce ? iceInfo.decel : desertInfo.decel;
+        result.friction = result.onIce ? iceInfo.fric : desertInfo.fric;
+        if (result.isGrounded) result.stepOffset = result.onIce ? 0f : 0.55f;
     }
 
     private void BorderWarning() {
@@ -1702,7 +1706,6 @@ public class PlayerMovement : TickNetworkBehaviour {
         } else {
             playerCamera.clearFlags = CameraClearFlags.SolidColor;
         }
-        ApplyDimensionPhysics(target);
 
         serverController.DisplayDimension();
         GetComponent<ChangeMat>().dimensionMaterialChange(target.materialName);
@@ -2051,7 +2054,7 @@ public class PlayerMovement : TickNetworkBehaviour {
         float elapsedTime = 0f;
 
         while (elapsedTime < duration) {
-            if (!SprintGunPose || Shaker.shooting || Shooting.Local.reloading || !CameraZoom.moving) {
+            if (!SprintGunPose || !SprintKeyHeld || Shaker.shooting || Shooting.Local.reloading || !CameraZoom.moving) {
                 walkVectorPos = Vector3.Lerp(walkVectorPosStart, Vector3.zero, elapsedTime / duration);
                 walkVectorRot = Vector3.Lerp(walkVectorRotStart, Vector3.zero, elapsedTime / duration);
                 elapsedTime += Time.deltaTime;
