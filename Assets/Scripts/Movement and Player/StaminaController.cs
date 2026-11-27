@@ -4,8 +4,9 @@ using UnityEngine.UI;
 
 public class StaminaController : MonoBehaviour
 {
-    [SerializeField] private RectTransform staminaBar;
-    [SerializeField] private RectTransform staminaBlack;
+    
+    private RectTransform staminaBar;
+    private RectTransform staminaBlack;
 
     private Image barImage;
     [SerializeField] private float maxStamina = 100f;
@@ -16,18 +17,27 @@ public class StaminaController : MonoBehaviour
     public bool canSprint = true;
     public static bool zoomOut = false;
     private float currentStamina;
+    public float CurrentStamina => currentStamina;
+    public float MaxStamina => maxStamina;
     private Color yellow;
     private Color red;
     private bool lowStaminaWarningPlayed = false;
 
     private void Awake()
     {
+        CacheUIElements();
         Local = this;
         currentStamina = maxStamina;
         yellow = new Color32(255, 220, 105, 255);
         red = new Color32(255, 112, 112, 255);
         barImage = staminaBar.GetComponent<Image>();
-        UpdateStaminaBar();
+        UpdateStaminaBar(maxStamina);
+    }
+
+    private void CacheUIElements()
+    {
+        staminaBar = SceneReferenceContainer.Local.staminaBar.GetComponent<RectTransform>();
+        staminaBlack = SceneReferenceContainer.Local.staminaBlack.GetComponent<RectTransform>();
     }
 
     private void OnDestroy()
@@ -35,34 +45,35 @@ public class StaminaController : MonoBehaviour
         if (Local == this) Local = null;
     }
 
-    private void Update()
+    public void UpdateStamina(PlayerMovement.MoveInput input, ref PlayerMovement.ServerOutput result, float delta, bool owner)
     {
-      if (PlayerMovement.Local == null || upgradeManager.Local == null) return;
-
-      if (PlayerMovement.Local.isSprinting && (CameraZoom.moving || PlayerMovement.Local.fastAir))
-      {
-        if (currentStamina > 0f)
+        ref float stamina = ref result.stamina;
+        if (result.isSprinting && (CameraZoom.moving || result.fastAir))
         {
-          currentStamina -= staminaDepletionRate * Time.deltaTime;
-          UpdateStaminaBar();
-		      zoomOut = true;
-        }
-      } else if (currentStamina < maxStamina)
-      {
-          currentStamina += staminaRegenRate * upgradeManager.Local.staminaRegenMultiplier * Time.deltaTime;
-          currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
-          UpdateStaminaBar();
+            if (stamina > 0f)
+            {
+                stamina -= staminaDepletionRate * delta;
+                zoomOut = true;
+            }
+        } else if (stamina < maxStamina)
+        {
+            stamina += staminaRegenRate * input.StaminaRegenMultiplier * delta;
+            stamina = Mathf.Clamp(stamina, 0f, maxStamina);
 	        zoomOut = false;
-      }
+        }
 
-	    if (currentStamina <= 0.0f) {
-		    canSprint = false;
-	    } else if (currentStamina >= 100f) {
-		    canSprint = true;
+        UpdateStaminaBar(stamina);
+
+	    if (stamina <= 0.0f) {
+		    result.canSprint = false;
+	    } else if (stamina >= 100f) {
+		    result.canSprint = true;
 	    }	
     }
 
-    private void UpdateStaminaBar()
+    //public void SetStamina(float val) => currentStamina = val;
+
+    public void UpdateStaminaBar(float currentStamina)
     {
         float fillPercentage = currentStamina / maxStamina;
         float newWidth = fillPercentage * 180;

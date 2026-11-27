@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using UnityEngine;
 using FishNet;
 using FishNet.Object;
+using FishNet.Object.Prediction;
 using FishNet.Object.Synchronizing;
 using FishNet.Managing;
 using UnityEngine.SceneManagement;
 using TMPro;
 using FishNet.Component.Observing;
-using NUnit.Framework;
-using UnityEngine.TextCore.Text;
+using FishNet.Object.Prediction;
+using FishNet.Transporting;
+using FishNet.Utility.Template;
 
 [RequireComponent(typeof(ServerController))]
-public class PlayerMovement : NetworkBehaviour {
+public class PlayerMovement : TickNetworkBehaviour {
     [SerializeField] private float jumpForce = 8.0f;
     [SerializeField] private float jumpBufferTime = 0.1f; 
     public static float rotationSpeed = 10.0f;
@@ -27,12 +29,15 @@ public class PlayerMovement : NetworkBehaviour {
     private float currentCameraRotationY = 0.0f;
     public bool isAiming = false;
     public bool isSprinting = false;
+    private StaminaController sc;
     public Vector3 newPosition;
     public Vector3 movement = Vector3.zero;
+    private Vector3 slideMovement = Vector3.zero;
     private float _horizontal;
     private float _vertical;
     private bool _jump;
     private bool _dash;
+    private bool _respawn;
     public static bool started = false;
     [SerializeField] private GameObject capsuleCollider;
     [SerializeField] private Transform playerTransform;
@@ -62,26 +67,32 @@ public class PlayerMovement : NetworkBehaviour {
     private Transform bossArrival;
     private bool firstBossEntry;
     private GameObject combatSceneLight;
-    private bool canTeleport = true;
     [SerializeField] private float launchForce;
     [SerializeField] private float dashForce = 10.0f;
     private int dashes = 0;
-    private bool resettingDashes = false;
+    private const float DashRegenTime = 10f;
     private readonly SyncVar<bool> canDash = new SyncVar<bool>(
         true, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
     private readonly SyncVar<float> dashReloadModifier = new SyncVar<float>(
         1f, new SyncTypeSettings(WritePermission.ServerOnly, ReadPermission.OwnerOnly));
     public bool jumpedLast = false;
     public bool isTeleporting = false;
-    public Vector3 newVelocity;
+    public float newVelocityY;
     private bool groundedPrev; 
     private bool pendingLanding; 
     private float jumpBufferTimer;
-    private bool sprintingPrev;
+    private ServerOutput simState;
+    private float SimDelta => (float)TimeManager.TickDelta;
+    private Vector3 _camPrevTickPos;
+    private Vector3 _camCurrTickPos;
+    private const float CameraSnapDistance = 5f;
+    private Transform _renderedBody;
+    private Vector3 _renderedBodyLocalPos;
+    private uint _simTick;
+    private bool _simReplaying;
+    private readonly List<(uint tick, System.Action apply)> _pendingServerChanges = new List<(uint tick, System.Action apply)>();
     private CharacterController characterController;
     private bool resetPrev = false;
-    private bool launch = false;
-    private float angleSlope;
     private Transform gunThing;
     [SerializeField] private float targetWalkXPos;
     [SerializeField] private float targetWalkYPos;
@@ -94,6 +105,7 @@ public class PlayerMovement : NetworkBehaviour {
     private bool lerpingWalkEnd = false;
     private bool lerpingWalkDoneEnd = true;
     private bool SprintGunPose => isSprinting && !CameraZoom.isAiming;
+    private static bool SprintKeyHeld => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
     public static float jumpOffset;
     private float jumpOffsetTwo;
     private bool lerpingJump = false;
@@ -148,7 +160,7 @@ public class PlayerMovement : NetworkBehaviour {
     private Transform spawnPosContainer;
     public int hitCount = 0;
     public GameObject respawnScreen;
-    public bool dead = false;
+    public bool dead => simState.dead;
     private bool unstuckFail = false;
     private float lastGroundedHeight;
     private float sideTilt;
@@ -172,8 +184,11 @@ public class PlayerMovement : NetworkBehaviour {
     [SerializeField] private float groundAcceleration = 20f;
     [SerializeField] private float groundDeceleration = 25f;
     [SerializeField] private float airAcceleration = 3f;
+    [SerializeField] private float slideAcceleration = 10f;
+    [SerializeField] private float slideSpeed = 10f;
     [SerializeField] private float airDeceleration = 2f;
     [SerializeField] private float friction = 8f;
+    [SerializeField] private float iceFriction = 0.4f;
     [SerializeField] private float sprintAccelerationMultiplier = 1.5f;
     [SerializeField] private float airControlMultiplier = 0.5f;
     [SerializeField] private float overspeedDamping = 10f;
@@ -231,7 +246,7 @@ public class PlayerMovement : NetworkBehaviour {
     public static PlayerMovement Local {get; private set;}
     private Shooting localShooting;
     private ObjectSpawner localSpawner;
-    NetworkManager networkManager = InstanceFinder.NetworkManager;
+    NetworkManager networkManager;
     private const int SharedMatch = 69420;
     private const int NoMatch = -1;
     private int currentMatch = NoMatch;
@@ -244,15 +259,65 @@ public class PlayerMovement : NetworkBehaviour {
     private void CacheInputs() {
         _horizontal = _getHorizontal();
         _vertical = _getVertical();
-        _jump = _getJump();
+        _jump |= _getJump();
         _dash = _getDash();
-        if (_jump) jumpBufferTimer = jumpBufferTime;
-        else jumpBufferTimer = Mathf.Max(jumpBufferTimer - Time.deltaTime, 0f);
+        _respawn |= Input.GetKeyDown(KeyCode.R);
     }
+
+    private MoveInput BuildMoveInput() {
+        MoveInput input = new MoveInput(_horizontal, _vertical, _jump,
+            Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift), isAiming,
+            Input.GetKey(KeyCode.Q), _respawn, currentCameraRotationY, currentCameraRotationX);
+        input.SpeedMultiplier = upgradeManager.Local.speedMultiplier;
+        input.JumpMultiplier = upgradeManager.Local.jumpMultiplier;
+        input.DashForceMultiplier = upgradeManager.Local.dashForceMultiplier;
+        input.DashRegenMultiplier = upgradeManager.Local.dashRegenMultiplier;
+        input.StaminaRegenMultiplier = upgradeManager.Local.staminaRegenMultiplier;
+        input.CanSprint = StaminaController.Local.canSprint;
+        _jump = false;
+        _respawn = false;
+        return input;
+    }
+
+    public Vector3 GetVelocity() => new Vector3(simState.movement.x, simState.verticalVelocity, simState.movement.z);
 
     public static Vector3 getVelocity() { return Local != null ? Local.velocityTransform : Vector3.zero; }
     public int getKills() { return killCount; }
     public string getUsername() { return username; }
+
+    protected override void TimeManager_OnTick() {
+        Debug.Log("OnTick");
+        PerformReplicate(IsOwner ? BuildMoveInput() : default);
+        CreateReconcile();
+    }
+
+    [Replicate]
+    private void PerformReplicate(MoveInput input, ReplicateState state = ReplicateState.Invalid, Channel channel = Channel.Unreliable)
+    {
+        if (state.ContainsReplayed() && simState.teleporting) return;
+        _simTick = input.GetTick();
+        _simReplaying = state.ContainsReplayed();
+        simState = MovementLoop(input, state);
+        _simReplaying = false;
+        if (IsServerInitialized) ApplyPendingServerChanges(_simTick);
+    }
+
+    public override void CreateReconcile() {
+        PerformReconcile(simState);
+    }
+
+    [Reconcile]
+    private void PerformReconcile(ServerOutput data, Channel channel = Channel.Unreliable)
+    {
+        if (simState.teleporting) return;
+
+        simState = data;
+
+        characterController.enabled = false;
+        transform.position = data.position;
+        characterController.enabled = data.controllerEnabled;
+    }
+
     private struct DimensionInfo {
         public string name;
         public string materialName;
@@ -309,7 +374,7 @@ public class PlayerMovement : NetworkBehaviour {
     private DimensionInfo pendingDimension;
     private string pendingArrival;
     Vector3 floorNormal = Vector3.up;
-    private Vector3 ledgePushDir;
+    Collider floorCollider;
     [SerializeField] private float ledgeSupportFraction = 0.5f;
     [SerializeField] private float ledgeDropTolerance = 0.6f;
     [SerializeField] private float ledgeSlipSpeed = 4f;
@@ -357,7 +422,7 @@ public class PlayerMovement : NetworkBehaviour {
             farClip = 400f,
             accel = 5f,
             decel = 4f,
-            fric = 0.4f,
+            fric = iceFriction,
             snow = true,
             root = GameObject.Find("Ice"),
             scene = global::SceneManager.SnowScene
@@ -377,10 +442,17 @@ public class PlayerMovement : NetworkBehaviour {
         allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo, serverInfo };
     }
 
-    private void ApplyDimensionPhysics(DimensionInfo target) {
-        groundAcceleration = target.accel;
-        groundDeceleration = target.decel;
-        friction = target.fric;
+    private DimensionInfo GetDimensionInfo(string dimensionName) {
+        foreach (DimensionInfo dimension in allDimensions) {
+            if (dimension.name == dimensionName) return dimension;
+        }
+        return desertInfo;
+    }
+
+    private void ApplyDimensionPhysics(DimensionInfo target, ref ServerOutput result) {
+        result.groundAcceleration = target.accel;
+        result.groundDeceleration = target.decel;
+        result.friction = target.fric;
     }
 
     private void SetActiveDimension(DimensionInfo target) {
@@ -397,6 +469,61 @@ public class PlayerMovement : NetworkBehaviour {
         baseFriction = friction;
     }
 
+    public override void OnStartNetwork() {
+        base.OnStartNetwork();
+        characterController = GetComponent<CharacterController>();
+        sc = GetComponent<StaminaController>();
+        InitializeDimensions();
+        ResetSimState();
+        TimeManager.OnTick += TimeManager_OnTick;
+        TimeManager.OnPostTick += TimeManager_OnPostTick;
+        _camPrevTickPos = _camCurrTickPos = transform.position;
+        _renderedBody = transform.Find("RenderedBody");
+        if (_renderedBody != null) _renderedBodyLocalPos = _renderedBody.localPosition;
+    }
+    
+    public override void OnStopNetwork()
+    {
+        base.OnStopNetwork();
+        TimeManager.OnTick -= TimeManager_OnTick;
+        TimeManager.OnPostTick -= TimeManager_OnPostTick;
+    }
+
+    private void TimeManager_OnPostTick() {
+        Vector3 pos = transform.position;
+        _camPrevTickPos = (pos - _camCurrTickPos).sqrMagnitude > CameraSnapDistance * CameraSnapDistance ? pos : _camCurrTickPos;
+        _camCurrTickPos = pos;
+    }
+
+    private Vector3 SmoothedTickPosition() {
+        float t = (float)TimeManager.GetTickPercentAsDouble();
+        return Vector3.Lerp(_camPrevTickPos, _camCurrTickPos, t);
+    }
+
+    private void ResetSimState() {
+        simState = FreshSimState();
+    }
+
+    private ServerOutput FreshSimState() {
+        ServerOutput fresh = default;
+        fresh.dashNum = 3;
+        fresh.timeToNextDash = DashRegenTime;
+        fresh.lastGroundedHeight = -13;
+        fresh.currDimension = currDimension;
+        fresh.position = transform.position;
+        fresh.controllerEnabled = true;
+        fresh.canTeleport = true;
+        fresh.canSprint = true;
+        fresh.stamina = sc.MaxStamina;
+        return fresh;
+    }
+
+    private (bool respawned, ServerOutput newSimState) CheckRespawn(MoveInput input, ServerOutput result, ReplicateState state) {
+        if (!input.Respawn || !result.dead) return (false, result);
+        Respawn(input.GetTick(), IsOwner && !state.ContainsReplayed());
+        return (true, FreshSimState());
+    }
+
 
     [ServerRpc]
     public void TransferToScene(string sceneName) {
@@ -405,7 +532,7 @@ public class PlayerMovement : NetworkBehaviour {
 
     public override void OnStartClient() {
         base.OnStartClient();
-
+        networkManager = InstanceFinder.NetworkManager;
         Application.targetFrameRate = -1;
 
         if (IsOwner) {
@@ -424,8 +551,8 @@ public class PlayerMovement : NetworkBehaviour {
             PersistentObjects.Ensure(playerCamera);
 
             upgradeManager[] upgradeManagers = FindObjectsByType<upgradeManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            if (upgradeManagers.Length > 0) PersistentSceneObject.Keep(upgradeManagers[0].gameObject, "UpgradeUI");
-            else Debug.LogWarning("[PlayerMovement] no upgradeManager found; the HUD will not survive the scene load.");
+            PersistentSceneObject.Keep(upgradeManagers[0].gameObject, "UpgradeUI");
+            sc = GetComponent<StaminaController>();
 
             global::SceneManager.Instance.Reset();
             global::SceneManager.SceneLoaded += OnSceneLoadedAsOwner;
@@ -472,9 +599,10 @@ public class PlayerMovement : NetworkBehaviour {
             desertSky = RenderSettings.skybox;
             InitializeDimensions();
             SetActiveDimension(desertInfo);
-            ApplyDimensionPhysics(desertInfo);
             usernameRenderer = usernameDisplay.GetComponent<MeshRenderer>();
             GetComponent<MeshRenderer>().enabled = false;
+            Transform playerBody = transform.Find("PlayerBody");
+            if (playerBody != null) playerBody.GetComponent<MeshRenderer>().enabled = false;
             started = true;
             bool resuming = MigrationPositionPending() && global::SceneManager.Instance.activeAdditiveScene == global::SceneManager.DesertScene;
             if (resuming) {
@@ -490,7 +618,7 @@ public class PlayerMovement : NetworkBehaviour {
                 if (child.name == "RenderedBody") child.gameObject.SetActive(false);
             }
         }
-        if (!IsOwner) GetComponent<PlayerMovement>().enabled = false;
+        if (!IsOwner && !IsServerInitialized) GetComponent<PlayerMovement>().enabled = false;
 
     }
     private IEnumerator LoadDesertThenEnterBoss() {
@@ -498,11 +626,11 @@ public class PlayerMovement : NetworkBehaviour {
         if (sceneManager.LoadScene(global::SceneManager.DesertScene)) {
             float waited = 0f;
             while (!sceneManager.TryGetActiveScene(global::SceneManager.DesertScene, out _) && waited < 15f) {
-                characterController.enabled = false;
+                simState.controllerEnabled = false;
                 waited += Time.unscaledDeltaTime;
                 yield return null;
             }
-            characterController.enabled = true;
+            simState.controllerEnabled = true;
         }
         firstBossEntry = true;
         ChangeScene(serverInfo.scene, serverInfo);
@@ -515,7 +643,7 @@ public class PlayerMovement : NetworkBehaviour {
 
         try
         {
-            switch (currDimension)
+            switch (simState.currDimension)
             {
                 case "Desert":
                     spawnPosContainer = GameObject.Find("DesertSpawnContainer").transform;
@@ -533,7 +661,7 @@ public class PlayerMovement : NetworkBehaviour {
                     break;
             }
 
-            if (currDimension == "Desert" || currDimension == "Ice")
+            if (simState.currDimension == "Desert" || simState.currDimension == "Ice")
             {
                 foreach (Transform s in spawnPosContainer)
                     spawnVectors.Add(new Vector3(s.position.x, s.position.y, s.position.z));
@@ -545,7 +673,7 @@ public class PlayerMovement : NetworkBehaviour {
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning($"[PlayerMovement] could not cache spawn positions for '{currDimension}': {e.Message}");
+            Debug.LogWarning($"could not cache spawn positions for '{simState.currDimension}': {e.Message}");
         }
     }
     public static bool getAvatarBool(NetworkObject avatar1) {
@@ -561,16 +689,26 @@ public class PlayerMovement : NetworkBehaviour {
     private void OnSceneLoadedAsOwner(Scene scene, LoadSceneMode mode) {
         if (!IsOwner) return;
 
-        characterController.enabled = false;
-        characterController.enabled = true;
+        simState.controllerEnabled = true;
 
-        newVelocity = Vector3.zero;
-        dashVector = Vector3.zero;
-        lastPosition = playerTransform.position;
-        lastGroundedHeight = transform.position.y;
+        simState.dashVector = Vector3.zero;
+        simState.position = playerTransform.position;
+        simState.lastGroundedHeight = transform.position.y;
+        SceneLoadServer(simState.position);
 
         if (!global::SceneManager.Instance.CompleteTransfer(scene)) return;
         ArriveInScene(scene);
+    }
+
+    [ServerRpc]
+    private void SceneLoadServer(Vector3 position)
+    {
+        characterController.enabled = false;
+        transform.position = position;
+        characterController.enabled = simState.controllerEnabled;
+        simState.dashVector = Vector3.zero;
+        simState.position = position;
+        simState.lastGroundedHeight = position.y;
     }
 
     private void ArriveInScene(Scene scene) {
@@ -587,8 +725,6 @@ public class PlayerMovement : NetworkBehaviour {
         }
         bool inCombatScene = global::SceneManager.Instance.InCombatScene;
         if (borderInstance != null) borderInstance.gameObject.SetActive(inCombatScene);
-        if (!inCombatScene && portal4B == null)
-            Debug.LogError($"[PlayerMovement] '{scene.name}' has no portal4B; there is no way back to DesertScene.");
 
         Transform destination;
         if (pendingArrival != null) {
@@ -599,17 +735,10 @@ public class PlayerMovement : NetworkBehaviour {
                 ? (portal4A != null ? portal4A.transform : null)
                 : (firstBossEntry && bossArrival != null ? bossArrival : portal4B != null ? portal4B.transform : null);
         }
-        if (destination == null) {
-            Debug.LogError($"[PlayerMovement] '{scene.name}' has no arrival point ('{pendingArrival ?? "portal4A, BossArrival or portal4B"}').");
-            pendingArrival = null;
-            canTeleport = true;
-            return;
-        }
 
         bool firstSpawn = firstBossEntry && destination == bossArrival;
         pendingArrival = null;
         firstBossEntry = false;
-
         HandleTeleportation(destination, pendingDimension, destination == bossArrival ? 0f : 3f);
         AddOwnerToScene(scene.name);
         SetMatchCondition(!inCombatScene);
@@ -651,8 +780,8 @@ public class PlayerMovement : NetworkBehaviour {
             mazeInfo.root = find("Maze");
             spaceInfo.root = find("Void");
             iceInfo.root = find("Ice");
-        } catch (System.Exception e) {
-            Debug.LogWarning($"[PlayerMovement] could not cache dimension roots: {e.Message}");
+        } catch {
+            Debug.LogWarning("Couldn't find one of dimensions");
         }
         allDimensions = new DimensionInfo[] { desertInfo, mazeInfo, spaceInfo, iceInfo, serverInfo };
     }
@@ -704,8 +833,10 @@ public class PlayerMovement : NetworkBehaviour {
         characterController.enabled = false;
         transform.position = target;
         FaceDirection(migrationYaw);
-        characterController.enabled = true;
-        lastGroundedHeight = transform.position.y;
+        characterController.enabled = simState.controllerEnabled;
+        simState.position = transform.position;
+        simState.lastGroundedHeight = transform.position.y;
+        SetServerPosition(simState.position, simState.lastGroundedHeight);
         lastPosition = playerTransform.position;
     }
 
@@ -721,7 +852,10 @@ public class PlayerMovement : NetworkBehaviour {
     {
         if (Local == this) {
             if (NetworkHudCanvases.InLobby) SaveSystem.CaptureSessionData();
-            if (!dead && global::SceneManager.Instance.InCombatScene && currDimension == "Desert") {
+            Debug.Log(dead);
+            Debug.Log(global::SceneManager.Instance.InCombatScene);
+            Debug.Log(simState.currDimension == "Desert");
+            if (!dead && global::SceneManager.Instance.InCombatScene && simState.currDimension == "Desert") {
                 migrationPosition = transform.position;
                 migrationYaw = currentCameraRotationY;
                 migrationPositionTime = Time.realtimeSinceStartup;
@@ -747,28 +881,53 @@ public class PlayerMovement : NetworkBehaviour {
         }
     }
     
-    public bool isGround() {
-        float castDist = 0.125f;
-        Vector3 origin = transform.position + Vector3.down * (characterController.height/4 - 0.1f);
-        float radius = characterController.radius + characterController.skinWidth;
+    private const float GroundProbeInset = 0.01f;
+    private const float EdgeProbeInset = 0.02f;
+    private const float EdgeProbeHeight = 0.05f;
 
-        if (Physics.SphereCast(origin, radius, Vector3.down,
-                            out RaycastHit hit, castDist, GroundMask, QueryTriggerInteraction.Ignore)) {
-            floorNormal = hit.normal;
-            Debug.Log(Vector3.Angle(Vector3.up, floorNormal));
-            if (Vector3.Angle(Vector3.up, floorNormal) > characterController.slopeLimit) return false;
-            return true;
+    public (bool isGrounded, Vector3 floorNormal) isGround() {
+        float castDist = characterController.height/4 + 0.025f + GroundProbeInset;
+        Vector3 origin = transform.position;
+        float radius = characterController.radius + characterController.skinWidth - GroundProbeInset;
+
+        RaycastHit[] hits = Physics.SphereCastAll(origin, radius, Vector3.down, castDist, GroundMask, QueryTriggerInteraction.Ignore);
+        RaycastHit lowestHit = default;
+        bool found = false;
+        for (int i = 0; i < hits.Length; i++)
+        {
+            if (hits[i].distance <= 0f) continue;
+            if (!found || hits[i].point.y < lowestHit.point.y)
+            {
+                lowestHit = hits[i];
+                found = true;
+            }
+        }
+        if (found) {
+            floorNormal = lowestHit.normal;
+            floorCollider = lowestHit.collider;
+            if (Vector3.Angle(Vector3.up, floorNormal) <= characterController.slopeLimit) return (true, floorNormal);
+
+            Vector3 inward = -Vector3.ProjectOnPlane(floorNormal, Vector3.up);
+            if (inward.sqrMagnitude < 1e-6f) return (false, floorNormal);
+            Vector3 probeOrigin = lowestHit.point + inward.normalized * EdgeProbeInset + Vector3.up * EdgeProbeHeight;
+            if (Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit edgeHit, EdgeProbeHeight * 2f, GroundMask, QueryTriggerInteraction.Ignore)
+                && Vector3.Angle(Vector3.up, edgeHit.normal) <= characterController.slopeLimit) {
+                floorNormal = edgeHit.normal;
+                floorCollider = edgeHit.collider;
+                return (true, floorNormal);
+            }
+            return (false, floorNormal);
         }
         floorNormal = Vector3.up;
-        ledgePushDir = Vector3.zero;
-        return false;
+        floorCollider = null;
+        return (false, floorNormal);
     }
 
     private void OnDrawGizmos()
     {
         if (characterController == null) return;
-        Vector3 origin = transform.position + Vector3.down * (characterController.height/4);
-        float radius = characterController.radius + characterController.skinWidth;
+        Vector3 origin = transform.position + Vector3.down * (characterController.height/4 + GroundProbeInset);
+        float radius = characterController.radius + characterController.skinWidth - GroundProbeInset;
         Gizmos.color = Color.red;
         Vector3 pos = origin;
         Gizmos.DrawWireSphere(origin, radius);
@@ -785,7 +944,6 @@ public class PlayerMovement : NetworkBehaviour {
         }
         CacheInputs();
 
-        IsOnSlope();
         CheckIfStuckAndMoveUp();
         bool dashDisabled = !canDash.Value;
         if (dt != null && (dashes != displayedDashes || dashDisabled != displayedDashDisabled)) {
@@ -796,83 +954,272 @@ public class PlayerMovement : NetworkBehaviour {
         }
 
         if (usernameRenderer != null) usernameRenderer.enabled = false;
-
-        groundedPrev = isGrounded;
-        isGrounded = isGround();
         HandleCameraRotation();
-        UpdateMovementVector();
-        if (characterController.enabled) characterController.Move(movement * Time.deltaTime + GetJumpAndGravityVector() + upgradeManager.Local.dashForceMultiplier * dashVector * Time.deltaTime - shotBoost * Time.deltaTime);
+
         UpdateVelocityEstimate();
-        SetExtraneousStates(); //needs cleanup
-        HandleLaunch();
-        KeyEvents();
-        HandleDashing();
-        HandleShotBoost();
-        ManageSprintState();
         SetAimRotSpeed();
         BorderWarning();
         UpdateDynamicFOV();
     }
 
-    private float GetBaseSpeed()
+    private float GetBaseSpeed(MoveInput input, ServerOutput state)
     {
-        if (isAiming && isGrounded) return 2.5f;
-        if (isSprinting && isGrounded) return 12.0f;
-        if (isSprinting && fastAir) return 10.0f;
-        if (!isGrounded) return 7.5f;
+        if (input.Aim && state.isGrounded) return 2.5f;
+        if (state.isSprinting && state.isGrounded) return 12.0f;
+        if (state.isSprinting && state.fastAir) return 10.0f;
+        if (!state.isGrounded) return 7.5f;
         return 8.5f;
     }
 
-    private float SetTargetSpeed() => GetBaseSpeed() * upgradeManager.Local.speedMultiplier;
+    private float SetTargetSpeed(MoveInput input, ServerOutput state) => GetBaseSpeed(input, state) * input.SpeedMultiplier;
+   public struct ServerOutput : IReconcileData {
+        public Vector3 position;
+        public Vector3 movement;
+        public float verticalVelocity;
+        public Vector3 slideMovement;
+        public Vector3 dashVector;
+        public Vector3 shotBoost;
+        public bool jumpedLast;
+        public bool fastAir;
+        public bool isSprinting;
+        public bool isHealing;
+        public bool groundedPrev;
+        public bool isGrounded;
+        public bool onIce;
+        public Vector3 floorNormal;
+        public bool sprintingPrev;
+        public bool sprintInputPrev;
+        public bool launch;
+        public bool dead;
+        public bool controllerEnabled;
+        public bool canTeleport;
+        public float lastGroundedHeight;
+        public float jumpBufferTimer;
+        public int dashNum;
+        public float timeToNextDash;
+        public Vector3 dashStartVector;
+        public float dashElapsed;
+        public float stamina;
+        public bool canSprint;
+        public float stepOffset;
+        public float groundAcceleration;
+        public float groundDeceleration;
+        public float friction;
+        public string currDimension;
+        public bool teleporting;
 
-    private void UpdateMovementVector()
+        private uint _tick;
+
+        public ServerOutput(Vector3 position, Vector3 movement, float verticalVelocity, Vector3 slideMovement, Vector3 dashVector, Vector3 shotBoost,
+            bool jumpedLast, bool fastAir, bool isSprinting, bool isHealing, float jumpBufferTimer, int dashNum, float stamina, float stepOffset, string currDimension, bool teleporting) {
+            this = default;
+            this.currDimension = currDimension;
+            this.position = position;
+            this.movement = movement;
+            this.verticalVelocity = verticalVelocity;
+            this.slideMovement = slideMovement;
+            this.dashVector = dashVector;
+            this.shotBoost = shotBoost;
+            this.jumpedLast = jumpedLast;
+            this.fastAir = fastAir;
+            this.isSprinting = isSprinting;
+            this.isHealing = isHealing;
+            this.jumpBufferTimer = jumpBufferTimer;
+            this.dashNum = dashNum;
+            this.stamina = stamina;
+            this.stepOffset = stepOffset;
+            this.teleporting = teleporting;
+            _tick = 0;
+        }
+
+        public void Dispose() { }
+        public uint GetTick() => _tick;
+        public void SetTick(uint value) => _tick = value;
+    }
+
+    public struct MoveInput : IReplicateData {
+        public float Horizontal;
+        public float Vertical;
+        public bool Space;
+        public bool Sprint;
+        public bool Aim;
+        public bool Heal;
+        public bool Respawn;
+        public float Yaw;
+        public float Pitch;
+        public float SpeedMultiplier;
+        public float JumpMultiplier;
+        public float DashForceMultiplier;
+        public float DashRegenMultiplier;
+        public float StaminaRegenMultiplier;
+        public bool CanSprint;
+
+        private uint _tick;
+
+        public MoveInput(float horizontal, float vertical, bool space, bool sprint, bool aim, bool heal, bool respawn, float yaw, float pitch) {
+            this = default;
+            Pitch = pitch;
+            Horizontal = horizontal;
+            Vertical = vertical;
+            Space = space;
+            Sprint = sprint;
+            Aim = aim;
+            Heal = heal;
+            Respawn = respawn;
+            Yaw = yaw;
+            _tick = 0;
+        }
+
+        public void Dispose() { }
+        public uint GetTick() => _tick;
+        public void SetTick(uint value) => _tick = value;
+    }
+
+    private ServerOutput MovementLoop(MoveInput input, ReplicateState state)
     {
-        Vector3 inputDirection = new Vector3(_horizontal, 0, _vertical);
+        ServerOutput result = simState;
+
+        var respawnCheck = CheckRespawn(input, result, state);
+        if (respawnCheck.respawned) return respawnCheck.newSimState;
+
+        result.position = transform.position;
+        result.groundedPrev = result.isGrounded;
+        result.sprintingPrev = result.isSprinting;
+        result.onIce = false;
+
+
+        var groundedPair = isGround();
+        result.isGrounded = groundedPair.Item1;
+        result.floorNormal = groundedPair.Item2;
+        onSlope = result.isGrounded && Vector3.Angle(Vector3.up, result.floorNormal) > 1f;
+
+        if (input.Space) result.jumpBufferTimer = jumpBufferTime;
+        else result.jumpBufferTimer = Mathf.Max(result.jumpBufferTimer - SimDelta, 0f);
+
+        wishDir = ComputeWishDir(input, result);
+        SetExtraneousStates(input, ref result);
+        if (result.currDimension == "Ice") setFrictionIce(ref result);
+        else ApplyDimensionPhysics(desertInfo, ref result); 
+        UpdateMovementVector(input, ref result);
+        KeyEvents(input, ref result);
+        GetJumpAndGravityVector(input, ref result);
+        HandleLaunch(ref result);
+        HandleDashing(input, ref result);
+        HandleDashRegen(input, ref result);
+        HandleShotBoost(ref result);
+        ManageSprintState(input, ref result);
+        sc.UpdateStamina(input, ref result, SimDelta, IsOwner);
+        characterController.enabled = result.controllerEnabled;
+        characterController.stepOffset = result.stepOffset;
+        simState = result;
+        if (result.controllerEnabled) {
+            characterController.Move((result.movement + result.slideMovement + Vector3.up * result.verticalVelocity + input.DashForceMultiplier * result.dashVector - result.shotBoost) * SimDelta);
+            isGrounded = simState.isGrounded;
+            groundedPrev = simState.groundedPrev;
+            fastAir = simState.fastAir;
+            isSprinting = simState.isSprinting;
+            movement = simState.movement;
+            slideMovement = simState.slideMovement;
+            jumpedLast = simState.jumpedLast;
+            jumpBufferTimer = simState.jumpBufferTimer;
+            dashVector = simState.dashVector;
+            lastGroundedHeight = simState.lastGroundedHeight;
+            currDimension = simState.currDimension;
+            shotBoost = simState.shotBoost;
+        }
+        return simState;
+    }
+
+    private static Vector3 ComputeWishDir(MoveInput input, ServerOutput result)
+    {
+        Vector3 inputDirection = new Vector3(input.Horizontal, 0, input.Vertical);
+        Quaternion yawRotation = Quaternion.Euler(0f, input.Yaw, 0f);
+        Vector3 moveDirection = yawRotation * inputDirection;
+        return moveDirection.sqrMagnitude > 1e-6f ? moveDirection.normalized : new Vector3(result.movement.x, 0f, result.movement.z).normalized;
+    }
+
+    private void UpdateMovementVector(MoveInput input, ref ServerOutput result)
+    {
+        if (Vector3.Angle(Vector3.up, result.floorNormal) > characterController.slopeLimit)
+        {
+            Vector3 targetSlide = Vector3.ProjectOnPlane(Vector3.down, result.floorNormal).normalized * slideSpeed;
+            result.slideMovement = Vector3.MoveTowards(result.slideMovement, targetSlide, SimDelta * slideAcceleration);
+
+            Vector3 intoFloor = Vector3.Project(result.movement, result.floorNormal);
+            Vector3 alongFloor = result.movement - intoFloor;
+            if (Vector3.Dot(result.movement, result.floorNormal) < 0f) result.movement = alongFloor;
+        }
+        else
+        {
+            result.slideMovement = Vector3.zero;
+        }
+        
+        Vector3 inputDirection = new Vector3(input.Horizontal, 0, input.Vertical);
         if (inputDirection.magnitude > 1f) inputDirection.Normalize();
 
-        Vector3 forward = transform.forward;
-        Vector3 right = transform.right;
+        Quaternion yawRotation = Quaternion.Euler(0f, input.Yaw, 0f);
+        Vector3 forward = yawRotation * Vector3.forward;
+        Vector3 right = yawRotation * Vector3.right;
 
         Vector3 moveDirection = forward * inputDirection.z + right * inputDirection.x;
-        if (isGrounded) {
-            moveDirection = Vector3.ProjectOnPlane(moveDirection, floorNormal);
+        if (result.isGrounded) {
+            moveDirection = Vector3.ProjectOnPlane(moveDirection, result.floorNormal);
         } else {
             moveDirection.y = 0f;
         }
         moveDirection = moveDirection.magnitude > 1e-6f ? moveDirection.normalized : Vector3.zero;
 
-        float targetSpeed = SetTargetSpeed();
+        float targetSpeed = SetTargetSpeed(input, result);
         Vector3 targetMovement = moveDirection * targetSpeed;
-
-        movement = Vector3.MoveTowards(movement, targetMovement, Time.deltaTime*(isGrounded ? groundAcceleration : airAcceleration));
-        percentAccelerated = Mathf.Clamp01(new Vector3(movement.x, 0, movement.z).magnitude / (targetSpeed * 0.8f));
+        Vector3 targetHorizontal = new Vector3(targetMovement.x, 0f, targetMovement.z);
+        Vector3 movementHorizontal = new Vector3(result.movement.x, 0f, result.movement.z);
+        float accelFactor;
+        if (targetHorizontal.sqrMagnitude < 0.0001f)
+        {
+            if (result.isGrounded) accelFactor = result.friction;
+            else accelFactor = airDeceleration;
+        } else if (Vector3.Dot(targetHorizontal, movementHorizontal) < 0f)
+        {
+            if (result.isGrounded) accelFactor = result.groundDeceleration;
+            else accelFactor = airDeceleration;
+        } else
+        {
+            if (result.isGrounded) accelFactor = result.groundAcceleration;
+            else accelFactor = airAcceleration;
+        }
+        result.movement = Vector3.MoveTowards(result.movement, targetMovement, SimDelta * accelFactor);
+        if (IsOwner) percentAccelerated = Mathf.Clamp01(new Vector3(result.movement.x, 0, result.movement.z).magnitude / (targetSpeed * 0.8f));
     }
-    private Vector3 GetJumpAndGravityVector() {
-        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) serverController.TryFeed();
 
-        if (jumpBufferTimer > 0f && isGrounded && canJump.Value && !serverController.LookingAtServer) {
-            jumpBufferTimer = 0f;
-            if (currDimension == "Maze")
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce, 0, Mathf.Infinity);
-            else if (currDimension == "Space")
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + 1.5f * jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
+    private void GetJumpAndGravityVector(MoveInput input, ref ServerOutput result) {
+        //if (input.Space) serverController.TryFeed();
+        float newVelocityY;
+        if (result.jumpBufferTimer > 0f && result.isGrounded && canJump.Value) {
+            result.jumpBufferTimer = 0f;
+
+            float slopeCarry = result.movement.y > 0f ? result.movement.y / 1.5f : result.movement.y / 6f;
+            if (simState.currDimension == "Maze")
+                newVelocityY = Mathf.Clamp(slopeCarry + jumpForce, 0, Mathf.Infinity);
+            else if (simState.currDimension == "Space")
+                newVelocityY = Mathf.Clamp(slopeCarry + 1.5f * jumpForce * input.JumpMultiplier, 0, Mathf.Infinity);
             else
-                newVelocity.y = Mathf.Clamp(movement.y / 1.5f + jumpForce * upgradeManager.Local.jumpMultiplier, 0, Mathf.Infinity);
-            jumpedLast = true;
+                newVelocityY = Mathf.Clamp(slopeCarry + jumpForce * input.JumpMultiplier, 0, Mathf.Infinity);
+            result.verticalVelocity = newVelocityY;
+            result.movement.y = 0f;
+            result.jumpedLast = true;
             resetPrev = false;
-            if (isSprinting) fastAir = true;
+            if (result.isSprinting) result.fastAir = true;
         }
-        Vector3 groundingForce = Vector3.zero;
-        if (isGrounded && !jumpedLast && newVelocity.y <= 0f) {
-            newVelocity.y = -2;
+        bool onSteepSlope = Vector3.Angle(result.floorNormal, Vector3.up) > characterController.slopeLimit;
+        float groundingForce = 0;
+        if (((result.isGrounded && !result.jumpedLast) || onSteepSlope) && result.verticalVelocity <= 0f) {
+            newVelocityY = -2;
         } else {
-            groundingForce = groundedPrev && newVelocity.y <= 0 && !characterController.isGrounded && !jumpedLast ? Vector3.down * SetTargetSpeed() * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad) : Vector3.zero;
-            newVelocity.y = Mathf.Max(newVelocity.y - gravity.Value * Time.deltaTime, -50f);
+            if (result.groundedPrev && result.verticalVelocity <= 0 && !characterController.isGrounded && !result.jumpedLast) groundingForce = SetTargetSpeed(input, result) * Mathf.Tan(characterController.slopeLimit * Mathf.Deg2Rad);
+            newVelocityY = Mathf.Max(result.verticalVelocity - gravity.Value * SimDelta, -50f);
         }
 
-        Vector3 verticalVelo = Vector3.Angle(floorNormal, Vector3.up) > characterController.slopeLimit ? Vector3.ProjectOnPlane(newVelocity, floorNormal) : newVelocity;
-
-        return (verticalVelo + groundingForce + ledgePushDir * ledgeSlipSpeed) * Time.deltaTime;
+        result.verticalVelocity = newVelocityY + groundingForce * SimDelta;
     }
 
     private void HandleCameraRotation() {
@@ -892,13 +1239,13 @@ public class PlayerMovement : NetworkBehaviour {
         transform.localEulerAngles = new Vector3(0.0f, currentCameraRotationY, 0.0f);
     }
 
-    private void SetExtraneousStates() {
+    private void SetExtraneousStates(MoveInput input, ref ServerOutput result) {
         RaycastHit hit;
-        if (isGrounded) {
-            characterController.stepOffset = (currDimension != "Maze" && currDimension != "Ice") ? 0.55f : 0f;
-            if (currDimension == "Desert") {
-                Vector3 p1 = transform.position + Vector3.up * 0.5f;
-                Vector3 p2 = transform.position + Vector3.down * 0.5f;
+        if (result.isGrounded) {
+            result.stepOffset = (simState.currDimension != "Maze" && simState.currDimension != "Ice") ? 0.55f : 0f;
+            if (simState.currDimension == "Desert") {
+                Vector3 p1 = result.position + Vector3.up * 0.5f;
+                Vector3 p2 = result.position + Vector3.down * 0.5f;
                 int capsuleHitCount = Physics.CapsuleCastNonAlloc(p1, p2, 0.55f, wishDir, _capsuleHits, 0.5f, DefaultMask);
 
                 _hitNames.Clear();
@@ -917,91 +1264,93 @@ public class PlayerMovement : NetworkBehaviour {
                         noStep = true;
                     }
                 }
-                if (_hitNames.Contains("Sand") && noStep) characterController.stepOffset = 0;
-            } else if (currDimension == "Ice") {
-                if (Physics.SphereCast(transform.position, 0.545f, Vector3.down, out hit, 0.5f, SlopeMask)) {
-                    if (hit.transform.gameObject.tag == "Ramp" || hit.transform.gameObject.tag == "Floor" || hit.transform.gameObject.tag == "Wall")
-                    {
-                        setFrictionIce(false);
-                    } else
-                    {
-                        setFrictionIce(true);
-                    }
-                } else
-                {
-                    setFrictionIce(true);
-                }
-            } else if (currDimension == "Server" && onScreenPlatform)
+                if (_hitNames.Contains("Sand") && noStep) result.stepOffset = 0;
+            } else if (simState.currDimension == "Ice") {
+                bool onBuild = floorCollider != null
+                    && (floorCollider.CompareTag("Ramp") || floorCollider.CompareTag("Floor") || floorCollider.CompareTag("Wall"));
+                result.onIce = !onBuild;
+                result.stepOffset = result.onIce ? 0f : 0.55f;
+            } else if (simState.currDimension == "Server" && onScreenPlatform)
             {
-                if (Physics.Raycast(transform.position, Vector3.down, out hit, 3f))
-                {
-                    onScreenPlatform = IsOnScreenPlatform(hit.transform.gameObject.name, hit.normal);
+                if (IsOwner) {
+                    if (Physics.Raycast(transform.position, Vector3.down, out hit, 3f))
+                    {
+                        onScreenPlatform = IsOnScreenPlatform(hit.transform.gameObject.name, hit.normal);
+                    }
                 }
             }
         } else {
-            characterController.stepOffset = 0f;
+            result.stepOffset = 0f;
             pendingLanding = true;
-            if (groundedPrev) {
-                lastGroundedHeight = transform.position.y;
+            if (result.groundedPrev) {
+                result.lastGroundedHeight = result.position.y;
             }
-            onScreenPlatform = false;
+            if (IsOwner) onScreenPlatform = false;
         }
-        Debug.Log("On Screen Platform" + onScreenPlatform);
         if (!canTakeDamage && invulnerableRoutine == null) invulnerableRoutine = StartCoroutine(Invulnerable());
-        CameraZoom.moving = (Mathf.Abs(_horizontal) > 0.01f || Mathf.Abs(_vertical) > 0.01f);
+        if (IsOwner) CameraZoom.moving = (Mathf.Abs(input.Horizontal) > 0.01f || Mathf.Abs(input.Vertical) > 0.01f);
     }
 
-    private void HandleDashing() {
-        if (_dash && canDash.Value && dashes > 0 && !isGrounded) {
-            Debug.Log("dashing");
+    private void HandleDashing(MoveInput input, ref ServerOutput result) {
+        if (input.Space && canDash.Value && result.dashNum > 0 && !result.isGrounded) {
             HealthController.noFDAnim = true;
-            dashes--;
-            dashVector = Vector3.Project(dashVector, playerCamera.transform.forward * dashForce)
-                         + (playerCamera.transform.forward * dashForce);
-            newVelocity.y = 0;
-            jumpedLast = true;
-            jumpBufferTimer = 0f; 
+            result.dashNum--;
+            Vector3 lookForward = Quaternion.Euler(input.Pitch, input.Yaw, 0f) * Vector3.forward;
+            result.dashVector = Vector3.Project(result.dashVector, lookForward * dashForce)
+                         + (lookForward * dashForce);
+            result.verticalVelocity = 0;
+            result.jumpedLast = true;
+            result.jumpBufferTimer = 0f;
             dashFOV = Mathf.Max(dashFOV, 20f);
-            lastGroundedHeight = -30;
-            if (dashRoutine != null) StopCoroutine(dashRoutine);
-            dashRoutine = StartCoroutine(LerpDash());
+            result.lastGroundedHeight = -30;
+            result.dashStartVector = result.dashVector;
+            result.dashElapsed = 0f;
         } else {
             dashFOV = Mathf.Lerp(dashFOV, 0f, Time.deltaTime * 5f);
+            DecayDash(input, ref result);
         }
-
-        if (!resettingDashes && dashes < 3) StartCoroutine(addDash());
     }
 
-    private void HandleLaunch()
+    private void DecayDash(MoveInput input, ref ServerOutput result) {
+        if (result.dashVector == Vector3.zero) return;
+        float duration = 2f * (1 + (input.DashForceMultiplier - 1) * 0.5f);
+        result.dashElapsed += SimDelta;
+        if (result.dashElapsed >= duration || result.isGrounded) {
+            result.dashVector = Vector3.zero;
+            return;
+        }
+        result.dashVector = Vector3.Lerp(result.dashStartVector, Vector3.zero, result.dashElapsed / duration);
+    }
+
+    private void HandleLaunch(ref ServerOutput result)
     {
-        if (launch) {
-            launch = false;
-            newVelocity.y = launchForce;
-            jumpedLast = true;
+        if (result.launch) {
+            result.launch = false;
+            result.verticalVelocity = launchForce;
+            result.jumpedLast = true;
             resetPrev = false;
             HealthController.noFDAnim = true;
         }
     }
-    private void KeyEvents()
+    private void KeyEvents(MoveInput input, ref ServerOutput result)
     {
 
-        if (Input.GetKeyDown(KeyCode.R) && dead) Respawn();
 
-        if (Input.GetKey(KeyCode.Q) && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
-            && isGrounded && !healParticles.healing && DamageControl.Local != null && DamageControl.Local.health.Value < 180.0f)
+        if (IsOwner && input.Heal && !Shooting.Local.reloading && !CameraZoom.moving && !Shaker.shooting
+            && result.isGrounded && !result.isHealing && DamageControl.Local != null && DamageControl.Local.health.Value < 180.0f)
             StartCoroutine(stationaryHealing());
 
-        if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            && isGrounded && StaminaController.Local.canSprint && !isAiming) {
-            isSprinting = true;
+        if (input.Sprint && result.isGrounded && result.canSprint && !input.Aim) {
+            result.isSprinting = true;
         } else {
-            if (!fastAir) isSprinting = false;
+            if (!result.fastAir) result.isSprinting = false;
         }
 
-        if ((Input.GetKeyUp(KeyCode.LeftShift) || Input.GetKeyUp(KeyCode.RightShift)) && !isAiming) {
-            isSprinting = false;
-            fastAir = false;
+        if (!input.Sprint && result.sprintInputPrev && !input.Aim) {
+            result.isSprinting = false;
+            result.fastAir = false;
         }
+        result.sprintInputPrev = input.Sprint;
         
         if (Input.GetKeyUp(KeyCode.Escape)) {
             Cursor.lockState = CursorLockMode.None;
@@ -1009,21 +1358,21 @@ public class PlayerMovement : NetworkBehaviour {
         }
     }
 
-    private void ManageSprintState() {
-        if (!StaminaController.Local.canSprint) fastAir = false;
+    private void ManageSprintState(MoveInput input, ref ServerOutput result) {
+        if (!input.CanSprint) result.fastAir = false;
 
-        if (sprintingPrev && groundedPrev && !isGrounded) {
-            fastAir = true;
-            isSprinting = true;
+        if (result.sprintingPrev && result.groundedPrev && !result.isGrounded) {
+            result.fastAir = true;
+            result.isSprinting = true;
         }
     }
 
-    private void HandleShotBoost() {
+    private void HandleShotBoost(ref ServerOutput result) {
         if (!boostOnGunshot.Value) {
-            shotBoost = Vector3.zero;
+            result.shotBoost = Vector3.zero;
             return;
         }
-        shotBoost *= Mathf.Exp(-shotBoostDecay * Time.deltaTime);
+        result.shotBoost *= Mathf.Exp(-shotBoostDecay * SimDelta);
     }
 
     public void ApplyShotBoost(Shooting.currGun gun, Vector3 aimDirection) {
@@ -1037,7 +1386,8 @@ public class PlayerMovement : NetworkBehaviour {
             case Shooting.currGun.Sniper: strength = sniperBoost; break;
             default: strength = arBoost; break;
         }
-        shotBoost = Vector3.ClampMagnitude(shotBoost + flatAim.normalized * strength, maxShotBoost);
+        simState.shotBoost = Vector3.ClampMagnitude(simState.shotBoost + flatAim.normalized * strength, maxShotBoost);
+        SetServerShotBoost(simState.shotBoost);
     }
 
     public float BaseFOV => baseFOV;
@@ -1075,17 +1425,19 @@ public class PlayerMovement : NetworkBehaviour {
             isAiming = false;
         }
     }
-    IEnumerator addDash() {
-        if (dashes < 3) {
-            resettingDashes = true;
-            float percent = 0;
-            while (percent < 1f) {
-                percent += Time.deltaTime * upgradeManager.Local.dashRegenMultiplier * dashReloadModifier.Value / 10f;
-                if (dashIcon != null) dashIcon.sizeDelta = new Vector2(75, Mathf.Min(percent, 1f) * 72);
-                yield return null;
-            }
-            dashes++;
-            resettingDashes = false;
+    private void HandleDashRegen(MoveInput input, ref ServerOutput result) {
+        if (result.dashNum >= 3) {
+            result.timeToNextDash = DashRegenTime;
+            return;
+        }
+        result.timeToNextDash -= SimDelta * input.DashRegenMultiplier * dashReloadModifier.Value;
+        if (result.timeToNextDash <= 0f) {
+            result.dashNum++;
+            result.timeToNextDash = DashRegenTime;
+        }
+        if (IsOwner && dashIcon != null) {
+            float fill = result.dashNum >= 3 ? 1f : 1f - result.timeToNextDash / DashRegenTime;
+            dashIcon.sizeDelta = new Vector2(75, fill * 72);
         }
     }
 
@@ -1093,19 +1445,25 @@ public class PlayerMovement : NetworkBehaviour {
         if (!IsOwner) return;
         
         string hitTag = hit.gameObject.tag;
-        if (isGrounded) {
+        if (simState.isGrounded) {
             if (pendingLanding) {
                 pendingLanding = false;
                 HandleFallDamage(hitTag);
             }
-            jumpedLast = false;
-            fastAir = false;
+            if (simState.jumpedLast || simState.fastAir) {
+                simState.jumpedLast = false;
+                simState.fastAir = false;
+                SetServerLanded();
+            }
             resetPrev = false;
         }
 
         onScreenPlatform = IsOnScreenPlatform(hit.gameObject.name, hit.normal);
         VelocityResetCheck(hit.normal);
-        if (hit.gameObject.CompareTag("Launchpad")) launch = true;
+        if (hit.gameObject.CompareTag("Launchpad") && !simState.launch) {
+            simState.launch = true;
+            SetServerLaunch(true);
+        }
         TeleportationCheck(hit.gameObject);
     }
 
@@ -1115,8 +1473,11 @@ public class PlayerMovement : NetworkBehaviour {
         if (Vector3.Dot(hitNormal, Vector3.up) < 0.95f) return false;
         return true;
     }
-    private void TeleportationCheck(GameObject hitObject) {        
-        if (canTeleport && (ServerController.Local.serverIntroDone || SaveSystem.testingLocal)) {
+
+    [ServerRpc]
+    private void SetTeleporting(bool teleporting) => simState.teleporting = teleporting;  
+    private void TeleportationCheck(GameObject hitObject) {      
+        if (simState.canTeleport && (ServerController.Local.serverIntroDone || SaveSystem.testingLocal)) {
             if (hitObject == portal1A) ChangeScene(desertInfo.scene, desertInfo, "portal1A");
             else if (hitObject == portal1B) ChangeScene(mazeInfo.scene, mazeInfo, "portal1B");
             else if (hitObject == portal2A) ChangeScene(desertInfo.scene, desertInfo, "portal2A");
@@ -1131,7 +1492,7 @@ public class PlayerMovement : NetworkBehaviour {
     private void ChangeScene(string name, DimensionInfo target, string arrival = null) {
         if (!IsOwner) return;
         global::SceneManager sceneManager = global::SceneManager.Instance;
-        canTeleport = false;
+        simState.canTeleport = false;
         pendingDimension = target;
         pendingArrival = arrival;
         sceneManager.BeginTransfer(name);
@@ -1143,29 +1504,33 @@ public class PlayerMovement : NetworkBehaviour {
         if (!sceneManager.LoadScene(name)) {
             sceneManager.Reset();
             pendingArrival = null;
-            canTeleport = true;
+            simState.canTeleport = true;
             return;
         }
 
         RetroDither.isTeleporting = true;
-        characterController.enabled = false;
+        simState.controllerEnabled = false;
         StartCoroutine(sceneManager.TransferTimeout(name, () => {
             pendingArrival = null;
-            canTeleport = true;
-            characterController.enabled = true;
+            simState.canTeleport = true;
+            simState.controllerEnabled = true;
         }));
     }
 
     private void VelocityResetCheck(Vector3 hitNormal) {
-        if (Vector3.Angle(dashVector, hitNormal) > 90f) { //check to reset dash if hit wall
-            dashVector = Vector3.zero;
+        if (simState.dashVector != Vector3.zero && Vector3.Angle(simState.dashVector, hitNormal) > 90f) { //check to reset dash if hit wall
+            simState.dashVector = Vector3.zero;
+            SetServerDashVector(Vector3.zero);
         }
-        if (Vector3.Dot(shotBoost, hitNormal) > 0f && Vector3.Angle(hitNormal, Vector3.up) > characterController.slopeLimit) {
-            shotBoost = Vector3.ProjectOnPlane(shotBoost, hitNormal);
-            shotBoost.y = 0f;
+        if (Vector3.Dot(simState.shotBoost, hitNormal) > 0f && Vector3.Angle(hitNormal, Vector3.up) > characterController.slopeLimit) {
+            Vector3 projected = Vector3.ProjectOnPlane(simState.shotBoost, hitNormal);
+            projected.y = 0f;
+            simState.shotBoost = projected;
+            SetServerShotBoost(projected);
         }
-        if  (newVelocity.y > 0f && Vector3.Angle(hitNormal, Vector3.down) < characterController.slopeLimit) { //check to reset vertical velocity if hit ceiling
-            newVelocity.y = 0f;
+        if  (simState.verticalVelocity > 0f && Vector3.Angle(hitNormal, Vector3.down) < characterController.slopeLimit) { //check to reset vertical velocity if hit ceiling
+            simState.verticalVelocity = 0f;
+            SetServerVertVelo(0);
         }
 
     }
@@ -1173,7 +1538,7 @@ public class PlayerMovement : NetworkBehaviour {
     private void HandleFallDamage(string hitTag)
     {
         if (hitTag == "Launchpad" || hitTag == "Portal") return;
-        float heightChange = lastGroundedHeight - transform.position.y - 8;
+        float heightChange = simState.lastGroundedHeight - transform.position.y - 8;
         if (heightChange > 0) {
             float shakeMagnitude = Mathf.Min(heightChange / 20f, 1f);
             StartCoroutine(ApplyLandingShake(shakeMagnitude));
@@ -1182,27 +1547,11 @@ public class PlayerMovement : NetworkBehaviour {
             if (fallDamage > 0 && DamageControl.Local != null) DamageControl.Local.ServerApplyFallDamage(fallDamage);
         }
     }
-        private void setFrictionIce(bool onIce) {
-        groundAcceleration = onIce ? iceInfo.accel : desertInfo.accel;
-        groundDeceleration = onIce ? iceInfo.decel : desertInfo.decel;
-        friction = onIce ? iceInfo.fric : desertInfo.fric;
-        characterController.stepOffset = onIce ? 0f : 0.55f;
-    }
-
-    private bool IsOnSlope() {
-        RaycastHit hit;
-        LayerMask layerMask = SlopeMask;
-        if (!Physics.SphereCast(transform.position, 0.545f, Vector3.down, out hit, 0.5f, layerMask)) {
-            onSlope = false;
-            return false;
-        }
-        angleSlope = Vector3.Angle(hit.normal, Vector3.up);
-        if (angleSlope > 0 && angleSlope <= 47) {
-            onSlope = true;
-            return true;
-        }
-        onSlope = false;
-        return false;
+    private void setFrictionIce(ref ServerOutput result) {
+        result.groundAcceleration = result.onIce ? iceInfo.accel : desertInfo.accel;
+        result.groundDeceleration = result.onIce ? iceInfo.decel : desertInfo.decel;
+        result.friction = result.onIce ? iceInfo.fric : desertInfo.fric;
+        if (result.isGrounded) result.stepOffset = result.onIce ? 0f : 0.55f;
     }
 
     private void BorderWarning() {
@@ -1212,23 +1561,23 @@ public class PlayerMovement : NetworkBehaviour {
         float absZ = Mathf.Abs(transform.position.z) - 90; //90 = z size of bounds
 
         float yDistanceFromOrigin = transform.position.y;
-        if (currDimension == "Space") {
+        if (simState.currDimension == "Space") {
             absX = Mathf.Abs(transform.position.x) - 55;
             absZ = Mathf.Abs(transform.position.z - 2000) - 55;//2000 = z pos of void container
-        } else if (currDimension == "Ice") {
+        } else if (simState.currDimension == "Ice") {
             absX = Mathf.Abs(transform.position.x + 2500) - 55;
             absZ = Mathf.Abs(transform.position.z) - 55;
         }
         
         horizontalDistanceFromOrigin = Mathf.Max(absX, absZ);
 
-        if (currDimension == "Desert") {
+        if (simState.currDimension == "Desert") {
             newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
             newAlpha1 = yDistanceFromOrigin > 55f ? ((yDistanceFromOrigin - 55f) / 20f) * 255f : 0f;
-        } else if (currDimension == "Space") {
+        } else if (simState.currDimension == "Space") {
             newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
             newAlpha1 = Mathf.Abs(yDistanceFromOrigin) > 50f ? ((Mathf.Abs(yDistanceFromOrigin) - 50f) / 20f) * 255f : 0f;
-        } else if (currDimension == "Ice") {
+        } else if (simState.currDimension == "Ice") {
             newAlpha = horizontalDistanceFromOrigin > 0f ? (horizontalDistanceFromOrigin / 20f) * 255f : 0f;
             newAlpha1 = yDistanceFromOrigin > 55f ? ((yDistanceFromOrigin - 55f) / 20f) * 255f : 0f;
         } else {
@@ -1242,10 +1591,17 @@ public class PlayerMovement : NetworkBehaviour {
             _borderMaterials[i].color = borderColor;
     }
 
+    [ServerRpc]
+    private void ServerSetDead() {
+        simState.dead = true;
+        simState.controllerEnabled = false;
+    }
+
     public void Die() {
         if (!IsOwner || dead) return;
-        characterController.enabled = false;
-        dead = true;
+        simState.controllerEnabled = false;
+        simState.dead = true;
+        ServerSetDead();
         if (DamageControl.Local != null) DamageControl.Local.ServerKillSelf();
         Instantiate(respawnScreen);
         Cursor.lockState = CursorLockMode.None;
@@ -1254,7 +1610,28 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     public void EnterDataCenter() => Die();
-    public void Respawn() {
+    public void Respawn(uint tick, bool applyEffects) {
+        float spawnYaw;
+        characterController.enabled = false;
+        if (!global::SceneManager.Instance.InCombatScene && bossArrival != null) {
+            transform.position = bossArrival.position;
+            spawnYaw = bossArrival.eulerAngles.y;
+        } else {
+            if (spawnVectors.Count > 0) {
+                int num = (int)(tick % (uint)spawnVectors.Count);
+                transform.position = spawnVectors[num];
+            } else {
+                Debug.LogWarning("no spawn points found");
+                transform.position = spawn;
+            }
+
+            Vector3 targetDirection = new Vector3(17f - 13.94f, -9f, -27f + 3.89f) - transform.position;
+            spawnYaw = Quaternion.LookRotation(targetDirection).eulerAngles.y;
+        }
+        characterController.enabled = true;
+
+        if (!applyEffects) return;
+
         if (DamageControl.Local != null) DamageControl.Local.ServerRespawn();
         canTakeDamage = false;
         if (invulnerableRoutine != null) {
@@ -1263,45 +1640,16 @@ public class PlayerMovement : NetworkBehaviour {
         }
         if (localShooting != null) localShooting.reloadNum = 30;
         GunThingAnim.movingState = false;
-        dashes = 0;
         transform.localEulerAngles = Vector3.zero;
-        newVelocity = Vector3.zero;
-        characterController.enabled = false;
-        dead = false;
-        lastGroundedHeight = -13;
-        movement = Vector3.zero;
-        dashVector = Vector3.zero;
         if (dashRoutine != null) {
             StopCoroutine(dashRoutine);
             dashRoutine = null;
         }
         dashFOV = 0f;
-        shotBoost = Vector3.zero;
-        launch = false;
-        jumpedLast = false;
-        fastAir = false;
-        isSprinting = false;
         pendingLanding = false;
-        jumpBufferTimer = 0f;
         currentCameraRotationX = 0f;
+        FaceDirection(spawnYaw);
 
-        if (!global::SceneManager.Instance.InCombatScene && bossArrival != null) {
-            transform.position = bossArrival.position;
-            FaceDirection(bossArrival.eulerAngles.y);
-        } else {
-            if (spawnVectors.Count > 0) {
-                int num = Random.Range(0, spawnVectors.Count);
-                transform.position = spawnVectors[num];
-            } else {
-                Debug.LogWarning("[PlayerMovement] no spawn points found; respawning at the initial spawn position.");
-                transform.position = spawn;
-            }
-
-            Vector3 targetDirection = new Vector3(17f - 13.94f, -9f, -27f + 3.89f) - transform.position;
-            FaceDirection(Quaternion.LookRotation(targetDirection).eulerAngles.y);
-        }
-
-        characterController.enabled = true;
         if (localShooting != null) localShooting.canShoot = true;
 
         lastPosition = playerTransform.position;
@@ -1328,7 +1676,7 @@ public class PlayerMovement : NetworkBehaviour {
 
     IEnumerator Invulnerable() {
         yield return new WaitForSeconds(0.1f);
-        while (!isGround()) yield return null;
+        while (!isGrounded) yield return null;
         canTakeDamage = true;
         invulnerableRoutine = null;
         if (DamageControl.Local != null) DamageControl.Local.ServerEndSpawnProtection();
@@ -1339,15 +1687,18 @@ public class PlayerMovement : NetworkBehaviour {
         SetActiveDimension(target);
         if (global::SceneManager.Instance.InCombatScene && combatSceneLight != null)
             combatSceneLight.transform.localScale = (target.name == "Desert") ? Vector3.one * 150f : Vector3.zero;
-        canTeleport = false;
+        simState.canTeleport = false;
         StartCoroutine(teleTrue());
         RetroDither.isTeleporting = true;
-        transform.position = destination.position + new Vector3(0f, heightOffset, 0f);
+        simState.position = destination.position + new Vector3(0f, heightOffset, 0f);
+        transform.position = simState.position;
         characterController.enabled = true;
-        lastGroundedHeight = transform.position.y;
-        lastPosition = playerTransform.position;
+        simState.controllerEnabled = true;
+        simState.lastGroundedHeight = simState.position.y;
 
-        currDimension = target.name;
+        simState.currDimension = target.name;
+        simState.currDimension = target.name;
+        TeleportServer(simState.position, target.name);
         playerCamera.farClipPlane = target.farClip;
         if (target.skybox != null) {
             RenderSettings.skybox = target.skybox;
@@ -1355,7 +1706,6 @@ public class PlayerMovement : NetworkBehaviour {
         } else {
             playerCamera.clearFlags = CameraClearFlags.SolidColor;
         }
-        ApplyDimensionPhysics(target);
 
         serverController.DisplayDimension();
         GetComponent<ChangeMat>().dimensionMaterialChange(target.materialName);
@@ -1374,6 +1724,25 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     [ServerRpc]
+    private void TeleportServer(Vector3 position, string dimensionName)
+    {
+        characterController.enabled = false;
+        transform.position = position;
+        characterController.enabled = true;
+        currDimension = dimensionName;
+        simState.currDimension = dimensionName;
+        simState.position = position;
+        simState.controllerEnabled = true;
+        simState.lastGroundedHeight = position.y;
+        simState.canTeleport = false;
+        StartCoroutine(ServerTeleportCooldown());
+    }
+
+    private IEnumerator ServerTeleportCooldown() {
+        yield return new WaitForSeconds(2f + DamageControl.TeleportProtectionTime);
+        simState.canTeleport = true;
+    }
+    [ServerRpc]
     private void SetMatchCondition(bool enteringBossScene)
     {
         bool hasUniqueMatch = currentMatch != SharedMatch && currentMatch != NoMatch;
@@ -1389,23 +1758,16 @@ public class PlayerMovement : NetworkBehaviour {
     private void AddOwnerToScene(string sceneName)
     {
         Scene scene = UnityEngine.SceneManagement.SceneManager.GetSceneByName(sceneName);
-        if (!scene.isLoaded) {
-            Debug.LogWarning($"[PlayerMovement] '{sceneName}' is not loaded on the server; connection {Owner.ClientId} was not added to it.");
-            return;
-        }
         networkManager.SceneManager.AddConnectionToScene(Owner, scene);
         ApplyDimensionRules(sceneName);
         DamageControl damageControl = GetComponent<DamageControl>();
         if (damageControl != null) damageControl.GrantTeleportProtection();
     }
 
-    [Server]
+    [ServerRpc]
     private void ApplyDimensionRules(string sceneName)
     {
-        if (!rulesByScene.TryGetValue(sceneName, out DimensionRules rules)) {
-            Debug.LogWarning($"[PlayerMovement] no dimension rules for '{sceneName}'; keeping the current ones.");
-            return;
-        }
+        rulesByScene.TryGetValue(sceneName, out DimensionRules rules);
         serverRules = rules;
         canDash.Value = rules.canDash;
         dashReloadModifier.Value = rules.canDash ? rules.dashReloadModifier : 0f;
@@ -1430,10 +1792,12 @@ public class PlayerMovement : NetworkBehaviour {
     IEnumerator teleTrue() {
         HealthController.tpAnim = true;
         isTeleporting = true;
+        simState.teleporting = true;
         yield return new WaitForSeconds(2f);
+        simState.teleporting = false;
         isTeleporting = false;
         yield return new WaitForSeconds(DamageControl.TeleportProtectionTime);
-        canTeleport = true;
+        simState.canTeleport = true;
     }
     
     private static bool IsBuildCollider(Collider col) {
@@ -1441,7 +1805,7 @@ public class PlayerMovement : NetworkBehaviour {
     }
 
     void CheckIfStuckAndMoveUp() {
-        if (dead || !characterController.enabled) return;
+        if (dead || !simState.controllerEnabled) return;
 
         Vector3 capsuleBottom = transform.position + characterController.center - Vector3.up * (characterController.height / 2 - characterController.radius);
         Vector3 capsuleTop = transform.position + characterController.center + Vector3.up * (characterController.height / 2 - characterController.radius);
@@ -1483,20 +1847,72 @@ public class PlayerMovement : NetworkBehaviour {
             }
 
             if (unstuckFail) {
-                newVelocity.y = 0;
+                simState.verticalVelocity = 0;
+                SetServerVertVelo(0);
                 for (int i = 0; i < stuckCount; i++)
                     if (IsBuildCollider(_stuckHits[i])) _stuckHits[i].transform.gameObject.layer = 11;
                 characterController.enabled = false;
                 transform.position = start;
                 characterController.enabled = true;
             }
-            lastPosition = playerTransform.position; 
+            if (transform.position != start) {
+                simState.position = transform.position;
+                SetServerPosition(simState.position, simState.lastGroundedHeight);
+            }
+            lastPosition = playerTransform.position;
         } else {
             foreach (var entry in originalLayers) entry.Key.gameObject.layer = entry.Value;
             for (int i = 0; i < stuckCount; i++)
                 if (IsBuildCollider(_stuckHits[i])) _stuckHits[i].transform.gameObject.layer = 11;
         }
     }
+
+    private void QueueServerChange(uint tick, System.Action apply) {
+        _pendingServerChanges.Add((tick, apply));
+    }
+
+    private void ApplyPendingServerChanges(uint simulatedTick) {
+        for (int i = 0; i < _pendingServerChanges.Count; i++) {
+            if (_pendingServerChanges[i].tick > simulatedTick) continue;
+            _pendingServerChanges[i].apply();
+            _pendingServerChanges.RemoveAt(i);
+            i--;
+        }
+    }
+
+    private void SetServerVertVelo(float val) { if (!_simReplaying) RpcSetVertVelo(_simTick, val); }
+    private void SetServerDashVector(Vector3 val) { if (!_simReplaying) RpcSetDashVector(_simTick, val); }
+    private void SetServerShotBoost(Vector3 val) { if (!_simReplaying) RpcSetShotBoost(_simTick, val); }
+    private void SetServerLanded() { if (!_simReplaying) RpcSetLanded(_simTick); }
+    private void SetServerLaunch(bool val) { if (!_simReplaying) RpcSetLaunch(_simTick, val); }
+    private void SetServerPosition(Vector3 position, float lastGroundedHeight) { if (!_simReplaying) RpcSetPosition(_simTick, position, lastGroundedHeight); }
+
+    [ServerRpc]
+    private void RpcSetVertVelo(uint tick, float val) => QueueServerChange(tick, () => simState.verticalVelocity = val);
+
+    [ServerRpc]
+    private void RpcSetDashVector(uint tick, Vector3 val) => QueueServerChange(tick, () => simState.dashVector = val);
+
+    [ServerRpc]
+    private void RpcSetShotBoost(uint tick, Vector3 val) => QueueServerChange(tick, () => simState.shotBoost = val);
+
+    [ServerRpc]
+    private void RpcSetLanded(uint tick) => QueueServerChange(tick, () => {
+        simState.jumpedLast = false;
+        simState.fastAir = false;
+    });
+
+    [ServerRpc]
+    private void RpcSetLaunch(uint tick, bool val) => QueueServerChange(tick, () => simState.launch = val);
+
+    [ServerRpc]
+    private void RpcSetPosition(uint tick, Vector3 position, float lastGroundedHeight) => QueueServerChange(tick, () => {
+        characterController.enabled = false;
+        transform.position = position;
+        characterController.enabled = simState.controllerEnabled;
+        simState.position = position;
+        simState.lastGroundedHeight = lastGroundedHeight;
+    });
 
     IEnumerator ApplyLandingShake(float magnitude) {
         float duration = 0.2f;
@@ -1638,7 +2054,7 @@ public class PlayerMovement : NetworkBehaviour {
         float elapsedTime = 0f;
 
         while (elapsedTime < duration) {
-            if (!SprintGunPose || Shaker.shooting || Shooting.Local.reloading || !CameraZoom.moving) {
+            if (!SprintGunPose || !SprintKeyHeld || Shaker.shooting || Shooting.Local.reloading || !CameraZoom.moving) {
                 walkVectorPos = Vector3.Lerp(walkVectorPosStart, Vector3.zero, elapsedTime / duration);
                 walkVectorRot = Vector3.Lerp(walkVectorRotStart, Vector3.zero, elapsedTime / duration);
                 elapsedTime += Time.deltaTime;
@@ -1686,18 +2102,6 @@ public class PlayerMovement : NetworkBehaviour {
         jumpOffsetTwo = 0;
     }
 
-    IEnumerator LerpDash() {
-        Vector3 dashVectorRef = dashVector;
-        float elapsedTime = 0f;
-        float duration = 2f * (1 + (upgradeManager.Local.dashForceMultiplier - 1) * 0.5f);
-        while (elapsedTime < duration && !isGround() && dashVector.magnitude > 0) {
-            dashVector = Vector3.Lerp(dashVectorRef, Vector3.zero, elapsedTime / duration);
-            elapsedTime += Time.deltaTime;
-            yield return null;
-        }
-        dashVector = Vector3.zero;
-        dashRoutine = null;
-    }
 
     private void SideMovementCameraTilt()
     {
@@ -1716,6 +2120,7 @@ public class PlayerMovement : NetworkBehaviour {
         sideTilt = Mathf.Lerp(sideTilt, targetSideTilt, Time.deltaTime * lerpSpeed);
     }
     private void LateUpdate() {
+        if (IsOwner && _renderedBody != null) _renderedBody.position = SmoothedTickPosition() + transform.rotation * _renderedBodyLocalPos;
         if (!IsOwner || ServerController.serverAnimationPlaying || Shooting.Local == null) return;
         bool sniperAiming = CameraZoom.isAiming && Shooting.Local.currentGun == Shooting.currGun.Sniper;
         breatheAimScale = Mathf.Lerp(breatheAimScale, sniperAiming ? aimBreatheScale : 1f, Time.deltaTime * 8f);
@@ -1726,7 +2131,7 @@ public class PlayerMovement : NetworkBehaviour {
         }
         if (!dead && !ServerController.serverAnimationPlaying) {
             //playerCamera.gameObject.transform.position = transform.position + new Vector3(.5f * Mathf.Sin(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad), .75f, .5f * Mathf.Cos(Camera.main.transform.eulerAngles.y * Mathf.Deg2Rad)) + landingCameraOffset;
-            playerCamera.gameObject.transform.position = transform.position + new Vector3(0, .75f, 0) + landingCameraOffset + 0.4f * transform.forward;
+            playerCamera.gameObject.transform.position = SmoothedTickPosition() + new Vector3(0, .75f, 0) + landingCameraOffset + 0.4f * transform.forward;
             if (!Shooting.Local.reloading) {
                 Vector3 shootOffset = new Vector3((-Shaker.yRot - Shaker.zRot) / 500, Shaker.easedRotationChange / 125, -Shaker.easedRotationChange / 250) * shootAnimTune;
                 akm.localPosition += akm.parent.InverseTransformVector(shootOffset);
@@ -1809,8 +2214,6 @@ public class PlayerMovement : NetworkBehaviour {
                 walkingShake.newX * 2.25f * walkAnimTuneGun + walkVectorRot.z * walkAnimTuneGun + sideTilt * sidewaysAnimTune * 1.5f);
                 akm.localEulerAngles += rotOffset;
         }
-
-        sprintingPrev = isSprinting;
 
         if (rotationX != 0)
             gunXRot += Mathf.Clamp(rotationX * -3.75f, -25f, 25f) * GunSwayReferenceDelta;

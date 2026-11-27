@@ -70,6 +70,7 @@ public class Shooting : NetworkBehaviour
     [SerializeField] private Transform      gunRotation;
     [SerializeField] public  Transform      gunThing;
     [SerializeField] private GameObject     bH;
+    [SerializeField] private Transform      casingHolder;
     [SerializeField] private ParticleSystem muzzlePrefab;
     [SerializeField] private GameObject     bulletCasingPrefab;
     [SerializeField] private float          nonOwnerCasingScale = 1.25f;
@@ -398,11 +399,12 @@ public class Shooting : NetworkBehaviour
         Vector3[] spreads)
     {
         Vector3 shooterVelocity = PlayerMovement.Local.dashVector;
-        if (IsValidVector3(PlayerMovement.Local.newVelocity))
+        Vector3 playerVelocity = PlayerMovement.Local.GetVelocity();
+        if (IsValidVector3(playerVelocity))
         {
             shooterVelocity += PlayerMovement.Local.isGrounded
-                ? new Vector3(PlayerMovement.Local.newVelocity.x, 0f, PlayerMovement.Local.newVelocity.z)
-                : PlayerMovement.Local.newVelocity;
+                ? new Vector3(playerVelocity.x, 0f, playerVelocity.z)
+                : playerVelocity;
         }
 
         ServerBulletLogic(
@@ -455,7 +457,6 @@ public class Shooting : NetworkBehaviour
             StartCoroutine(ReturnParticleAfterPlay(muzzleInst, bulletHoleRef));
         }
 
-        Transform casingHolder = transform.GetChild(2).GetChild(0).GetChild(1).GetChild(0);
         Transform nonCameraCasing = _casingPool.Get(
             casingHolder.position, bulletCasingPrefab.transform.rotation, casingHolder);
         nonCameraCasing.gameObject.layer = 11;
